@@ -12,6 +12,24 @@ export const createProjectSchema = z.object({
 });
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
+/**
+ * PATCH body: every field optional, `null` clears an optional field.
+ * Built explicitly (not `.partial()`): zod 4 still applies `.default()` inside a
+ * partial, which would silently reset `status` on every update.
+ */
+export const updateProjectSchema = z
+  .object({
+    name: createProjectSchema.shape.name,
+    customerName: createProjectSchema.shape.customerName.unwrap().nullable(),
+    address: createProjectSchema.shape.address.unwrap().nullable(),
+    location: latLngSchema.nullable(),
+    status: z.enum(PROJECT_STATUSES),
+    notes: createProjectSchema.shape.notes.unwrap().nullable(),
+  })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, 'at least one field is required');
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
+
 export interface Project extends CreateProjectInput {
   id: string;
   createdAt: string;

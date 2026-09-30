@@ -32,15 +32,37 @@ ssh -L 3000:127.0.0.1:3000 -L 4000:127.0.0.1:4000 surveyadmin@<server>
 
 ## Scripts (root)
 
-| Command          | Description                                                                       |
-| ---------------- | --------------------------------------------------------------------------------- |
-| `pnpm dev`       | build `@cctv/shared`, then run all apps in watch mode                             |
-| `pnpm build`     | build all packages (topological order)                                            |
-| `pnpm lint`      | ESLint (web) / oxlint (api, shared)                                               |
-| `pnpm typecheck` | TypeScript type check for all packages                                            |
-| `pnpm test`      | unit tests (api: vitest)                                                          |
-| `pnpm format`    | Prettier                                                                          |
-| `pnpm db:*`      | database: up / stop / migrate / status / verify / psql — see `infra/db/README.md` |
+| Command          | Description                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| `pnpm dev`       | build `@cctv/shared`, then run all apps in watch mode                                    |
+| `pnpm build`     | build all packages (topological order)                                                   |
+| `pnpm lint`      | ESLint (web) / oxlint (api, shared)                                                      |
+| `pnpm typecheck` | TypeScript type check for all packages                                                   |
+| `pnpm test`      | unit tests (api: vitest)                                                                 |
+| `pnpm format`    | Prettier                                                                                 |
+| `pnpm db:*`      | database: up / stop / migrate / status / verify / psql / test — see `infra/db/README.md` |
+
+## API (Phase 4)
+
+All routes are under `/api`, bodies are JSON and validated with the zod schemas in
+`packages/shared`. No authentication yet — the API only listens on `127.0.0.1`.
+
+| Method + path                       | Description                                  |
+| ----------------------------------- | -------------------------------------------- |
+| `GET /projects?limit=&offset=`      | newest first (limit 1–500, default 100)      |
+| `POST /projects`                    | create                                       |
+| `GET/PATCH/DELETE /projects/:id`    | read / partial update / delete               |
+| `GET /projects/:id/sites`           | sites of a project                           |
+| `GET /projects/:id/cameras?siteId=` | camera points of a project (optional filter) |
+| `POST /sites`, `POST /cameras`      | create (`projectId` in the body)             |
+| `GET/PATCH/DELETE /sites/:id`       | read / partial update / delete               |
+| `GET/PATCH/DELETE /cameras/:id`     | read / partial update / delete               |
+
+- PATCH: send only the fields to change; `null` clears an optional field. `projectId` cannot change.
+- Errors: `400` validation / unknown `projectId` or `siteId` / invalid polygon, `404` not found,
+  `409` duplicate name or label, or deleting a project/site that still has sites or cameras.
+- Tests: `pnpm --filter @cctv/api test` (unit) and `pnpm db:test && pnpm --filter @cctv/api test:e2e`
+  (runs against the separate `cctv_survey_test` database, never the dev database).
 
 ## Layout
 

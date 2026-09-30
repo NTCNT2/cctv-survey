@@ -5,6 +5,7 @@
 #   scripts/db.sh status    list applied / pending migrations
 #   scripts/db.sh verify    check port binding + run infra/db/verify.sql (rolled back)
 #   scripts/db.sh psql      interactive psql shell
+#   scripts/db.sh test-db   create (if missing) + migrate the e2e database cctv_survey_test
 #
 # Runs psql inside the container with the container's own POSTGRES_* env, so no
 # credentials are needed on the host command line. Nothing here drops or
@@ -18,12 +19,15 @@ cd "$ROOT"
 MIG_DIR=infra/db/migrations
 LOCK_ID=727274 # arbitrary advisory-lock key, serialises concurrent runners
 
+TEST_DB=cctv_survey_test
+DB_NAME='' # empty = the container's POSTGRES_DB; set to TEST_DB by `test-db`
+
 die() { echo "error: $*" >&2; exit 1; }
 
 psql_db() {
   # shellcheck disable=SC2016 # expanded inside the container
-  docker compose exec -T db sh -c \
-    'exec psql -X -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@"' psql "$@"
+  docker compose exec -T -e DB_NAME="$DB_NAME" db sh -c \
+    'exec psql -X -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "${DB_NAME:-$POSTGRES_DB}" "$@"' psql "$@"
 }
 
 require_db() {
@@ -114,6 +118,17 @@ cmd_verify() {
   psql_db -v ON_ERROR_STOP=1 < infra/db/verify.sql
 }
 
+# Creates the test database if missing (never drops anything), then migrates it.
+cmd_test_db() {
+  require_db
+  if [[ -z $(psql_db -At -c "SELECT 1 FROM pg_database WHERE datname = '$TEST_DB'") ]]; then
+    echo "creating  $TEST_DB"
+    psql_db -c "CREATE DATABASE $TEST_DB"
+  fi
+  DB_NAME=$TEST_DB
+  cmd_migrate
+}
+
 cmd_psql() {
   # shellcheck disable=SC2016
   exec docker compose exec db sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
@@ -124,5 +139,6 @@ case "${1:-}" in
   status) cmd_status ;;
   verify) cmd_verify ;;
   psql) cmd_psql ;;
-  *) echo "usage: $0 {migrate|status|verify|psql}" >&2; exit 2 ;;
+  test-db) cmd_test_db ;;
+  *) echo "usage: $0 {migrate|status|verify|psql|test-db}" >&2; exit 2 ;;
 esac

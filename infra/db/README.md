@@ -20,6 +20,7 @@ pnpm db:verify                     # binding check + schema smoke test (rolled b
 | `pnpm db:migrate` | apply pending migrations, each in its own transaction       |
 | `pnpm db:verify`  | fail if the port is not on 127.0.0.1, then run `verify.sql` |
 | `pnpm db:psql`    | interactive psql inside the container                       |
+| `pnpm db:test`    | create (if missing) + migrate `cctv_survey_test` for e2e    |
 
 ## Security
 

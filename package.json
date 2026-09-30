@@ -18,7 +18,8 @@
     "db:migrate": "bash scripts/db.sh migrate",
     "db:status": "bash scripts/db.sh status",
     "db:verify": "bash scripts/db.sh verify",
-    "db:psql": "bash scripts/db.sh psql"
+    "db:psql": "bash scripts/db.sh psql",
+    "db:test": "bash scripts/db.sh test-db"
   },
   "devDependencies": {
     "prettier": "^3.9.9"
