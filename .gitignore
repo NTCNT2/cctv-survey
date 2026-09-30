@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# env / secrets — only .env.example is committed
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# runtime data (DB volumes, uploaded photos, backups)
+data/
+
+# logs & OS
+*.log
+.DS_Store
