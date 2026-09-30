@@ -7,6 +7,13 @@ export const latLngSchema = z.object({
 });
 export type LatLng = z.infer<typeof latLngSchema>;
 
+/**
+ * Simple polygon (outer ring only) as a list of vertices, stored in PostGIS as
+ * geometry(Polygon, 4326). The ring is closed server-side — do not repeat the first point.
+ */
+export const latLngPolygonSchema = z.array(latLngSchema).min(3).max(1000);
+export type LatLngPolygon = z.infer<typeof latLngPolygonSchema>;
+
 /** GeoJSON Point — note GeoJSON order is [lng, lat]. */
 export interface GeoJsonPoint {
   type: 'Point';

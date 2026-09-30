@@ -4,6 +4,8 @@ import { latLngSchema } from './geo.js';
 
 export const createCameraPointSchema = z.object({
   projectId: z.string().min(1),
+  /** Optional; must belong to the same project. */
+  siteId: z.string().min(1).optional(),
   label: z.string().trim().min(1).max(50),
   type: z.enum(CAMERA_TYPES),
   status: z.enum(CAMERA_STATUSES).default('proposed'),

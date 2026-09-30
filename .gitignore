@@ -20,6 +20,12 @@ coverage/
 # runtime data (DB volumes, uploaded photos, backups)
 data/
 
+# database dumps / backups (may contain survey data)
+backups/
+*.dump
+*.backup
+*.sql.gz
+
 # logs & OS
 *.log
 .DS_Store

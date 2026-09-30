@@ -1,0 +1,45 @@
+# Local development stack. Phase 3: PostgreSQL + PostGIS only.
+#
+#   cp .env.example .env   # set a real POSTGRES_PASSWORD — never commit .env
+#   pnpm db:up && pnpm db:migrate && pnpm db:verify
+#
+# Security: the DB port is published on 127.0.0.1 ONLY (hard-coded below, not
+# taken from .env, so it cannot be widened by accident). Docker-published ports
+# bypass UFW, so never change this to 0.0.0.0 or drop the host IP. Remote access
+# goes through an SSH tunnel: ssh -L 5432:127.0.0.1:5432 surveyadmin@<server>
+name: cctv-survey
+
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cctv_survey}
+      POSTGRES_USER: ${POSTGRES_USER:-cctv}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      TZ: UTC
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # PostgreSQL 18+ images keep PGDATA in a versioned subdirectory of this path.
+      - pgdata:/var/lib/postgresql
+    networks:
+      - backend
+    shm_size: 256mb
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+networks:
+  # Private network for api <-> db traffic once the API is containerised (Phase 7).
+  backend:
+    driver: bridge
+
+volumes:
+  # Named volume: survives `docker compose down`. Only `down -v` deletes it.
+  pgdata:

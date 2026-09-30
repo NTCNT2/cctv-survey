@@ -11,7 +11,14 @@
     "typecheck": "pnpm --filter @cctv/shared build && pnpm -r typecheck",
     "test": "pnpm -r test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d --wait db",
+    "db:stop": "docker compose stop db",
+    "db:logs": "docker compose logs -f db",
+    "db:migrate": "bash scripts/db.sh migrate",
+    "db:status": "bash scripts/db.sh status",
+    "db:verify": "bash scripts/db.sh verify",
+    "db:psql": "bash scripts/db.sh psql"
   },
   "devDependencies": {
     "prettier": "^3.9.9"
