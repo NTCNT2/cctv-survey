@@ -103,6 +103,41 @@ BEGIN
     RAISE EXCEPTION 'project with children was deleted';
   EXCEPTION WHEN restrict_violation THEN NULL; END;
 
+  -- Auth (0002) -------------------------------------------------------------
+  ASSERT to_regclass('users') IS NOT NULL, 'users missing';
+  ASSERT to_regclass('user_sessions') IS NOT NULL, 'user_sessions missing';
+  DECLARE u1 uuid;
+  BEGIN
+    INSERT INTO users (username, password_hash, role)
+    VALUES ('verify.user', '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA', 'viewer')
+    RETURNING id INTO u1;
+    INSERT INTO user_sessions (user_id, expires_at) VALUES (u1, now() + interval '8 hours');
+
+    BEGIN INSERT INTO users (username, password_hash, role)
+      VALUES ('Verify.Upper', '$argon2id$x', 'viewer');
+      RAISE EXCEPTION 'upper-case username accepted';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+
+    BEGIN INSERT INTO users (username, password_hash, role)
+      VALUES ('verify.plain', 'hunter2hunter2', 'viewer');
+      RAISE EXCEPTION 'non-argon2id password_hash accepted';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+
+    BEGIN INSERT INTO users (username, password_hash, role)
+      VALUES ('verify.root', '$argon2id$x', 'root');
+      RAISE EXCEPTION 'unknown role accepted';
+    EXCEPTION WHEN check_violation THEN NULL; END;
+
+    BEGIN INSERT INTO users (username, password_hash, role)
+      VALUES ('verify.user', '$argon2id$x', 'viewer');
+      RAISE EXCEPTION 'duplicate username accepted';
+    EXCEPTION WHEN unique_violation THEN NULL; END;
+
+    BEGIN DELETE FROM users WHERE id = u1;
+      RAISE EXCEPTION 'user with sessions was deleted';
+    EXCEPTION WHEN restrict_violation THEN NULL; END;
+  END;
+
   RAISE NOTICE 'ALL CHECKS PASSED';
 END;
 $$;

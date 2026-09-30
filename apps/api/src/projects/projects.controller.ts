@@ -17,6 +17,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { RequirePermission } from '../auth/decorators.js';
 import { pageQuerySchema, type PageQuery } from '../common/pagination.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ProjectsService } from './projects.service.js';
@@ -25,6 +26,7 @@ import { ProjectsService } from './projects.service.js';
 export class ProjectsController {
   constructor(private readonly projects: ProjectsService) {}
 
+  @RequirePermission('project:read')
   @Get()
   list(
     @Query(new ZodValidationPipe(pageQuerySchema)) page: PageQuery,
@@ -32,11 +34,13 @@ export class ProjectsController {
     return this.projects.list(page);
   }
 
+  @RequirePermission('project:read')
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string): Promise<Project> {
     return this.projects.get(id);
   }
 
+  @RequirePermission('project:write')
   @Post()
   create(
     @Body(new ZodValidationPipe(createProjectSchema)) body: CreateProjectInput,
@@ -44,6 +48,7 @@ export class ProjectsController {
     return this.projects.create(body);
   }
 
+  @RequirePermission('project:write')
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -52,6 +57,7 @@ export class ProjectsController {
     return this.projects.update(id, body);
   }
 
+  @RequirePermission('project:delete')
   @Delete(':id')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {

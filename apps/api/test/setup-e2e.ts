@@ -1,5 +1,7 @@
 // Points the e2e suite at the separate test database (created by `pnpm db:test`)
 // so tests never write to the dev database. Runs before each test file is imported.
+import { randomBytes } from 'node:crypto';
+
 try {
   process.loadEnvFile('../../.env');
 } catch {
@@ -17,3 +19,18 @@ if (!url.pathname.endsWith('_test')) {
   );
 }
 process.env.DATABASE_URL = url.toString();
+
+// Tests never use the real signing key: a fresh random one per run.
+process.env.JWT_SECRET = randomBytes(48).toString('base64url');
+process.env.JWT_EXPIRES_IN = '8h';
+process.env.COOKIE_SECURE = 'false';
+process.env.NODE_ENV = 'test';
+// Rate limits run with their production defaults (see auth.e2e-spec.ts).
+for (const key of [
+  'LOGIN_LIMIT_PER_IP',
+  'LOGIN_LIMIT_PER_ACCOUNT',
+  'LOGIN_LIMIT_PER_USERNAME',
+  'PASSWORD_CHANGE_LIMIT',
+]) {
+  delete process.env[key];
+}

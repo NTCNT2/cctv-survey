@@ -16,6 +16,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { RequirePermission } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { SitesService } from './sites.service.js';
@@ -27,6 +28,7 @@ export class SitesController {
     private readonly projects: ProjectsService,
   ) {}
 
+  @RequirePermission('site:read')
   @Get('projects/:projectId/sites')
   async listByProject(
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -35,11 +37,13 @@ export class SitesController {
     return this.sites.listByProject(projectId);
   }
 
+  @RequirePermission('site:read')
   @Get('sites/:id')
   get(@Param('id', ParseUUIDPipe) id: string): Promise<Site> {
     return this.sites.get(id);
   }
 
+  @RequirePermission('site:write')
   @Post('sites')
   create(
     @Body(new ZodValidationPipe(createSiteSchema)) body: CreateSiteInput,
@@ -47,6 +51,7 @@ export class SitesController {
     return this.sites.create(body);
   }
 
+  @RequirePermission('site:write')
   @Patch('sites/:id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -55,6 +60,7 @@ export class SitesController {
     return this.sites.update(id, body);
   }
 
+  @RequirePermission('site:delete')
   @Delete('sites/:id')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {

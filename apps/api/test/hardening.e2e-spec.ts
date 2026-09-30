@@ -1,32 +1,27 @@
-import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { sql } from 'kysely';
 import pg from 'pg';
-import request from 'supertest';
 import { App } from 'supertest/types.js';
-import { AppModule } from './../src/app.module.js';
-import { configureApp } from './../src/app.setup.js';
+import { createTestApp, loginAgent, UserFactory } from './helpers.js';
 import { Database } from './../src/db/database.js';
 
 // Runs against cctv_survey_test (see setup-e2e.ts). Creates no rows except one
 // project, which is deleted in afterAll.
 describe('Hardening (e2e)', () => {
   let app: INestApplication<App>;
-  let http: ReturnType<typeof request>;
+  let http: Awaited<ReturnType<typeof loginAgent>>;
+  let users: UserFactory;
   const created: string[] = [];
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleRef.createNestApplication();
-    configureApp(app);
-    await app.init();
-    http = request(app.getHttpServer());
+    app = await createTestApp();
+    users = new UserFactory(app);
+    http = await loginAgent(app, await users.create('admin'));
   });
 
   afterAll(async () => {
     for (const id of created) await http.delete(`/api/projects/${id}`);
+    await users.cleanup();
     await app.close();
   });
 

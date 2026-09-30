@@ -4,3 +4,4 @@ export * from './project.js';
 export * from './site.js';
 export * from './camera.js';
 export * from './health.js';
+export * from './auth.js';

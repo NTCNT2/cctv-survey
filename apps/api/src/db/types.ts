@@ -3,6 +3,7 @@ import type {
   CameraType,
   MountType,
   ProjectStatus,
+  UserRole,
 } from '@cctv/shared';
 import type { ColumnType, Generated } from 'kysely';
 
@@ -62,8 +63,31 @@ export interface CameraPointsTable {
   updated_at: Timestamp;
 }
 
+export interface UsersTable {
+  id: Generated<string>;
+  username: ColumnType<string, string, never>;
+  display_name: string | null;
+  /** Argon2id PHC string. Never selected into API responses. */
+  password_hash: string;
+  role: UserRole;
+  is_active: Generated<boolean>;
+  last_login_at: ColumnType<Date | null, never, Date>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface UserSessionsTable {
+  id: Generated<string>;
+  user_id: ColumnType<string, string, never>;
+  created_at: Timestamp;
+  expires_at: ColumnType<Date, Date, never>;
+  revoked_at: ColumnType<Date | null, never, Date>;
+}
+
 export interface DB {
   projects: ProjectsTable;
   sites: SitesTable;
   camera_points: CameraPointsTable;
+  users: UsersTable;
+  user_sessions: UserSessionsTable;
 }

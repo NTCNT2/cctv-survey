@@ -1,15 +1,13 @@
-import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
 import { App } from 'supertest/types.js';
-import { AppModule } from './../src/app.module.js';
-import { configureApp } from './../src/app.setup.js';
+import { createTestApp, loginAgent, UserFactory } from './helpers.js';
 
 // Runs against cctv_survey_test (see setup-e2e.ts). Every row created here is
 // deleted again in afterAll, children first.
 describe('Projects / Sites / Cameras CRUD (e2e)', () => {
   let app: INestApplication<App>;
-  let http: ReturnType<typeof request>;
+  let http: Awaited<ReturnType<typeof loginAgent>>;
+  let users: UserFactory;
   const created = {
     cameras: [] as string[],
     sites: [] as string[],
@@ -19,19 +17,16 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
   const missing = '00000000-0000-4000-8000-000000000000';
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleRef.createNestApplication();
-    configureApp(app);
-    await app.init();
-    http = request(app.getHttpServer());
+    app = await createTestApp();
+    users = new UserFactory(app);
+    http = await loginAgent(app, await users.create('admin'));
   });
 
   afterAll(async () => {
     for (const id of created.cameras) await http.delete(`/api/cameras/${id}`);
     for (const id of created.sites) await http.delete(`/api/sites/${id}`);
     for (const id of created.projects) await http.delete(`/api/projects/${id}`);
+    await users.cleanup();
     await app.close();
   });
 

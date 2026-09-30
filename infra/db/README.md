@@ -74,3 +74,13 @@ WHERE ST_DWithin(ST_MakePoint(lng, lat)::geography,
 
 `init/` is intentionally unused: mounting it would replace the image's own PostGIS init
 script. Extensions are created by the migrations instead.
+
+## Schema (0002_auth)
+
+| Table           | Notes                                                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`         | `username` unique, lower-case `^[a-z0-9._-]{3,32}$`; `password_hash` must be Argon2id (`CHECK`); `role` ∈ admin/surveyor/viewer; never deleted — `is_active = false` |
+| `user_sessions` | one row per login; `id` = JWT `jti`; valid while `revoked_at IS NULL AND expires_at > now()`                                                                         |
+
+Create the first admin with `pnpm user:create-admin <username>` (password prompted, never an argument).
+Expired and revoked session rows are kept for now; a cleanup job can be added later.
