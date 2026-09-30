@@ -20,7 +20,8 @@
     "db:verify": "bash scripts/db.sh verify",
     "db:psql": "bash scripts/db.sh psql",
     "db:test": "bash scripts/db.sh test-db",
-    "user:create-admin": "pnpm --filter @cctv/api run create-admin"
+    "user:create-admin": "pnpm --filter @cctv/api run create-admin",
+    "test:e2e:web": "bash scripts/web-e2e.sh"
   },
   "devDependencies": {
     "prettier": "^3.9.9"

@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { sql } from 'kysely';
 import pg from 'pg';
+import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { createTestApp, loginAgent, UserFactory } from './helpers.js';
 import { Database } from './../src/db/database.js';
@@ -87,5 +88,38 @@ describe('Hardening (e2e)', () => {
 
     const res = await http.get('/api/health').expect(200);
     expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+
+  it('marks every response no-store and nosniff (L1)', async () => {
+    const anon = request(app.getHttpServer());
+    const responses = {
+      'health 200': await http.get('/api/health'),
+      'data 200': await http.get('/api/projects?limit=1'),
+      'me 200': await http.get('/api/auth/me'),
+      'unauthenticated 401': await anon.get('/api/projects'),
+      'not found 404': await http.get(
+        '/api/projects/00000000-0000-4000-8000-000000000000',
+      ),
+      'unknown route 404': await http.get('/api/nope'),
+      'bad body 415': await http
+        .post('/api/projects')
+        .type('form')
+        .send({ name: 'x' }),
+      'validation 400': await http.post('/api/projects').send({ name: ' ' }),
+      'preflight 204': await anon
+        .options('/api/projects')
+        .set('Origin', 'http://127.0.0.1:3000')
+        .set('Access-Control-Request-Method', 'POST'),
+    };
+    for (const [name, res] of Object.entries(responses)) {
+      expect({
+        name,
+        cache: res.headers['cache-control'],
+        nosniff: res.headers['x-content-type-options'],
+      }).toEqual({ name, cache: 'no-store', nosniff: 'nosniff' });
+    }
+    expect(responses['data 200'].status).toBe(200);
+    expect(responses['unauthenticated 401'].status).toBe(401);
+    expect(responses['bad body 415'].status).toBe(415);
   });
 });

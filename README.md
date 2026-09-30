@@ -22,14 +22,17 @@ cp .env.example .env      # then edit values — never commit .env (set JWT_SECR
 pnpm install
 pnpm db:up && pnpm db:migrate   # PostgreSQL + PostGIS on 127.0.0.1:5432 — see infra/db/README.md
 pnpm user:create-admin <username>   # first admin; the password is prompted, never passed as an argument
-pnpm dev                  # web: http://127.0.0.1:3000  api: http://127.0.0.1:4000/api/health
+pnpm dev                  # web: http://127.0.0.1:3000  (API on 127.0.0.1:4000, reached via /api)
 ```
 
-Dev servers bind to `127.0.0.1` only. From another machine use an SSH tunnel:
+Dev servers bind to `127.0.0.1` only. From another computer, tunnel **only the web port** —
+the browser reaches the API through the web app's own `/api` path:
 
 ```bash
-ssh -L 3000:127.0.0.1:3000 -L 4000:127.0.0.1:4000 surveyadmin@<server>
+ssh -L 3000:127.0.0.1:3000 surveyadmin@<server>   # then open http://127.0.0.1:3000
 ```
+
+Phones: use browser device emulation for now; real-phone testing waits for HTTPS (Phase 7).
 
 ## Scripts (root)
 
@@ -42,6 +45,7 @@ ssh -L 3000:127.0.0.1:3000 -L 4000:127.0.0.1:4000 surveyadmin@<server>
 | `pnpm test`                         | unit tests (api: vitest)                                                                 |
 | `pnpm format`                       | Prettier                                                                                 |
 | `pnpm db:*`                         | database: up / stop / migrate / status / verify / psql / test — see `infra/db/README.md` |
+| `pnpm test:e2e:web`                 | browser tests (Playwright, Chromium) against the test DB — see below                     |
 | `pnpm user:create-admin <username>` | create an admin account (hidden password prompt)                                         |
 
 ## API (Phase 4)
@@ -110,6 +114,37 @@ session — see [Authentication](#authentication-phase-5).
 - Not yet: per-project access (every user sees every project) — planned as its own phase.
 - Access rules are default-deny: a new route without `@Public()`, `@Authenticated()` or
   `@RequirePermission()` returns `403` (and fails the `route-access` unit test).
+
+## Web app (Phase 6)
+
+```
+browser ──> Next.js 127.0.0.1:3000 ──(rewrite /api/*)──> NestJS 127.0.0.1:4000 ──> PostgreSQL
+```
+
+- **Same origin**: the web app calls `/api/*`, which `next.config.ts` rewrites to
+  `API_INTERNAL_URL` (default `http://127.0.0.1:4000`, server-side only, fixed at build time).
+  The API stays on loopback, CORS is not involved, and the HttpOnly session cookie
+  (`Path=/api`) is never readable by page scripts. No token or secret is in client code.
+- **Session**: signed-in pages ask `GET /api/auth/me`; any `401` sends the user to `/login`
+  (full page load, so no cached data survives). The API remains the only authority on
+  permissions — the UI just hides buttons with `can()` from `packages/shared`.
+- **Pages**: `/login`, `/projects` (paged), `/projects/new`, `/projects/[id]` (cameras + sites),
+  `/projects/[id]/edit`, `/projects/[id]/sites/new`, `/sites/[id]/edit`,
+  `/projects/[id]/cameras/new`, `/cameras/[id]/edit`, `/account/password`.
+- Forms validate with the same zod schemas as the API (Thai messages). Coordinates are typed
+  (map picking comes with the map phase); “use my location” needs HTTPS or `127.0.0.1`.
+- Not yet: user management UI (use `pnpm user:create-admin` / the API), per-project access (S7).
+
+**Tests**
+
+| Command                        | What                                                                                                              |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @cctv/web test` | unit tests (vitest): API client, errors, form helpers                                                             |
+| `pnpm test:e2e:web`            | Playwright on this server: API → `cctv_survey_test`, web build on `127.0.0.1:3100`, test users seeded and removed |
+
+`pnpm test:e2e:web` needs Chromium once: `pnpm --filter @cctv/web exec playwright install chromium`
+plus its system libraries (`sudo apt-get install libasound2t64 libatk1.0-0t64
+libatk-bridge2.0-0t64 libatspi2.0-0t64 libxdamage1 fonts-thai-tlwg` on Ubuntu 24.04).
 
 ## Layout
 

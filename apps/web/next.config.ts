@@ -1,5 +1,40 @@
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {/* config options here */};
+/**
+ * Where the NestJS API listens. Server-side only (no NEXT_PUBLIC_ prefix): the
+ * browser never talks to the API directly. It calls same-origin `/api/*`, and
+ * Next.js forwards those requests here, so the API can stay on loopback and
+ * the HttpOnly session cookie works without CORS.
+ *
+ * Rewrites are fixed at build time, so set this before `next build`.
+ */
+const apiOrigin = new URL(
+  process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:4000',
+).origin;
+
+const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  // Lets the e2e script build into its own folder without touching `.next`.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  async rewrites() {
+    return [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }];
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'same-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'geolocation=(self), camera=(), microphone=()',
+          },
+        ],
+      },
+    ];
+  },
+};
 
 export default nextConfig;

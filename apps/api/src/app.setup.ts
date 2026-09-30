@@ -32,12 +32,25 @@ function requireJsonBody(req: Request, _res: Response, next: NextFunction) {
   next();
 }
 
+/**
+ * Every API response is per-user or security-relevant: never store it in a
+ * browser or proxy cache (e.g. customer data after logout on a shared device),
+ * and never let a browser guess a different content type.
+ */
+function securityHeaders(_req: Request, res: Response, next: NextFunction) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  next();
+}
+
 /** HTTP-level setup shared by main.ts and the e2e tests. */
 export function configureApp(app: INestApplication): void {
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api');
   (app.getHttpAdapter().getInstance() as Express).disable('x-powered-by');
+  // First, so every response gets them — including 401/403/404/415 and errors.
+  app.use(securityHeaders);
   app.use(cookieParser());
   app.use(requireJsonBody);
   // Request bodies for the CRUD routes are validated by ZodValidationPipe; this
