@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import path from 'node:path';
 
 /**
  * Where the NestJS API listens. Server-side only (no NEXT_PUBLIC_ prefix): the
@@ -16,6 +17,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Lets the e2e script build into its own folder without touching `.next`.
   distDir: process.env.NEXT_DIST_DIR || '.next',
+  // Container image (infra/docker/web.Dockerfile): a self-contained server.
+  // Traced from the monorepo root so packages/shared is included.
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }];
   },

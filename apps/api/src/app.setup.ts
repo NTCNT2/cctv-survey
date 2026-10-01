@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import type { Express, NextFunction, Request, Response } from 'express';
+import { parseTrustProxyHops } from './config/proxy.js';
 
 /** Web origins allowed when CORS_ORIGIN is unset (README uses 127.0.0.1). */
 const DEFAULT_CORS_ORIGIN = 'http://localhost:3000,http://127.0.0.1:3000';
@@ -48,7 +49,13 @@ export function configureApp(app: INestApplication): void {
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api');
-  (app.getHttpAdapter().getInstance() as Express).disable('x-powered-by');
+  const express = app.getHttpAdapter().getInstance() as Express;
+  express.disable('x-powered-by');
+  // 0 = do not trust X-Forwarded-For (default). See config/proxy.ts.
+  express.set(
+    'trust proxy',
+    parseTrustProxyHops(config.get<string>('TRUST_PROXY_HOPS')),
+  );
   // First, so every response gets them — including 401/403/404/415 and errors.
   app.use(securityHeaders);
   app.use(cookieParser());

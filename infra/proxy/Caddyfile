@@ -1,0 +1,39 @@
+# CCTV Survey reverse proxy — Phase 7 Step 4: loopback-only test stack.
+# Published only as 127.0.0.1:8443 / 127.0.0.1:8080 (see compose.yaml).
+{
+	# No admin API at all (the image exposes :2019 by default).
+	admin off
+	# Clients send no SNI for IP addresses; serve the 127.0.0.1 certificate.
+	default_sni 127.0.0.1
+	# Unprivileged ports inside the container: no capabilities needed.
+	http_port 8080
+	https_port 8443
+	# Certificates only from Caddy's own internal CA; never a public CA/ACME.
+	local_certs
+	skip_install_trust
+	servers {
+		protocols h1 h2
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+https://localhost:8443, https://127.0.0.1:8443 {
+	tls internal
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+	header {
+		# Short on purpose until HTTPS is verified (then 1 week, then 1 year).
+		Strict-Transport-Security "max-age=300"
+		-Server
+		-Via
+	}
+	log
+	# Caddy sets X-Forwarded-For to the real client address and ignores any
+	# X-Forwarded-* sent by clients (no trusted_proxies configured).
+	reverse_proxy web:3000
+}

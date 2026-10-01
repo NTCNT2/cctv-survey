@@ -1,0 +1,19 @@
+# Build context for infra/docker/*.Dockerfile. Secrets and local build output
+# never enter an image.
+.git
+**/node_modules
+**/.next
+**/.next-e2e
+**/dist
+**/*.tsbuildinfo
+**/coverage
+**/test-results
+**/playwright-report
+**/e2e/.auth
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+data
+*.log
