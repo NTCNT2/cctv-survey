@@ -84,3 +84,23 @@ script. Extensions are created by the migrations instead.
 
 Create the first admin with `pnpm user:create-admin <username>` (password prompted, never an argument).
 Expired and revoked session rows are kept for now; a cleanup job can be added later.
+
+## Roles (0003_app_role)
+
+| Role       | Used by                                 | Privileges                                                                                                                                   |
+| ---------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cctv`     | migrations, `pnpm db:psql`, backups     | superuser and owner of all objects (`POSTGRES_USER`)                                                                                         |
+| `cctv_app` | the API (once compose is switched over) | `CONNECT`; `USAGE` on `public`; CRUD on `projects`, `sites`, `camera_points`; `SELECT/INSERT/UPDATE` on `users`, `user_sessions` (no DELETE) |
+
+- `cctv_app` is `NOSUPERUSER NOINHERIT NOCREATEDB NOCREATEROLE NOBYPASSRLS`, max 20 connections,
+  `statement_timeout = 15s`, `idle_in_transaction_session_timeout = 30s`. It has no access to
+  `schema_migrations` and cannot create objects, use `TEMP`, `COPY` to/from files or programs.
+- The migration revokes all `PUBLIC` privileges on the database it runs in: only `cctv` and
+  `cctv_app` can connect.
+- No password in the migration. Set it once per cluster with `\password cctv_app` in
+  `pnpm db:psql` (prompted, hashed as SCRAM before it is sent), then store it in `.env`.
+  Until then `cctv_app` cannot log in over TCP.
+- Roles are cluster-wide: running `pnpm db:test` applies 0003 to `cctv_survey_test` and so
+  creates `cctv_app` in the same cluster as `cctv_survey` (without granting anything there).
+- Tables added by later migrations get no access by default: grant `cctv_app` explicitly in the
+  migration that creates them.
