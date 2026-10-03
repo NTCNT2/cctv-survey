@@ -23,7 +23,7 @@ export default function EditSitePage() {
     <>
       <PageHeader
         title="แก้ไข Site"
-        back={{ href: '/projects', label: 'โปรเจกต์ทั้งหมด' }}
+        back={{ href: '/projects', label: 'โครงการทั้งหมด' }}
       />
       <Forbidden />
     </>
@@ -33,7 +33,7 @@ export default function EditSitePage() {
     <>
       <PageHeader
         title="แก้ไข Site"
-        back={{ href: '/projects', label: 'โปรเจกต์ทั้งหมด' }}
+        back={{ href: '/projects', label: 'โครงการทั้งหมด' }}
       />
       <ErrorState
         message={errorMessage(site.error)}
@@ -50,7 +50,7 @@ function EditSite({ site }: { site: Site }) {
   const update = useUpdateSite(site.id, site.projectId);
   const back = {
     href: `/projects/${site.projectId}`,
-    label: 'กลับไปที่โปรเจกต์',
+    label: 'กลับไปที่โครงการ',
   };
   return (
     <>

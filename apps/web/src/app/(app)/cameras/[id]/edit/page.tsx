@@ -14,7 +14,7 @@ import { errorMessage } from '@/lib/api';
 import { useCamera, useSites, useUpdateCamera } from '@/lib/queries';
 import { useCan } from '@/lib/session';
 
-const allProjects = { href: '/projects', label: 'โปรเจกต์ทั้งหมด' };
+const allProjects = { href: '/projects', label: 'โครงการทั้งหมด' };
 
 export default function EditCameraPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +47,7 @@ function EditCamera({ camera }: { camera: CameraPoint }) {
   const update = useUpdateCamera(camera.id, camera.projectId);
   const back = {
     href: `/projects/${camera.projectId}`,
-    label: 'กลับไปที่โปรเจกต์',
+    label: 'กลับไปที่โครงการ',
   };
 
   return (

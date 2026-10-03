@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
-import { AppHeader } from '@/components/app-header';
+import { AppShell } from '@/components/app-shell';
 import { ErrorState, Skeleton } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { SessionProvider, useMe } from '@/lib/session';
@@ -28,10 +28,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (me.data) {
     return (
       <SessionProvider value={me.data}>
-        <AppHeader />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
-          {children}
-        </main>
+        <AppShell>{children}</AppShell>
       </SessionProvider>
     );
   }

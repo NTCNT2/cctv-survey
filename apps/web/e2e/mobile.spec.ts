@@ -10,7 +10,7 @@ test.beforeAll(async ({}, info) => {
   // Runs once per device project, so the name must be unique per device.
   seeded = await seedProject(
     api,
-    `${info.project.name} ชื่อโปรเจกต์ยาวมากเพื่อทดสอบการตัดบรรทัดบนหน้าจอขนาดเล็ก`,
+    `${info.project.name} ชื่อโครงการยาวมากเพื่อทดสอบการตัดบรรทัดบนหน้าจอขนาดเล็ก`,
   );
   await api.dispose();
 });

@@ -14,8 +14,8 @@ export default function NewProjectPage() {
   return (
     <>
       <PageHeader
-        title="สร้างโปรเจกต์"
-        back={{ href: '/projects', label: 'โปรเจกต์ทั้งหมด' }}
+        title="สร้างโครงการ"
+        back={{ href: '/projects', label: 'โครงการทั้งหมด' }}
       />
       {allowed ? (
         <Card>

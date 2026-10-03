@@ -14,16 +14,16 @@ type Variant = 'primary' | 'secondary' | 'danger';
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-sky-700 text-white hover:bg-sky-800 disabled:bg-sky-700/50 dark:bg-sky-600 dark:hover:bg-sky-500',
+    'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 disabled:bg-indigo-600/50 dark:bg-indigo-500 dark:hover:bg-indigo-400 dark:disabled:bg-indigo-500/50',
   secondary:
-    'border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
+    'border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
   danger:
     'bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50 dark:bg-red-600 dark:hover:bg-red-500',
 };
 
 /** 44px minimum height: comfortable tap target on phones. */
 const base =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 disabled:cursor-not-allowed';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400 disabled:cursor-not-allowed';
 
 export function Button({
   variant = 'primary',
@@ -52,14 +52,22 @@ export function Button({
 export function LinkButton({
   href,
   variant = 'primary',
+  className,
   children,
+  ...props
 }: {
   href: string;
   variant?: Variant;
+  className?: string;
   children: ReactNode;
+  'aria-label'?: string;
 }) {
   return (
-    <Link href={href} className={cx(base, variants[variant])}>
+    <Link
+      href={href}
+      className={cx(base, variants[variant], className)}
+      {...props}
+    >
       {children}
     </Link>
   );
@@ -75,7 +83,7 @@ export function Spinner() {
 }
 
 const inputClass =
-  'mt-1 block w-full min-h-11 rounded-lg border bg-white px-3 text-base text-zinc-900 placeholder:text-zinc-400 focus:outline-2 focus:outline-sky-600 dark:bg-zinc-900 dark:text-zinc-100 sm:text-sm';
+  'mt-1 block w-full min-h-11 rounded-lg border bg-white px-3 text-base text-zinc-900 placeholder:text-zinc-400 focus:outline-2 focus:outline-indigo-600 dark:focus:outline-indigo-400 dark:bg-zinc-900 dark:text-zinc-100 sm:text-sm';
 
 function FieldShell({
   id,
@@ -248,7 +256,7 @@ export function Alert({
         'rounded-lg border px-4 py-3 text-sm',
         tone === 'error'
           ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200'
-          : 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100',
+          : 'border-indigo-200 bg-indigo-50 text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950 dark:text-indigo-100',
       )}
     >
       {children}
@@ -266,7 +274,7 @@ export function Card({
   return (
     <div
       className={cx(
-        'rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-5',
+        'rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5',
         className,
       )}
     >
@@ -291,7 +299,7 @@ export function PageHeader({
       {back && (
         <Link
           href={back.href}
-          className="mb-2 inline-flex min-h-11 items-center text-sm text-sky-700 hover:underline dark:text-sky-400"
+          className="mb-2 inline-flex min-h-11 items-center text-sm text-indigo-700 hover:underline dark:text-indigo-400"
         >
           ← {back.label}
         </Link>
@@ -377,9 +385,42 @@ export function Forbidden() {
   );
 }
 
-export function Badge({ children }: { children: ReactNode }) {
+export type BadgeTone =
+  'neutral' | 'muted' | 'blue' | 'violet' | 'cyan' | 'amber' | 'green';
+
+const badgeTones: Record<BadgeTone, string> = {
+  neutral:
+    'bg-zinc-100 text-zinc-700 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-400/20',
+  muted:
+    'bg-zinc-50 text-zinc-500 ring-zinc-400/20 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-500/25',
+  blue: 'bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-400/25',
+  violet:
+    'bg-violet-50 text-violet-700 ring-violet-600/20 dark:bg-violet-950 dark:text-violet-300 dark:ring-violet-400/25',
+  cyan: 'bg-cyan-50 text-cyan-800 ring-cyan-600/25 dark:bg-cyan-950 dark:text-cyan-300 dark:ring-cyan-400/25',
+  amber:
+    'bg-amber-50 text-amber-800 ring-amber-600/25 dark:bg-amber-950 dark:text-amber-300 dark:ring-amber-400/25',
+  green:
+    'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-400/25',
+};
+
+export function Badge({
+  tone = 'neutral',
+  dot,
+  children,
+}: {
+  tone?: BadgeTone;
+  /** A small coloured dot before the text (status badges). */
+  dot?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+    <span
+      className={cx(
+        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+        badgeTones[tone],
+      )}
+    >
+      {dot && <span aria-hidden className="size-1.5 rounded-full bg-current" />}
       {children}
     </span>
   );

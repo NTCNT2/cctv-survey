@@ -19,19 +19,19 @@ export default function EditProjectPage() {
   const allowed = useCan('project:write');
   const project = useProject(id);
   const update = useUpdateProject(id);
-  const back = { href: `/projects/${id}`, label: 'กลับไปที่โปรเจกต์' };
+  const back = { href: `/projects/${id}`, label: 'กลับไปที่โครงการ' };
 
   if (!allowed) {
     return (
       <>
-        <PageHeader title="แก้ไขโปรเจกต์" back={back} />
+        <PageHeader title="แก้ไขโครงการ" back={back} />
         <Forbidden />
       </>
     );
   }
   return (
     <>
-      <PageHeader title="แก้ไขโปรเจกต์" back={back} />
+      <PageHeader title="แก้ไขโครงการ" back={back} />
       {project.isPending ? (
         <Skeleton />
       ) : project.isError ? (

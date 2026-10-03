@@ -14,10 +14,10 @@ test.describe('project list states', () => {
     await page.goto('/projects');
     await expect(page.getByLabel('กำลังโหลด')).toBeVisible();
     release();
-    await expect(page.getByText('ยังไม่มีโปรเจกต์')).toBeVisible();
+    await expect(page.getByText('ยังไม่มีโครงการ')).toBeVisible();
     // A viewer is not offered a create button.
     await expect(
-      page.getByRole('link', { name: '+ สร้างโปรเจกต์' }),
+      page.getByRole('link', { name: '+ สร้างโครงการ' }),
     ).toHaveCount(0);
   });
 
@@ -38,7 +38,7 @@ test.describe('project list states', () => {
     fail = false;
     await page.getByRole('button', { name: 'ลองใหม่' }).click();
     await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'โปรเจกต์' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'โครงการ' })).toBeVisible();
   });
 });
 
@@ -48,10 +48,10 @@ test.describe('admin: full create / edit / delete flow', () => {
   test('project, site and camera', async ({ page }) => {
     const name = `${PREFIX} คลังสินค้าบางนา`;
     await page.goto('/projects');
-    await page.getByRole('link', { name: '+ สร้างโปรเจกต์' }).first().click();
+    await page.getByRole('link', { name: '+ สร้างโครงการ' }).first().click();
 
     // Client-side validation (shared zod schema) with Thai messages
-    await page.getByLabel('ชื่อโปรเจกต์').fill(name);
+    await page.getByLabel('ชื่อโครงการ').fill(name);
     await page.getByLabel('ละติจูด (lat)').fill('200');
     await page.getByLabel('ลองจิจูด (lng)').fill('100.6');
     await page.getByRole('button', { name: 'บันทึก' }).click();
@@ -65,7 +65,7 @@ test.describe('admin: full create / edit / delete flow', () => {
     await expect(page.getByText('13.660000, 100.600000')).toBeVisible();
 
     // Edit: status + clear the customer
-    await page.getByRole('link', { name: 'แก้ไขโปรเจกต์' }).click();
+    await page.getByRole('link', { name: 'แก้ไขโครงการ' }).click();
     await page.getByLabel('สถานะ').selectOption('surveying');
     await page.getByLabel('ลูกค้า').fill('');
     await page.getByRole('button', { name: 'บันทึก' }).click();
@@ -112,7 +112,7 @@ test.describe('admin: full create / edit / delete flow', () => {
     await page.getByLabel('ลองจิจูด (lng)').fill('100.6');
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(page.getByRole('main').getByRole('alert')).toContainText(
-      'มีกล้องที่ใช้ชื่อนี้ในโปรเจกต์แล้ว',
+      'มีกล้องที่ใช้ชื่อนี้ในโครงการแล้ว',
     );
     await page.getByRole('link', { name: 'ยกเลิก' }).click();
 
@@ -125,7 +125,7 @@ test.describe('admin: full create / edit / delete flow', () => {
     await expect(cameras).not.toContainText('ทิศ 90°');
 
     // Deleting a project that still has children: explained, nothing deleted
-    await page.getByRole('button', { name: 'ลบโปรเจกต์' }).click();
+    await page.getByRole('button', { name: 'ลบโครงการ' }).click();
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'ยืนยันการลบ' })
@@ -144,7 +144,7 @@ test.describe('admin: full create / edit / delete flow', () => {
       .getByRole('dialog')
       .getByRole('button', { name: 'ยืนยันการลบ' })
       .click();
-    await expect(page.getByText('ยังไม่มีกล้องในโปรเจกต์นี้')).toBeVisible();
+    await expect(page.getByText('ยังไม่มีกล้องในโครงการนี้')).toBeVisible();
 
     await page.getByRole('tab', { name: 'Site' }).click();
     await page
@@ -157,7 +157,7 @@ test.describe('admin: full create / edit / delete flow', () => {
       .click();
     await expect(page.getByText('ยังไม่มี Site')).toBeVisible();
 
-    await page.getByRole('button', { name: 'ลบโปรเจกต์' }).click();
+    await page.getByRole('button', { name: 'ลบโครงการ' }).click();
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'ยืนยันการลบ' })
@@ -174,12 +174,12 @@ test.describe('surveyor', () => {
     page,
   }) => {
     await page.goto('/projects/new');
-    await page.getByLabel('ชื่อโปรเจกต์').fill(`${PREFIX} งานผู้สำรวจ`);
+    await page.getByLabel('ชื่อโครงการ').fill(`${PREFIX} งานผู้สำรวจ`);
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(
-      page.getByRole('link', { name: 'แก้ไขโปรเจกต์' }),
+      page.getByRole('link', { name: 'แก้ไขโครงการ' }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'ลบโปรเจกต์' })).toHaveCount(
+    await expect(page.getByRole('button', { name: 'ลบโครงการ' })).toHaveCount(
       0,
     );
     // …and the API agrees.
@@ -194,7 +194,7 @@ test.describe('surveyor', () => {
     for (let i = 0; i < 21; i++) await seedProject(api, `page-${i}`, false);
     await api.dispose();
     await page.goto('/projects');
-    const list = page.getByRole('list', { name: 'รายการโปรเจกต์' });
+    const list = page.getByRole('list', { name: 'รายการโครงการ' });
     await expect(list.getByRole('listitem')).toHaveCount(20);
     await page.getByRole('button', { name: 'แสดงเพิ่มเติม' }).click();
     await expect(list.getByRole('listitem')).not.toHaveCount(20);

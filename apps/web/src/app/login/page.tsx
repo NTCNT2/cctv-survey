@@ -12,7 +12,7 @@ import { ME_KEY, useMe } from '@/lib/session';
 export default function LoginPage() {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-10">
-      <p className="text-sm font-medium text-sky-700 dark:text-sky-400">
+      <p className="text-sm font-medium text-indigo-700 dark:text-indigo-400">
         CCTV Site Survey &amp; Design
       </p>
       <h1 className="mb-6 mt-1 text-2xl font-semibold tracking-tight">

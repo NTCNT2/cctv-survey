@@ -19,7 +19,7 @@ export default function NewSitePage() {
   const allowed = useCan('site:write');
   const project = useProject(projectId);
   const create = useCreateSite(projectId);
-  const back = { href: `/projects/${projectId}`, label: 'กลับไปที่โปรเจกต์' };
+  const back = { href: `/projects/${projectId}`, label: 'กลับไปที่โครงการ' };
 
   return (
     <>

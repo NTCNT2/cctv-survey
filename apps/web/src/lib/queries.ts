@@ -42,6 +42,25 @@ export function useProjects() {
   });
 }
 
+/** Largest page the API serves (GET /projects?limit ≤ 500). */
+export const OVERVIEW_LIMIT = 500;
+
+/**
+ * Up to OVERVIEW_LIMIT projects in one request, for the summary cards and
+ * search / filters (the API has no counts or server-side filtering).
+ * `truncated` is true when there are more than that.
+ */
+export function useProjectOverview() {
+  return useQuery({
+    queryKey: [...keys.projects, 'overview'] as const,
+    queryFn: () => api.projects.list(OVERVIEW_LIMIT + 1, 0),
+    select: (rows) => ({
+      projects: rows.slice(0, OVERVIEW_LIMIT),
+      truncated: rows.length > OVERVIEW_LIMIT,
+    }),
+  });
+}
+
 export const useProject = (id: string) =>
   useQuery({ queryKey: keys.project(id), queryFn: () => api.projects.get(id) });
 

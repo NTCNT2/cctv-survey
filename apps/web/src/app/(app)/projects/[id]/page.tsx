@@ -43,8 +43,8 @@ export default function ProjectDetailPage() {
   ) : project.isError ? (
     <>
       <PageHeader
-        title="โปรเจกต์"
-        back={{ href: '/projects', label: 'โปรเจกต์ทั้งหมด' }}
+        title="โครงการ"
+        back={{ href: '/projects', label: 'โครงการทั้งหมด' }}
       />
       <ErrorState
         message={errorMessage(project.error)}
@@ -67,7 +67,7 @@ function ProjectDetail({ project }: { project: Project }) {
     <>
       <PageHeader
         title={project.name}
-        back={{ href: '/projects', label: 'โปรเจกต์ทั้งหมด' }}
+        back={{ href: '/projects', label: 'โครงการทั้งหมด' }}
         subtitle={<Badge>{PROJECT_STATUS_LABELS[project.status]}</Badge>}
         actions={
           <>
@@ -76,14 +76,14 @@ function ProjectDetail({ project }: { project: Project }) {
                 href={`/projects/${project.id}/edit`}
                 variant="secondary"
               >
-                แก้ไขโปรเจกต์
+                แก้ไขโครงการ
               </LinkButton>
             )}
             {canDelete && (
               <ConfirmButton
-                label="ลบโปรเจกต์"
-                title={`ลบโปรเจกต์ “${project.name}”?`}
-                detail="ลบได้เฉพาะโปรเจกต์ที่ไม่มี Site และกล้องแล้วเท่านั้น การลบไม่สามารถย้อนกลับได้"
+                label="ลบโครงการ"
+                title={`ลบโครงการ “${project.name}”?`}
+                detail="ลบได้เฉพาะโครงการที่ไม่มี Site และกล้องแล้วเท่านั้น การลบไม่สามารถย้อนกลับได้"
                 onConfirm={async () => {
                   await del.mutateAsync();
                   router.replace('/projects');
@@ -107,7 +107,7 @@ function ProjectDetail({ project }: { project: Project }) {
 
       <div
         role="tablist"
-        aria-label="ข้อมูลในโปรเจกต์"
+        aria-label="ข้อมูลในโครงการ"
         className="mb-4 flex gap-2"
       >
         {(
@@ -167,7 +167,7 @@ function SiteList({ projectId }: { projectId: string }) {
     return (
       <EmptyState
         title="ยังไม่มี Site"
-        detail="Site คืออาคาร พื้นที่ หรือชั้นที่สำรวจภายในโปรเจกต์"
+        detail="Site คืออาคาร พื้นที่ หรือชั้นที่สำรวจภายในโครงการ"
         action={add}
       />
     );
@@ -242,7 +242,7 @@ function CameraList({ projectId }: { projectId: string }) {
     );
   }
   if (cameras.data.length === 0) {
-    return <EmptyState title="ยังไม่มีกล้องในโปรเจกต์นี้" action={add} />;
+    return <EmptyState title="ยังไม่มีกล้องในโครงการนี้" action={add} />;
   }
   return (
     <>

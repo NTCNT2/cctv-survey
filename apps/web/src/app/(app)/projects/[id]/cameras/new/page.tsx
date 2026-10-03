@@ -20,7 +20,7 @@ export default function NewCameraPage() {
   const project = useProject(projectId);
   const sites = useSites(projectId);
   const create = useCreateCamera(projectId);
-  const back = { href: `/projects/${projectId}`, label: 'กลับไปที่โปรเจกต์' };
+  const back = { href: `/projects/${projectId}`, label: 'กลับไปที่โครงการ' };
   const failed = project.error ?? sites.error;
 
   return (

@@ -127,11 +127,11 @@ const KNOWN_MESSAGES: Record<string, string> = {
   'current password is incorrect': 'รหัสผ่านปัจจุบันไม่ถูกต้อง',
   'password must not equal the username': 'รหัสผ่านต้องไม่เหมือนชื่อผู้ใช้',
   'a site with this name already exists in the project':
-    'มี Site ชื่อนี้ในโปรเจกต์แล้ว',
+    'มี Site ชื่อนี้ในโครงการแล้ว',
   'a camera with this label already exists in the project':
-    'มีกล้องที่ใช้ชื่อนี้ในโปรเจกต์แล้ว',
-  'siteId does not exist in this project': 'Site ที่เลือกไม่อยู่ในโปรเจกต์นี้',
-  'projectId does not exist': 'ไม่พบโปรเจกต์นี้',
+    'มีกล้องที่ใช้ชื่อนี้ในโครงการแล้ว',
+  'siteId does not exist in this project': 'Site ที่เลือกไม่อยู่ในโครงการนี้',
+  'projectId does not exist': 'ไม่พบโครงการนี้',
   'boundary polygon is invalid (self-intersecting or degenerate)':
     'ขอบเขตพื้นที่ไม่ถูกต้อง',
 };

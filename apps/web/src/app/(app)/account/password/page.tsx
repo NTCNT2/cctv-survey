@@ -49,7 +49,7 @@ export default function ChangePasswordPage() {
       <PageHeader
         title="เปลี่ยนรหัสผ่าน"
         subtitle="หลังเปลี่ยนรหัสผ่าน ทุกอุปกรณ์จะถูกออกจากระบบ และต้องเข้าสู่ระบบใหม่"
-        back={{ href: '/projects', label: 'โปรเจกต์ทั้งหมด' }}
+        back={{ href: '/projects', label: 'โครงการทั้งหมด' }}
       />
       <Card className="max-w-lg">
         <form onSubmit={submit} noValidate className="space-y-5">

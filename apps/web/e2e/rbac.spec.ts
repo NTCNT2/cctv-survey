@@ -16,7 +16,7 @@ test.describe('viewer (read-only)', () => {
     await page.goto('/projects');
     await expect(page.getByText(seeded.project.name)).toBeVisible();
     await expect(
-      page.getByRole('link', { name: '+ สร้างโปรเจกต์' }),
+      page.getByRole('link', { name: '+ สร้างโครงการ' }),
     ).toHaveCount(0);
 
     await page.getByText(seeded.project.name).click();
@@ -26,12 +26,12 @@ test.describe('viewer (read-only)', () => {
     await expect(page.getByRole('list', { name: 'รายการกล้อง' })).toContainText(
       'CAM-01',
     );
-    for (const name of ['แก้ไขโปรเจกต์', '+ เพิ่มกล้อง', 'แก้ไข']) {
+    for (const name of ['แก้ไขโครงการ', '+ เพิ่มกล้อง', 'แก้ไข']) {
       await expect(page.getByRole('link', { name, exact: true })).toHaveCount(
         0,
       );
     }
-    for (const name of ['ลบโปรเจกต์', 'ลบ']) {
+    for (const name of ['ลบโครงการ', 'ลบ']) {
       await expect(page.getByRole('button', { name, exact: true })).toHaveCount(
         0,
       );

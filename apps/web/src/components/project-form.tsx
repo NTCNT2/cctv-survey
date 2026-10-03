@@ -104,7 +104,7 @@ export function ProjectForm(props: Props) {
       {formError && <Alert>{formError}</Alert>}
       <TextField
         id="name"
-        label="ชื่อโปรเจกต์"
+        label="ชื่อโครงการ"
         required
         maxLength={200}
         value={name}

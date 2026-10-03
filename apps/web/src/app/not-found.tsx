@@ -9,9 +9,9 @@ export default function NotFound() {
       </p>
       <Link
         href="/projects"
-        className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-sky-700 px-4 text-sm font-medium text-white hover:bg-sky-800"
+        className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-indigo-700 px-4 text-sm font-medium text-white hover:bg-indigo-800"
       >
-        ไปที่รายการโปรเจกต์
+        ไปที่รายการโครงการ
       </Link>
     </main>
   );

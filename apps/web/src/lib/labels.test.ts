@@ -11,6 +11,8 @@ import {
   CAMERA_TYPE_LABELS,
   MOUNT_TYPE_LABELS,
   PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_TONES,
+  projectStage,
   ROLE_LABELS,
 } from './labels';
 
@@ -26,5 +28,19 @@ describe('labels cover every shared enum value', () => {
     for (const v of values) {
       expect((labels as Record<string, string>)[v]).toBeTruthy();
     }
+  });
+});
+
+describe('project workflow helpers', () => {
+  it('gives every status a badge tone', () => {
+    for (const s of PROJECT_STATUSES)
+      expect(PROJECT_STATUS_TONES[s]).toBeTruthy();
+  });
+
+  it('maps a status to its workflow step; cancelled has none', () => {
+    expect(projectStage('draft')).toEqual({ step: 1, of: 6 });
+    expect(projectStage('surveying')).toEqual({ step: 2, of: 6 });
+    expect(projectStage('completed')).toEqual({ step: 6, of: 6 });
+    expect(projectStage('cancelled')).toBeNull();
   });
 });
