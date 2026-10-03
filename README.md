@@ -95,8 +95,8 @@ session — see [Authentication](#authentication-phase-5).
 | manage users                           |   —    |    —     |  ✅   |
 
 - **Session**: an HS256 JWT in the `cctv_session` cookie (`HttpOnly`, `SameSite=Strict`,
-  `Path=/api`, `Secure` unless `COOKIE_SECURE=false` — and always `Secure` when
-  `NODE_ENV=production`). It is never returned in a response body and `Authorization: Bearer` is
+  `Path=/api`, `Secure` unless `COOKIE_SECURE` is exactly `false`; unset or any other value keeps
+  it on, also in production). It is never returned in a response body and `Authorization: Bearer` is
   not accepted. Lifetime `JWT_EXPIRES_IN` (default 8h). A new login revokes the session the
   browser already had.
 - Every request re-checks the session row (`user_sessions`) and the user: logout, password
@@ -151,6 +151,7 @@ libatk-bridge2.0-0t64 libatspi2.0-0t64 libxdamage1 fonts-thai-tlwg` on Ubuntu 24
 ```
 Caddy prod-proxy ──prod-edge──> prod-web ──prod-app (internal)──> prod-api ──backend──> db
 127.0.0.1:9443 (TLS)            :3000      /api/* rewrite         :4000 as cctv_app     existing
+192.168.77.20:80 (HTTP)  ← router NAT <WAN>:5580
 ```
 
 `compose.prod.yaml` adds `prod-api`, `prod-web`, `prod-proxy` (profile `prod`) on top of
@@ -165,15 +166,25 @@ it never runs `down`, never removes containers or volumes, never recreates `db` 
 - **Secrets / settings** in `.env` (see `.env.example`): `APP_DB_PASSWORD`, `PROD_JWT_SECRET`
   (separate from the dev `JWT_SECRET`), `PROD_SITE_HOST`, `PROD_CORS_ORIGIN`. Compose refuses to
   start if any is empty; the API refuses a placeholder JWT secret.
-- **Cookies**: `NODE_ENV=production` always makes the session cookie `Secure`, so prod only
-  works over HTTPS. `COOKIE_SECURE=false` in `.env` affects local `http://` development only.
+- **Cookies (TEMPORARY)**: `compose.prod.yaml` sets `COOKIE_SECURE: 'false'` for `prod-api` so
+  login works over plain HTTP; the API logs a warning at startup. The session cookie (and the
+  password at login) then travels **unencrypted**. Set it back to `'true'` as soon as the site is
+  served over HTTPS. Without that explicit `false` the cookie is always `Secure`.
+  `COOKIE_SECURE=false` in `.env` only affects local `http://` development (the prod container
+  does not read `.env`).
 - **Network**: `prod-api` and `prod-web` publish no ports; Caddy reaches only `prod-web`, which
   forwards `/api/*` to `prod-api` on the internal `prod-app` network. `prod-api` shares the
   existing `backend` network with `db` (making it internal would recreate `db`).
-- **Step B (current)**: `127.0.0.1:9443` only, Caddy internal CA (`infra/proxy/Caddyfile.prod`).
-  From a laptop: `ssh -L 9443:127.0.0.1:9443 surveyadmin@<server>`, then
-  `https://127.0.0.1:9443`. LAN, domain, ACME and router port forwarding are later, reviewed
-  changes to `compose.prod.yaml` / `Caddyfile.prod`.
+- **Access (current)**:
+  - Internet / LAN, plain HTTP: `http://<WAN>:5580` through the router's NAT to
+    `192.168.77.20:80` (published on the LAN IP only, never `0.0.0.0`), or `http://192.168.77.20`
+    inside the LAN. Caddy's `http://:8080` site accepts any host and sends no HSTS.
+  - HTTPS, loopback only: `127.0.0.1:9443`, Caddy internal CA (`infra/proxy/Caddyfile.prod`).
+    From a laptop: `ssh -L 9443:127.0.0.1:9443 surveyadmin@<server>`, then
+    `https://127.0.0.1:9443`.
+  - Next step: HTTPS for the public address (domain + ACME, or TLS on the NAT'd port), then
+    `COOKIE_SECURE: 'true'` again. Both are reviewed changes to `compose.prod.yaml` /
+    `Caddyfile.prod`.
 - **Restart**: all services `restart: unless-stopped` (they come back after a host reboot).
 - **Rollback**: `scripts/prod.sh stop` stops only the three prod services; `db`, `pgdata` and
   `caddy_prod_*` volumes are untouched. Never `docker compose down -v`. To remove the files,
