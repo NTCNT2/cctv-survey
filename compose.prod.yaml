@@ -40,8 +40,10 @@ services:
       # Separate from the development JWT_SECRET: rotating it signs out prod only.
       JWT_SECRET: ${PROD_JWT_SECRET:?PROD_JWT_SECRET must be set in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
-      # Already forced on by NODE_ENV=production (auth-config.ts); explicit here.
-      COOKIE_SECURE: 'true'
+      # TEMPORARY: plain-HTTP access via router NAT (<WAN>:5580 -> :80). The
+      # session cookie is NOT Secure, so it travels unencrypted. Set back to
+      # 'true' as soon as the site is served over HTTPS.
+      COOKIE_SECURE: 'false'
       CORS_ORIGIN: ${PROD_CORS_ORIGIN:?PROD_CORS_ORIGIN must be set in .env}
     depends_on:
       db:
@@ -118,6 +120,9 @@ services:
     # container, so it needs no capabilities (see infra/docker/proxy.Dockerfile).
     ports:
       - '127.0.0.1:9443:8443'
+      # Plain HTTP on the server's LAN IP only (router NAT <WAN>:5580 -> :80).
+      # Caddy's :8080 site (Caddyfile.prod). Never 0.0.0.0.
+      - '192.168.77.20:80:8080'
     volumes:
       - ./infra/proxy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       # CA / certificates (later: ACME account). Never delete.

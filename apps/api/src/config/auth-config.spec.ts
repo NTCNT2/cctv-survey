@@ -75,13 +75,19 @@ describe('loadAuthConfig', () => {
     });
   });
 
-  it('turns Secure off only when COOKIE_SECURE=false outside production', () => {
+  it('turns Secure off only when COOKIE_SECURE is exactly false', () => {
     expect(load({ COOKIE_SECURE: 'false' }).cookieSecure).toBe(false);
     expect(load({ COOKIE_SECURE: 'no' }).cookieSecure).toBe(true);
     expect(load({ COOKIE_SECURE: 'true' }).cookieSecure).toBe(true);
+    // Production stays Secure by default and with any other value ...
+    expect(load({ NODE_ENV: 'production' }).cookieSecure).toBe(true);
+    expect(
+      load({ NODE_ENV: 'production', COOKIE_SECURE: 'no' }).cookieSecure,
+    ).toBe(true);
+    // ... and is off only on the explicit opt-out (temporary plain HTTP).
     expect(
       load({ NODE_ENV: 'production', COOKIE_SECURE: 'false' }).cookieSecure,
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('rejects a bad rate limit', () => {

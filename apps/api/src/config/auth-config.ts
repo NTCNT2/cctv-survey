@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 
 export interface AuthConfig {
@@ -82,12 +83,19 @@ function positiveInt(value: string | undefined, fallback: number): number {
 
 export function loadAuthConfig(config: ConfigService): AuthConfig {
   const production = config.get<string>('NODE_ENV') === 'production';
+  // Secure unless explicitly disabled with exactly COOKIE_SECURE=false (local
+  // http:// development, or a temporary plain-HTTP production deployment).
+  // Anything else, including unset, keeps it on.
+  const cookieSecure = config.get<string>('COOKIE_SECURE') !== 'false';
+  if (production && !cookieSecure) {
+    new Logger('AuthConfig').warn(
+      'COOKIE_SECURE=false in production: the session cookie is sent over plain HTTP',
+    );
+  }
   return {
     jwtSecret: validateJwtSecret(config.get<string>('JWT_SECRET')),
     ttlSeconds: parseDuration(config.get<string>('JWT_EXPIRES_IN') ?? '8h'),
-    // Secure unless explicitly disabled for local http:// development — and
-    // never disabled in production (fail closed if NODE_ENV is forgotten).
-    cookieSecure: production || config.get<string>('COOKIE_SECURE') !== 'false',
+    cookieSecure,
     loginLimitPerIp: positiveInt(config.get<string>('LOGIN_LIMIT_PER_IP'), 100),
     loginLimitPerAccount: positiveInt(
       config.get<string>('LOGIN_LIMIT_PER_ACCOUNT'),

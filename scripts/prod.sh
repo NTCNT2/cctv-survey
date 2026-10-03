@@ -22,7 +22,8 @@ const cfg = JSON.parse(process.env.MERGED);
 const s = cfg.services;
 const errors = [];
 // db publishes '127.0.0.1:${POSTGRES_PORT...}' (string), prod-proxy an object.
-const allowPorts = { db: /^127\.0\.0\.1(:|$)/, 'prod-proxy': /^127\.0\.0\.1$/ };
+// prod-proxy: loopback (HTTPS 9443) and the server's LAN IP (HTTP 80, router NAT).
+const allowPorts = { db: /^127\.0\.0\.1(:|$)/, 'prod-proxy': /^(127\.0\.0\.1|192\.168\.77\.20)$/ };
 for (const [name, svc] of Object.entries(s)) {
   // The stacktest services are checked by scripts/check-compose.mjs.
   if (svc.profiles?.includes('stacktest')) continue;
@@ -61,7 +62,7 @@ if (errors.length) {
   console.error('prod compose check FAILED:\n  ' + errors.join('\n  '));
   process.exit(1);
 }
-console.log('prod compose check OK: api as cctv_app (password via PGPASSWORD), only db + prod-proxy publish ports (127.0.0.1), prod-app internal, db unchanged, no pgdata mounts');
+console.log('prod compose check OK: api as cctv_app (password via PGPASSWORD), only db (127.0.0.1) + prod-proxy (127.0.0.1, 192.168.77.20) publish ports, prod-app internal, db unchanged, no pgdata mounts');
 JS
 }
 
@@ -77,7 +78,7 @@ case "${1:-}" in
     compose up -d --no-build --no-deps --wait "${SERVICES[@]}"
     [[ "$(db_mark)" == "$before" ]] || { echo "error: cctv-survey-db-1 changed!" >&2; exit 1; }
     echo "db untouched: $before"
-    ss -Hltn | awk '$4 ~ /:9443$/ {print "listening:", $4}' ;;
+    ss -Hltn | awk '$4 ~ /:(9443|80)$/ {print "listening:", $4}' ;;
   status)
     compose ps "${SERVICES[@]}"
     # Which roles the containers use (expect cctv_app only from the API).
