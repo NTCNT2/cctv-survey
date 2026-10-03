@@ -1,0 +1,43 @@
+# CCTV Survey reverse proxy — production (compose.prod.yaml, service prod-proxy).
+# Step B: loopback only, published as 127.0.0.1:9443 -> 8443, internal CA.
+# Moving to LAN / a public domain + ACME is a later, reviewed change: replace
+# `local_certs` / `tls internal` and add `email`, and publish 80/443 on the
+# server's LAN IP in compose.prod.yaml.
+{
+	# No admin API at all (the image exposes :2019 by default).
+	admin off
+	# Clients send no SNI for IP addresses; serve this host's certificate.
+	default_sni {$PROD_SITE_HOST}
+	# Unprivileged ports inside the container: no capabilities needed.
+	http_port 8080
+	https_port 8443
+	# Step B: certificates only from Caddy's own internal CA; never a public CA/ACME.
+	local_certs
+	skip_install_trust
+	servers {
+		protocols h1 h2
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+https://{$PROD_SITE_HOST}:8443 {
+	tls internal
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+	header {
+		# Short on purpose until HTTPS is verified (then 1 week, then 1 year).
+		Strict-Transport-Security "max-age=300"
+		-Server
+		-Via
+	}
+	log
+	# Only the web app is reachable; it forwards /api/* to prod-api on the
+	# internal prod-app network. Caddy sets X-Forwarded-For to the real client
+	# address and ignores client-sent X-Forwarded-* (no trusted_proxies).
+	reverse_proxy prod-web:3000
+}

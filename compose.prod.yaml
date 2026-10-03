@@ -1,0 +1,162 @@
+# Phase 7 — production services (profile "prod"). Overlay on compose.yaml:
+#
+#   docker compose -f compose.yaml -f compose.prod.yaml --profile prod ...
+#
+# Start/stop ONLY via scripts/prod.sh. It never runs `down`, never removes
+# volumes, never uses --remove-orphans and never recreates `db`.
+#
+#   Caddy (prod-proxy) ──prod-edge──> prod-web ──prod-app (internal)──> prod-api ──backend──> db
+#
+# - Reuses the existing `db` service, `backend` network and `pgdata` volume
+#   (defined in compose.yaml) unchanged.
+# - The API connects as the least-privilege role `cctv_app` (migration 0003),
+#   never as the superuser `cctv`. Its password comes from APP_DB_PASSWORD via
+#   PGPASSWORD, not inside the URL (no URL-escaping, not in error messages).
+#   DATABASE_URL in .env stays `cctv` for host tools (migrate, psql, e2e).
+# - Step B: loopback only (127.0.0.1:9443, internal CA). LAN / Internet / ACME
+#   are later steps and need a reviewed change to this file and Caddyfile.prod.
+# - Docker-published ports bypass UFW: the host IP must always be explicit.
+
+services:
+  prod-api:
+    profiles: ['prod']
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    image: cctv-survey-api:prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # 0.0.0.0 is only accepted together with API_CONTAINER_NETWORK=internal
+      # (see apps/api/src/common/loopback.ts); no port is published.
+      API_HOST: 0.0.0.0
+      API_PORT: '4000'
+      API_CONTAINER_NETWORK: internal
+      # 1: only Caddy writes X-Forwarded-For; Next.js passes it on unchanged.
+      TRUST_PROXY_HOPS: '1'
+      # No password in the URL: node-postgres falls back to PGPASSWORD.
+      DATABASE_URL: postgresql://cctv_app@db:5432/${POSTGRES_DB:-cctv_survey}
+      PGPASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set in .env}
+      # Separate from the development JWT_SECRET: rotating it signs out prod only.
+      JWT_SECRET: ${PROD_JWT_SECRET:?PROD_JWT_SECRET must be set in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      # Already forced on by NODE_ENV=production (auth-config.ts); explicit here.
+      COOKIE_SECURE: 'true'
+      CORS_ORIGIN: ${PROD_CORS_ORIGIN:?PROD_CORS_ORIGIN must be set in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - prod-app
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  prod-web:
+    profiles: ['prod']
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        # Baked into the build: Next.js rewrites /api/* here (server-side only).
+        API_INTERNAL_URL: http://prod-api:4000
+    image: cctv-survey-web:prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: '3000'
+    depends_on:
+      prod-api:
+        condition: service_healthy
+    networks:
+      - prod-edge
+      - prod-app
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/apps/web/.next/cache
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  prod-proxy:
+    profiles: ['prod']
+    build:
+      context: .
+      # Official caddy:2-alpine (pinned) minus the binary's file capability.
+      dockerfile: infra/docker/proxy.Dockerfile
+    image: cctv-survey-proxy:prod
+    restart: unless-stopped
+    environment:
+      # Host name the site answers to (Caddyfile.prod). Step B: 127.0.0.1.
+      PROD_SITE_HOST: ${PROD_SITE_HOST:?PROD_SITE_HOST must be set in .env}
+    # Step B: loopback only, reached through `ssh -L 9443:127.0.0.1:9443`.
+    # 9443 avoids the stacktest proxy's 8443. Caddy listens on 8443 inside the
+    # container, so it needs no capabilities (see infra/docker/proxy.Dockerfile).
+    ports:
+      - '127.0.0.1:9443:8443'
+    volumes:
+      - ./infra/proxy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      # CA / certificates (later: ACME account). Never delete.
+      - caddy_prod_data:/data
+      - caddy_prod_config:/config
+    depends_on:
+      prod-web:
+        condition: service_healthy
+    networks:
+      - prod-edge
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      # Full path through Caddy (TLS) to web. No SNI for an IP address, so
+      # Caddy serves default_sni; the Host header selects the site.
+      test:
+        - CMD-SHELL
+        - 'wget -q --spider --no-check-certificate --header "Host: $${PROD_SITE_HOST}" https://127.0.0.1:8443/login'
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+networks:
+  # Caddy <-> web. Not internal: it carries the published port (and, later,
+  # Caddy's outbound ACME traffic).
+  prod-edge:
+    driver: bridge
+  # web <-> api. internal: no route to the outside world.
+  prod-app:
+    driver: bridge
+    internal: true
+  # `backend` (api <-> db) is defined in compose.yaml and reused as is: making
+  # it internal would recreate `db` (separate, approved maintenance step).
+
+volumes:
+  # Caddy CA + certificates for prod. Never delete.
+  caddy_prod_data:
+  caddy_prod_config:

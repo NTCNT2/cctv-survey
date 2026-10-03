@@ -146,6 +146,39 @@ browser ──> Next.js 127.0.0.1:3000 ──(rewrite /api/*)──> NestJS 127.
 plus its system libraries (`sudo apt-get install libasound2t64 libatk1.0-0t64
 libatk-bridge2.0-0t64 libatspi2.0-0t64 libxdamage1 fonts-thai-tlwg` on Ubuntu 24.04).
 
+## Production containers (Phase 7)
+
+```
+Caddy prod-proxy ──prod-edge──> prod-web ──prod-app (internal)──> prod-api ──backend──> db
+127.0.0.1:9443 (TLS)            :3000      /api/* rewrite         :4000 as cctv_app     existing
+```
+
+`compose.prod.yaml` adds `prod-api`, `prod-web`, `prod-proxy` (profile `prod`) on top of
+`compose.yaml`. Run it only through `scripts/prod.sh` (`check | build | up | status | logs | stop`):
+it never runs `down`, never removes containers or volumes, never recreates `db` (`up` uses
+`--no-deps` and fails if `cctv-survey-db-1` changed) and runs no migrations.
+
+- **Database role**: the API connects as `cctv_app` (migration 0003), never as `cctv`. Compose
+  sets `DATABASE_URL=postgresql://cctv_app@db:5432/…` with no password and passes
+  `APP_DB_PASSWORD` as `PGPASSWORD` (node-postgres reads it). `DATABASE_URL` in `.env` stays
+  `cctv` for host tools. Migrations stay manual: `pnpm db:migrate`.
+- **Secrets / settings** in `.env` (see `.env.example`): `APP_DB_PASSWORD`, `PROD_JWT_SECRET`
+  (separate from the dev `JWT_SECRET`), `PROD_SITE_HOST`, `PROD_CORS_ORIGIN`. Compose refuses to
+  start if any is empty; the API refuses a placeholder JWT secret.
+- **Cookies**: `NODE_ENV=production` always makes the session cookie `Secure`, so prod only
+  works over HTTPS. `COOKIE_SECURE=false` in `.env` affects local `http://` development only.
+- **Network**: `prod-api` and `prod-web` publish no ports; Caddy reaches only `prod-web`, which
+  forwards `/api/*` to `prod-api` on the internal `prod-app` network. `prod-api` shares the
+  existing `backend` network with `db` (making it internal would recreate `db`).
+- **Step B (current)**: `127.0.0.1:9443` only, Caddy internal CA (`infra/proxy/Caddyfile.prod`).
+  From a laptop: `ssh -L 9443:127.0.0.1:9443 surveyadmin@<server>`, then
+  `https://127.0.0.1:9443`. LAN, domain, ACME and router port forwarding are later, reviewed
+  changes to `compose.prod.yaml` / `Caddyfile.prod`.
+- **Restart**: all services `restart: unless-stopped` (they come back after a host reboot).
+- **Rollback**: `scripts/prod.sh stop` stops only the three prod services; `db`, `pgdata` and
+  `caddy_prod_*` volumes are untouched. Never `docker compose down -v`. To remove the files,
+  `git revert` the commit. Data problems: restore the backup taken before go-live.
+
 ## Layout
 
 ```
@@ -155,6 +188,6 @@ packages/shared   types, enums, zod schemas shared by web + api
 infra/docker      Dockerfiles (Phase 7)
 infra/proxy       reverse proxy config (Phase 7)
 infra/db          migrations + verify.sql (compose.yaml at repo root)
-scripts/          db.sh (migrate/verify); backup / restore (Phase 8)
+scripts/          db.sh (migrate/verify), stack.sh (test stack), prod.sh (prod containers)
 data/             runtime data — git-ignored
 ```
