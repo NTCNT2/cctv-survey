@@ -104,3 +104,34 @@ Expired and revoked session rows are kept for now; a cleanup job can be added la
   creates `cctv_app` in the same cluster as `cctv_survey` (without granting anything there).
 - Tables added by later migrations get no access by default: grant `cctv_app` explicitly in the
   migration that creates them.
+
+### Cluster-level database ACLs (one-off, not a migration)
+
+Migrations run per database, so they cannot lock down the cluster's other databases. Without
+this, `cctv_app` could connect to `postgres`, `template1` and `template_postgis` through the
+default `PUBLIC` grants (and use `TEMP` in `postgres` and `template_postgis`). Run once per
+cluster as `cctv` (applied to the current cluster on 2026-10-03):
+
+```sql
+-- docker exec -i cctv-survey-db-1 psql -X -U cctv -d postgres
+REVOKE CONNECT, TEMP ON DATABASE postgres FROM PUBLIC;
+REVOKE CONNECT, TEMP ON DATABASE template_postgis FROM PUBLIC;
+REVOKE CONNECT ON DATABASE template1 FROM PUBLIC;
+```
+
+| Database           | `cctv_app` CONNECT | `cctv_app` TEMP | Source                         |
+| ------------------ | ------------------ | --------------- | ------------------------------ |
+| `cctv_survey`      | yes                | no              | 0003 (`pnpm db:migrate`)       |
+| `cctv_survey_test` | yes                | no              | 0003 (`pnpm db:test`)          |
+| `postgres`         | no                 | no              | REVOKE above                   |
+| `template1`        | no                 | no              | REVOKE above                   |
+| `template_postgis` | no                 | no              | REVOKE above                   |
+| `template0`        | no                 | no              | `datallowconn = false` already |
+
+- `cctv` is a superuser and skips these checks, so `pnpm db:psql`, migrations, backups and
+  `CREATE DATABASE` (which copies `template1` without connecting to it) keep working. The
+  `pg_isready` healthcheck does not log in. New databases do not inherit the template's ACL.
+- These ACLs are not in the `cctv_survey` dump or the globals file: re-run the block above after
+  restoring into a new cluster.
+- Check: `SELECT datname, datacl FROM pg_database ORDER BY 1;`
+- Undo: `GRANT CONNECT, TEMP ON DATABASE <db> TO PUBLIC;` (`template1`: `CONNECT` only).
