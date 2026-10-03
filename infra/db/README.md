@@ -135,3 +135,38 @@ REVOKE CONNECT ON DATABASE template1 FROM PUBLIC;
   restoring into a new cluster.
 - Check: `SELECT datname, datacl FROM pg_database ORDER BY 1;`
 - Undo: `GRANT CONNECT, TEMP ON DATABASE <db> TO PUBLIC;` (`template1`: `CONNECT` only).
+
+## Backups
+
+`scripts/backup.sh` backs up the production database `cctv_survey`:
+`run` (cron) · `check` (cron) · `test` (manual) · `verify [TS]` · `list`.
+
+| What         | Where / how                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Location     | `~/backups/cctv-survey/auto/{daily,weekly,test}/` (outside the repo, dirs `0700`, files `0600`); log `auto/backup.log`    |
+| Set per run  | `cctv_survey_<TS>.dump` (`pg_dump -Fc`), `globals_<TS>.sql` (`--no-role-passwords`), `counts_<TS>.txt`, `SHA256SUMS_<TS>` |
+| Schedule     | user crontab (`umask 077`): `run` daily 19:17 UTC (02:17 Bangkok), `check` daily 19:47 UTC; stderr → `auto/cron.err`      |
+| Retention    | 14 daily + 8 weekly (Sunday's set, hard-linked) + 5 test. Only complete sets in `auto/` are pruned                        |
+| Restore test | part of every `run`/`test`: throwaway `postgis/postgis:18-3.6` (`--network none`, tmpfs, `--rm`); row counts + md5 match  |
+
+- A set counts as a backup only after the full restore test passed; then `run` writes
+  `auto/LAST_OK`. On any failure the set (incl. `*.partial`) is removed, `ERROR` is logged and
+  the exit code is non-zero.
+- `check` fails (ERROR in `backup.log` and `cron.err`) unless `LAST_OK` names the newest daily
+  set, its checksums match and it is less than 26 h old.
+- `test` writes to `auto/test/` only: it never updates `LAST_OK` and never counts as a
+  production backup.
+- Dumps run inside `cctv-survey-db-1` over its local socket: no password is used or logged.
+  `run` refuses to keep a dump that `pg_restore -l` cannot read or whose globals contain a
+  password hash. `counts_<TS>.txt` holds per-table row counts and md5 of the rows.
+- Manual backups directly in `~/backups/cctv-survey/` are never pruned.
+- Off-site copies are not set up yet: the backups live on the same disk as the database.
+- Restore into production only after an incident, with the API stopped (`scripts/prod.sh stop`).
+  Role passwords are not in the backup: on a new cluster set `\password cctv_app` again, then
+  re-apply the cluster-level ACLs above.
+
+```bash
+scripts/backup.sh verify <TS>    # prove the set restores cleanly first
+docker exec -i cctv-survey-db-1 pg_restore -U cctv -d cctv_survey --clean --if-exists \
+  --exit-on-error < ~/backups/cctv-survey/auto/daily/cctv_survey_<TS>.dump
+```

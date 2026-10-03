@@ -188,6 +188,6 @@ packages/shared   types, enums, zod schemas shared by web + api
 infra/docker      Dockerfiles (Phase 7)
 infra/proxy       reverse proxy config (Phase 7)
 infra/db          migrations + verify.sql (compose.yaml at repo root)
-scripts/          db.sh (migrate/verify), stack.sh (test stack), prod.sh (prod containers)
+scripts/          db.sh (migrate/verify), stack.sh (test stack), prod.sh (prod containers), backup.sh (db backups)
 data/             runtime data — git-ignored
 ```
