@@ -185,6 +185,12 @@ it never runs `down`, never removes containers or volumes, never recreates `db` 
   - Next step: HTTPS for the public address (domain + ACME, or TLS on the NAT'd port), then
     `COOKIE_SECURE: 'true'` again. Both are reviewed changes to `compose.prod.yaml` /
     `Caddyfile.prod`.
+- **Survey map** (`/projects/[id]/map`): Google Maps JavaScript API with Advanced Markers when
+  `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (+ `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`) is set in the web
+  container's environment (read per request, no rebuild). In production a missing setting or a key
+  Google rejects shows a clear error on the map page — never a silent switch; Leaflet +
+  OpenStreetMap is a development-only fallback (`next dev`). GPS is optional: points can always be placed by tapping the map
+  (geolocation itself only works over HTTPS or on localhost).
 - **Restart**: all services `restart: unless-stopped` (they come back after a host reboot).
 - **Rollback**: `scripts/prod.sh stop` stops only the three prod services; `db`, `pgdata` and
   `caddy_prod_*` volumes are untouched. Never `docker compose down -v`. To remove the files,

@@ -56,6 +56,18 @@ if (!/^postgresql:\/\/cctv_app@db:5432\//.test(env.DATABASE_URL ?? '')) {
 }
 if (!/^\$\{APP_DB_PASSWORD:\?/.test(env.PGPASSWORD ?? '')) errors.push('prod-api PGPASSWORD must come from ${APP_DB_PASSWORD:?...}');
 if (!/^\$\{PROD_JWT_SECRET:\?/.test(env.JWT_SECRET ?? '')) errors.push('prod-api JWT_SECRET must come from ${PROD_JWT_SECRET:?...}');
+// Google Maps: runtime settings from .env only (never literal values, never
+// build args that would end up in the image), no development map fallback.
+const web = s['prod-web'] ?? {};
+for (const k of ['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY', 'NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID']) {
+  if (web.environment?.[k] !== `\${${k}:?${k} must be set in .env}`) {
+    errors.push(`prod-web ${k} must come from \${${k}:?...} (no literal value)`);
+  }
+}
+if ('SURVEY_MAP_DEV_FALLBACK' in (web.environment ?? {})) errors.push('prod-web must not set SURVEY_MAP_DEV_FALLBACK');
+for (const a of Object.keys(web.build?.args ?? {})) {
+  if (/GOOGLE/i.test(a)) errors.push(`prod-web build arg ${a}: Google Maps settings are runtime only`);
+}
 // The overlay must not change the existing db service in any way.
 if (JSON.stringify(s.db) !== JSON.stringify(base.services.db)) errors.push('compose.prod.yaml changes the existing "db" service');
 if (errors.length) {

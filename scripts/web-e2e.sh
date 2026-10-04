@@ -14,6 +14,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 API_PORT=4100
 WEB_PORT=3100
+# Same build, no Google Maps settings: production shows a configuration error,
+# the opted-in development server uses OpenStreetMap instead.
+WEB_NOMAP_PORT=3101
+WEB_OSM_PORT=3102
 BASE="http://127.0.0.1:$WEB_PORT"
 TEST_DB=cctv_survey_test
 PREFIX="e2e-web-$(date +%s)"
@@ -28,7 +32,7 @@ psql_test() {
 }
 rand() { node -e 'console.log(require("node:crypto").randomBytes(18).toString("base64url"))'; }
 
-for port in $API_PORT $WEB_PORT; do
+for port in $API_PORT $WEB_PORT $WEB_NOMAP_PORT $WEB_OSM_PORT; do
   ! ss -ltn | grep -q "127.0.0.1:$port " || die "port $port is in use"
 done
 
@@ -55,8 +59,10 @@ cleanup() {
   set +e
   [[ -n ${API_PID:-} ]] && kill "$API_PID" 2>/dev/null
   [[ -n ${WEB_PID:-} ]] && kill "$WEB_PID" 2>/dev/null
+  [[ -n ${WEB_NOMAP_PID:-} ]] && kill "$WEB_NOMAP_PID" 2>/dev/null
+  [[ -n ${WEB_OSM_PID:-} ]] && kill "$WEB_OSM_PID" 2>/dev/null
   wait 2>/dev/null
-  for port in $API_PORT $WEB_PORT; do
+  for port in $API_PORT $WEB_PORT $WEB_NOMAP_PORT $WEB_OSM_PORT; do
     ! ss -ltn | grep -q "127.0.0.1:$port " || echo "warning: something still listens on $port"
   done
   echo "== cleanup ($TEST_DB)"
@@ -77,10 +83,19 @@ trap cleanup EXIT
 echo "== start API :$API_PORT and web :$WEB_PORT (loopback only)"
 # `exec` makes $! the server itself, so cleanup really stops it.
 (cd apps/api && exec env "${API_ENV[@]}" node dist/main.js >"$LOGDIR/api.log" 2>&1) & API_PID=$!
-(cd apps/web && NEXT_DIST_DIR=.next-e2e exec node_modules/.bin/next start -H 127.0.0.1 -p $WEB_PORT \
-  >"$LOGDIR/web.log" 2>&1) & WEB_PID=$!
+# Google Maps settings are read at request time. The key is a dummy: the tests
+# serve a stub of the Maps JavaScript API and never call Google.
+(cd apps/web && NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=e2e-dummy-key \
+  NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=e2e-map-id \
+  exec node_modules/.bin/next start -H 127.0.0.1 -p $WEB_PORT >"$LOGDIR/web.log" 2>&1) & WEB_PID=$!
+(cd apps/web && NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY= NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID= \
+  exec node_modules/.bin/next start -H 127.0.0.1 -p $WEB_NOMAP_PORT >"$LOGDIR/web-nomap.log" 2>&1) & WEB_NOMAP_PID=$!
+(cd apps/web && NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY= SURVEY_MAP_DEV_FALLBACK=true \
+  exec node_modules/.bin/next start -H 127.0.0.1 -p $WEB_OSM_PORT >"$LOGDIR/web-osm.log" 2>&1) & WEB_OSM_PID=$!
 for _ in $(seq 1 60); do
-  curl -sf "http://127.0.0.1:$API_PORT/api/health" >/dev/null && curl -sf -o /dev/null "$BASE/login" && break
+  curl -sf "http://127.0.0.1:$API_PORT/api/health" >/dev/null && curl -sf -o /dev/null "$BASE/login" &&
+    curl -sf -o /dev/null "http://127.0.0.1:$WEB_NOMAP_PORT/login" &&
+    curl -sf -o /dev/null "http://127.0.0.1:$WEB_OSM_PORT/login" && break
   sleep 0.5
 done
 curl -sf -o /dev/null "$BASE/api/health" || die "servers did not start (see $LOGDIR/*.log)"
@@ -108,6 +123,7 @@ done
 curl -sf -b "$JAR" -X POST "$BASE/api/auth/logout" >/dev/null; rm -f "$JAR"
 
 echo "== playwright"
-export E2E_BASE_URL="$BASE" E2E_PREFIX="$PREFIX"
+export E2E_BASE_URL="$BASE" E2E_NOMAP_BASE_URL="http://127.0.0.1:$WEB_NOMAP_PORT" \
+  E2E_OSM_BASE_URL="http://127.0.0.1:$WEB_OSM_PORT" E2E_PREFIX="$PREFIX"
 cd apps/web
 node_modules/.bin/playwright test "$@"

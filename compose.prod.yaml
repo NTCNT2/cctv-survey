@@ -81,6 +81,14 @@ services:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: '3000'
+      # Survey map (Google Maps JavaScript API), from .env. Runtime settings,
+      # not build args: projects/[id]/map/page.tsx reads them per request
+      # (process.env[name]), so they are never baked into the image and a new
+      # key needs no rebuild. Browser key: visible to map users by design;
+      # restricted in Google Cloud to the HTTP referrer of this site and to the
+      # Maps JavaScript API. Never write the values here.
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:?NEXT_PUBLIC_GOOGLE_MAPS_API_KEY must be set in .env}
+      NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID: ${NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID:?NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID must be set in .env}
     depends_on:
       prod-api:
         condition: service_healthy

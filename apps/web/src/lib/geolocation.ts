@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 /** Accuracy (metres) above which a fix is "weak": wait before saving a point. */
 export const WEAK_ACCURACY_M = 20;
@@ -51,63 +51,64 @@ export const GPS_LABELS: Record<GpsStatus, string> = {
   insecure: 'GPS ใช้ได้เฉพาะ HTTPS',
 };
 
-/**
- * One position watcher for the lifetime of the component (removed on
- * unmount). Browsers only allow geolocation in a secure context (HTTPS or
- * localhost): elsewhere the status is "insecure" and no request is made.
- */
-export function useGeolocation(enabled = true) {
-  const [state, setState] = useState<GpsState>({ status: 'idle' });
-  const watchId = useRef<number | null>(null);
-  const latest = useRef<GpsFix | undefined>(undefined);
+/** Why a position request failed (no crash: callers show a message). */
+export class LocationError extends Error {
+  constructor(readonly status: GpsStatus) {
+    super(GPS_LABELS[status]);
+  }
+}
 
-  const start = useCallback(() => {
-    if (watchId.current !== null) return;
-    if (!window.isSecureContext || !('geolocation' in navigator)) {
-      setState({ status: 'insecure' });
-      return;
-    }
-    setState((s) => ({ ...s, status: s.fix ? s.status : 'locating' }));
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const fix: GpsFix = {
+/**
+ * One position request (no watcher). Geolocation needs a secure context
+ * (HTTPS or localhost): elsewhere it fails with status "insecure".
+ */
+export function getPosition(maximumAge = 0): Promise<GpsFix> {
+  if (typeof window === 'undefined' || !window.isSecureContext) {
+    return Promise.reject(new LocationError('insecure'));
+  }
+  if (!('geolocation' in navigator)) {
+    return Promise.reject(new LocationError('unavailable'));
+  }
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
           timestamp: pos.timestamp || Date.now(),
-        };
-        latest.current = fix;
-        setState({ status: statusForFix(fix), fix });
-      },
-      (err) => {
-        setState((s) => ({ status: statusForError(err.code), fix: s.fix }));
-        if (err.code === 1 && watchId.current !== null) {
-          navigator.geolocation.clearWatch(watchId.current);
-          watchId.current = null;
-        }
-      },
-      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 },
+        }),
+      (err) => reject(new LocationError(statusForError(err.code))),
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge },
     );
-  }, []);
+  });
+}
 
-  useEffect(() => {
-    // Subscribing to the browser's geolocation API: an external system.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (enabled) start();
-    return () => {
-      if (watchId.current !== null) {
-        navigator.geolocation.clearWatch(watchId.current);
-        watchId.current = null;
+/**
+ * Device position on demand. Nothing is requested until `locate` is called
+ * (the map never asks for GPS by itself).
+ */
+export function useDeviceLocation() {
+  const [state, setState] = useState<GpsState>({ status: 'idle' });
+
+  /** Never rejects: the result carries either a fix or the failure status. */
+  const locate = useCallback(
+    async (maximumAge = 0): Promise<{ fix?: GpsFix; status: GpsStatus }> => {
+      setState((s) => ({ ...s, status: 'locating' }));
+      try {
+        const fix = await getPosition(maximumAge);
+        const status = statusForFix(fix);
+        setState({ status, fix });
+        return { fix, status };
+      } catch (err) {
+        const status =
+          err instanceof LocationError ? err.status : 'unavailable';
+        setState((s) => ({ status, fix: s.fix }));
+        return { status };
       }
-    };
-  }, [enabled, start]);
+    },
+    [],
+  );
 
-  /** The latest fix if it is fresh; otherwise (re)starts the watcher. */
-  const current = useCallback((): GpsFix | undefined => {
-    if (isFresh(latest.current)) return latest.current;
-    start();
-    return latest.current;
-  }, [start]);
-
-  return { ...state, start, current };
+  return { ...state, locate };
 }

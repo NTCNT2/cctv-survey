@@ -79,3 +79,67 @@ body {
     bottom: calc(4rem + env(safe-area-inset-bottom));
   }
 }
+
+/* ---- Survey map: Google Advanced Markers + shared pins ---------------- */
+/* Google anchors the content's bottom centre on the position. The 34 px badge
+   is rotated 45°, so its tip reaches 17·(√2−1) ≈ 7 px below its box. */
+.cctv-gmarker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateY(-7px);
+  font-family: var(--font-sans-thai), system-ui, sans-serif;
+  cursor: pointer;
+}
+.cctv-gmarker-badge {
+  order: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px 9999px 9999px 2px;
+  transform: rotate(-45deg);
+  background: var(--pin);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+.cctv-gmarker-glyph {
+  width: 17px;
+  height: 17px;
+  transform: rotate(45deg);
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cctv-gmarker .cctv-pin-label {
+  order: 1;
+}
+.cctv-me-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #4f46e5;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgb(79 70 229 / 0.2);
+  transform: translateY(50%);
+}
+/* Temporary "picked position" pin (Google content, or Leaflet divIcon). */
+.cctv-pick-pin {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px 9999px 9999px 2px;
+  /* Tip of the rotated 26 px pin is ≈ 5 px below its box: lift it. */
+  transform: translateY(-5px) rotate(-45deg);
+  background: #ef4444;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+}
+.cctv-pin-wrap .cctv-pick-pin {
+  position: absolute;
+  left: -13px;
+  top: -26px;
+}

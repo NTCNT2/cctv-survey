@@ -38,6 +38,15 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Google checks the Maps key's HTTP-referrer restriction, which needs a
+        // Referer on requests to Google: send the origin only (never the path)
+        // and only from the survey map. Later entries win for the same header.
+        source: '/projects/:id/map',
+        headers: [
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
     ];
   },
 };
