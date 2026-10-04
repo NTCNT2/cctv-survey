@@ -86,4 +86,35 @@ test.describe('signed in', () => {
       page.getByRole('button', { name: 'ออกจากระบบ' }),
     ).toBeVisible();
   });
+
+  test('FAB sits above the bottom navigation; sheet options are easy to tap', async ({
+    page,
+  }) => {
+    await page.goto('/design-system');
+    const fab = page.getByRole('button', { name: 'เพิ่มจุด' });
+    const nav = page.getByRole('navigation', { name: 'เมนูหลัก (มือถือ)' });
+    const fabBox = (await fab.boundingBox())!;
+    const navBox = (await nav.boundingBox())!;
+    expect(fabBox.height).toBeGreaterThanOrEqual(56);
+    expect(fabBox.y + fabBox.height).toBeLessThanOrEqual(navBox.y);
+
+    await fab.tap();
+    const sheet = page.getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' });
+    await expect(sheet).toBeVisible();
+    // Anchored to the bottom of the screen on phones.
+    const sheetBox = (await sheet.boundingBox())!;
+    const viewport = page.viewportSize()!;
+    expect(Math.round(sheetBox.y + sheetBox.height)).toBeGreaterThanOrEqual(
+      viewport.height - 1,
+    );
+    for (const name of ['ใช้ตำแหน่งปัจจุบัน', 'เลือกตำแหน่งบนแผนที่']) {
+      const box = (await sheet
+        .getByRole('button', { name: new RegExp(name) })
+        .boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(64);
+    }
+    await sheet.getByRole('button', { name: 'ยกเลิก' }).tap();
+    await expect(sheet).toBeHidden();
+    await expectNoHorizontalScroll(page);
+  });
 });

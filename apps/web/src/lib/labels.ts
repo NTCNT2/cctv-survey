@@ -57,6 +57,19 @@ export const CAMERA_STATUS_LABELS: Record<CameraStatus, string> = {
   removed: 'ถอดออก',
 };
 
+/**
+ * Badge colour per camera status. Design palette (Phase 1): gray = not yet
+ * surveyed, blue = surveyed, orange = in design, violet = waiting for
+ * installation, green = installed, red = problem. Mapped onto today's statuses
+ * until the survey statuses arrive (Phase 3).
+ */
+export const CAMERA_STATUS_TONES: Record<CameraStatus, BadgeTone> = {
+  proposed: 'blue',
+  approved: 'violet',
+  installed: 'green',
+  removed: 'muted',
+};
+
 export const CAMERA_TYPE_LABELS: Record<CameraType, string> = {
   dome: 'Dome',
   bullet: 'Bullet',

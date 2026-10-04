@@ -13,13 +13,16 @@ import {
   LinkButton,
   PageHeader,
   Skeleton,
+  Tabs,
 } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import {
   CAMERA_STATUS_LABELS,
+  CAMERA_STATUS_TONES,
   CAMERA_TYPE_LABELS,
   formatDateTime,
   PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_TONES,
 } from '@/lib/labels';
 import {
   useCameras,
@@ -68,7 +71,11 @@ function ProjectDetail({ project }: { project: Project }) {
       <PageHeader
         title={project.name}
         back={{ href: '/projects', label: 'โครงการทั้งหมด' }}
-        subtitle={<Badge>{PROJECT_STATUS_LABELS[project.status]}</Badge>}
+        subtitle={
+          <Badge tone={PROJECT_STATUS_TONES[project.status]} dot>
+            {PROJECT_STATUS_LABELS[project.status]}
+          </Badge>
+        }
         actions={
           <>
             {canWrite && (
@@ -105,34 +112,23 @@ function ProjectDetail({ project }: { project: Project }) {
         />
       </Card>
 
-      <div
-        role="tablist"
-        aria-label="ข้อมูลในโครงการ"
-        className="mb-4 flex gap-2"
-      >
-        {(
-          [
-            ['cameras', 'กล้อง'],
-            ['sites', 'Site'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={`min-h-11 rounded-lg px-4 text-sm font-medium ${
-              tab === key
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-4">
+        <Tabs
+          label="ข้อมูลในโครงการ"
+          value={tab}
+          onChange={setTab}
+          panelId="project-panel"
+          tabs={[
+            { value: 'cameras', label: 'กล้อง' },
+            { value: 'sites', label: 'Site' },
+          ]}
+        />
       </div>
-      <div role="tabpanel">
+      <div
+        role="tabpanel"
+        id="project-panel"
+        aria-labelledby={`project-panel-tab-${tab}`}
+      >
         {tab === 'cameras' ? (
           <CameraList projectId={project.id} />
         ) : (
@@ -261,7 +257,9 @@ function CameraList({ projectId }: { projectId: string }) {
                   <p className="flex flex-wrap items-center gap-2 font-medium">
                     <span className="break-all">{c.label}</span>
                     <Badge>{CAMERA_TYPE_LABELS[c.type]}</Badge>
-                    <Badge>{CAMERA_STATUS_LABELS[c.status]}</Badge>
+                    <Badge tone={CAMERA_STATUS_TONES[c.status]} dot>
+                      {CAMERA_STATUS_LABELS[c.status]}
+                    </Badge>
                   </p>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     {[

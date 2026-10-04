@@ -386,7 +386,15 @@ export function Forbidden() {
 }
 
 export type BadgeTone =
-  'neutral' | 'muted' | 'blue' | 'violet' | 'cyan' | 'amber' | 'green';
+  | 'neutral'
+  | 'muted'
+  | 'blue'
+  | 'violet'
+  | 'cyan'
+  | 'amber'
+  | 'orange'
+  | 'green'
+  | 'red';
 
 const badgeTones: Record<BadgeTone, string> = {
   neutral:
@@ -399,8 +407,11 @@ const badgeTones: Record<BadgeTone, string> = {
   cyan: 'bg-cyan-50 text-cyan-800 ring-cyan-600/25 dark:bg-cyan-950 dark:text-cyan-300 dark:ring-cyan-400/25',
   amber:
     'bg-amber-50 text-amber-800 ring-amber-600/25 dark:bg-amber-950 dark:text-amber-300 dark:ring-amber-400/25',
+  orange:
+    'bg-orange-50 text-orange-800 ring-orange-600/25 dark:bg-orange-950 dark:text-orange-300 dark:ring-orange-400/25',
   green:
     'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-400/25',
+  red: 'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-950 dark:text-red-300 dark:ring-red-400/25',
 };
 
 export function Badge({
@@ -440,5 +451,198 @@ export function DefinitionList({
         </div>
       ))}
     </dl>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard / navigation building blocks (design system, Phase 1)
+// ---------------------------------------------------------------------------
+
+const statAccents: Record<BadgeTone, string> = {
+  neutral: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+  muted: 'bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400',
+  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300',
+  violet:
+    'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300',
+  cyan: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300',
+  amber: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  orange:
+    'bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300',
+  green:
+    'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
+  red: 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300',
+};
+
+/**
+ * A number with a label, for summary rows. Render inside a <dl>. `value`
+ * undefined shows a placeholder (loading) or "—" (`unavailable`).
+ */
+export function StatCard({
+  label,
+  value,
+  icon,
+  tone = 'neutral',
+  unavailable,
+  hint,
+}: {
+  label: string;
+  value: ReactNode | undefined;
+  icon?: ReactNode;
+  tone?: BadgeTone;
+  unavailable?: boolean;
+  hint?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="min-w-0">
+        <dt className="text-sm text-zinc-600 dark:text-zinc-400">{label}</dt>
+        <dd className="mt-2 text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
+          {value !== undefined ? (
+            value
+          ) : unavailable ? (
+            <span title="โหลดข้อมูลไม่สำเร็จ">—</span>
+          ) : (
+            <>
+              <span
+                aria-hidden
+                className="inline-block h-8 w-12 animate-pulse rounded-lg bg-zinc-200/70 dark:bg-zinc-800"
+              />
+              <span className="sr-only">รอข้อมูล</span>
+            </>
+          )}
+        </dd>
+        {hint && (
+          <dd className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {hint}
+          </dd>
+        )}
+      </div>
+      {icon && (
+        <span
+          aria-hidden
+          className={cx(
+            'grid size-10 shrink-0 place-items-center rounded-xl',
+            statAccents[tone],
+          )}
+        >
+          {icon}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Mutually exclusive options shown as one control (view switch, map layers).
+ * Buttons with aria-pressed; give icon-only options a `label`.
+ */
+export function SegmentedControl<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+  size = 'md',
+}: {
+  /** Accessible name of the group. */
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; label: string; icon?: ReactNode; iconOnly?: boolean }[];
+  size?: 'md' | 'lg';
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="inline-flex rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={active}
+            aria-label={o.iconOnly ? o.label : undefined}
+            title={o.iconOnly ? o.label : undefined}
+            onClick={() => onChange(o.value)}
+            className={cx(
+              'inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-indigo-600',
+              size === 'md' && o.iconOnly && 'sm:min-h-9 sm:min-w-9 sm:px-0',
+              active
+                ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
+                : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
+            )}
+          >
+            {o.icon}
+            {!o.iconOnly && o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Tab list (role="tablist") with arrow-key navigation. The caller renders the
+ * panel; pass `panelId` so the tabs point at it.
+ */
+export function Tabs<T extends string>({
+  label,
+  value,
+  onChange,
+  tabs,
+  panelId,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  tabs: { value: T; label: string; count?: number }[];
+  panelId: string;
+}) {
+  const move = (from: number, step: number) => {
+    const next = tabs[(from + step + tabs.length) % tabs.length];
+    onChange(next.value);
+    document.getElementById(`${panelId}-tab-${next.value}`)?.focus();
+  };
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className="flex gap-1 overflow-x-auto border-b border-zinc-200 dark:border-zinc-800"
+    >
+      {tabs.map((t, i) => {
+        const active = t.value === value;
+        return (
+          <button
+            key={t.value}
+            id={`${panelId}-tab-${t.value}`}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            aria-controls={panelId}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onChange(t.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') move(i, 1);
+              if (e.key === 'ArrowLeft') move(i, -1);
+            }}
+            className={cx(
+              '-mb-px inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600',
+              active
+                ? 'border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-300'
+                : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
+            )}
+          >
+            {t.label}
+            {t.count !== undefined && (
+              <span className="rounded-full bg-zinc-100 px-2 text-xs tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                {t.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }

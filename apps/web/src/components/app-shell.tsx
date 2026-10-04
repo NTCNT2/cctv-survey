@@ -68,6 +68,7 @@ const isCurrent = (item: NavItem, pathname: string) =>
 /** Page context shown in the top header (the page itself has the <h1>). */
 function sectionTitle(pathname: string): string {
   if (pathname.startsWith('/account')) return 'ตั้งค่าบัญชี';
+  if (pathname.startsWith('/design-system')) return 'Design system';
   return 'โครงการ';
 }
 

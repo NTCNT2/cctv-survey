@@ -28,7 +28,10 @@ import {
   EmptyState,
   ErrorState,
   LinkButton,
+  SegmentedControl,
   Skeleton,
+  StatCard,
+  type BadgeTone,
 } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import {
@@ -266,79 +269,53 @@ function Summary({
   const count = (s?: ProjectStatus) =>
     data ? data.projects.filter((p) => !s || p.status === s).length : undefined;
   const plus = data?.truncated ? '+' : '';
+  const show = (n: number | undefined) =>
+    n === undefined
+      ? undefined
+      : `${n.toLocaleString('th-TH')}${n ? plus : ''}`;
   const cards: {
     label: string;
     value: number | undefined;
     icon: ReactNode;
-    accent: string;
+    tone: BadgeTone;
   }[] = [
     {
       label: 'โครงการทั้งหมด',
       value: count(),
       icon: <IconFolder />,
-      accent:
-        'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300',
+      tone: 'violet',
     },
     {
       label: 'กำลังสำรวจ',
       value: count('surveying'),
       icon: <IconSearch />,
-      accent: 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300',
+      tone: 'blue',
     },
     {
       label: 'เสร็จแล้ว',
       value: count('completed'),
       icon: <IconCheck />,
-      accent:
-        'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
+      tone: 'green',
     },
     {
       label: 'แบบร่าง',
       value: count('draft'),
       icon: <IconClock />,
-      accent: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+      tone: 'neutral',
     },
   ];
   return (
     <section aria-label="สรุปโครงการ" className="mb-8">
       <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {cards.map((c) => (
-          <div
+          <StatCard
             key={c.label}
-            className="flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <div className="min-w-0">
-              <dt className="text-sm text-zinc-600 dark:text-zinc-400">
-                {c.label}
-              </dt>
-              <dd className="mt-2 text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
-                {c.value === undefined ? (
-                  overview.isError ? (
-                    <span title="โหลดข้อมูลสรุปไม่สำเร็จ">—</span>
-                  ) : (
-                    <>
-                      <span
-                        aria-hidden
-                        className="inline-block h-8 w-12 animate-pulse rounded-lg bg-zinc-200/70 dark:bg-zinc-800"
-                      />
-                      <span className="sr-only">รอข้อมูล</span>
-                    </>
-                  )
-                ) : (
-                  `${c.value.toLocaleString('th-TH')}${c.value ? plus : ''}`
-                )}
-              </dd>
-            </div>
-            <span
-              aria-hidden
-              className={cx(
-                'grid size-10 shrink-0 place-items-center rounded-xl',
-                c.accent,
-              )}
-            >
-              {c.icon}
-            </span>
-          </div>
+            label={c.label}
+            value={show(c.value)}
+            icon={c.icon}
+            tone={c.tone}
+            unavailable={overview.isError}
+          />
         ))}
       </dl>
     </section>
@@ -438,34 +415,26 @@ function Toolbar({
               ล้างตัวกรอง
             </Button>
           )}
-          <div
-            role="group"
-            aria-label="รูปแบบการแสดงผล"
-            className="ml-auto inline-flex rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
-          >
-            {(
-              [
-                ['grid', 'แสดงแบบการ์ด', IconGrid],
-                ['list', 'แสดงแบบรายการ', IconList],
-              ] as const
-            ).map(([v, label, Icon]) => (
-              <button
-                key={v}
-                type="button"
-                aria-label={label}
-                aria-pressed={view === v}
-                title={label}
-                onClick={() => onView(v)}
-                className={cx(
-                  'grid size-11 place-items-center rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-indigo-600 sm:size-9',
-                  view === v
-                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
-                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
-                )}
-              >
-                <Icon />
-              </button>
-            ))}
+          <div className="ml-auto">
+            <SegmentedControl
+              label="รูปแบบการแสดงผล"
+              value={view}
+              onChange={onView}
+              options={[
+                {
+                  value: 'grid',
+                  label: 'แสดงแบบการ์ด',
+                  icon: <IconGrid />,
+                  iconOnly: true,
+                },
+                {
+                  value: 'list',
+                  label: 'แสดงแบบรายการ',
+                  icon: <IconList />,
+                  iconOnly: true,
+                },
+              ]}
+            />
           </div>
         </div>
       </div>
