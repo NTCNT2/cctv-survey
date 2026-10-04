@@ -30,44 +30,143 @@ import {
   STRUCTURE_TYPE_LABELS,
 } from '@/lib/labels';
 import { LatLngFields, toLatLngText } from './latlng-fields';
-import { FormActions } from './project-form';
-import { Alert, SelectField, TextAreaField, TextField } from './ui';
+import {
+  Alert,
+  Button,
+  LinkButton,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from './ui';
 
-type Props =
-  | {
-      mode: 'create';
-      projectId: string;
-      sites: Site[];
-      initial?: undefined;
-      defaultSiteId?: string;
-      onSubmit: (v: CreateCameraPointInput) => Promise<unknown>;
-      cancelHref: string;
-    }
-  | {
-      mode: 'edit';
-      projectId: string;
-      sites: Site[];
-      initial: CameraPoint;
-      defaultSiteId?: undefined;
-      onSubmit: (v: UpdateCameraPointInput) => Promise<unknown>;
-      cancelHref: string;
-    };
+/** Options shared by both modes. */
+interface Common {
+  /** Page form: a "back" link. Sheet form: use `onCancel`. */
+  cancelHref?: string;
+  onCancel?: () => void;
+  /** Sheet (survey map): collapsible sections, sticky save bar. */
+  layout?: 'page' | 'sheet';
+  /** Pre-filled position (GPS or map picker) for a new point. */
+  initialLocation?: { lat: number; lng: number };
+  initialAccuracyM?: number;
+  /** Suggested point code for a new point, e.g. the next CCTV-00N. */
+  initialLabel?: string;
+}
+
+type Props = Common &
+  (
+    | {
+        mode: 'create';
+        projectId: string;
+        sites: Site[];
+        initial?: undefined;
+        defaultSiteId?: string;
+        onSubmit: (v: CreateCameraPointInput) => Promise<unknown>;
+      }
+    | {
+        mode: 'edit';
+        projectId: string;
+        sites: Site[];
+        initial: CameraPoint;
+        defaultSiteId?: undefined;
+        onSubmit: (v: UpdateCameraPointInput) => Promise<unknown>;
+      }
+  );
 
 const str = (v: number | undefined) => (v === undefined ? '' : String(v));
 const yesNo = (v: boolean | undefined) => (v === undefined ? '' : String(v));
+const roundAccuracy = (m: number | undefined) =>
+  m === undefined ? undefined : Math.round(m * 10) / 10;
 
-/** A titled group of fields; one column on phones, two from `sm`. */
+type SectionKey = 'location' | 'camera' | 'structure' | 'system' | 'status';
+
+/** Which section holds a field (to open it when the field has an error). */
+const FIELD_SECTION: Record<string, SectionKey> = {
+  label: 'location',
+  siteId: 'location',
+  location: 'location',
+  gpsAccuracyM: 'location',
+  address: 'location',
+  surveyedAt: 'location',
+  type: 'camera',
+  brand: 'camera',
+  model: 'camera',
+  resolutionMp: 'camera',
+  lensMm: 'camera',
+  cameraCount: 'camera',
+  purpose: 'camera',
+  bearingDeg: 'camera',
+  fovDeg: 'camera',
+  viewDistanceM: 'camera',
+  mountHeightM: 'camera',
+  mountType: 'camera',
+  structureType: 'structure',
+  poleHeightM: 'structure',
+  cabinetDistanceM: 'structure',
+  cableLengthM: 'structure',
+  powerAvailable: 'system',
+  networkAvailable: 'system',
+  fiberAvailable: 'system',
+  poe: 'system',
+  status: 'status',
+  notes: 'status',
+};
+
+/**
+ * A titled group of fields; one column on phones, two from `sm`. In the
+ * sheet layout it is a <details> that can be folded away.
+ */
 function Section({
   title,
   detail,
+  collapsible,
+  open,
+  onToggle,
   children,
 }: {
   title: string;
   detail?: string;
+  collapsible?: boolean;
+  open?: boolean;
+  onToggle?: (open: boolean) => void;
   children: ReactNode;
 }) {
+  const box =
+    'rounded-2xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900';
+  const body = <div className="mt-4 grid gap-5 sm:grid-cols-2">{children}</div>;
+  if (collapsible) {
+    return (
+      <details
+        open={open}
+        onToggle={(e) => onToggle?.(e.currentTarget.open)}
+        className={`${box} group`}
+      >
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 text-base font-semibold [&::-webkit-details-marker]:hidden">
+          <span>
+            {title}
+            {detail && (
+              <span className="block text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                {detail}
+              </span>
+            )}
+          </span>
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden
+            className="size-5 shrink-0 text-zinc-400 transition-transform group-open:rotate-180"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </summary>
+        <div className="px-4 pb-4">{body}</div>
+      </details>
+    );
+  }
   return (
-    <fieldset className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    <fieldset className={`${box} p-4 sm:p-5`}>
       <legend className="sr-only">{title}</legend>
       <p aria-hidden className="text-base font-semibold">
         {title}
@@ -77,9 +176,22 @@ function Section({
           {detail}
         </p>
       )}
-      <div className="mt-4 grid gap-5 sm:grid-cols-2">{children}</div>
+      {body}
     </fieldset>
   );
+}
+
+/** ISO instant <-> value of an <input type="datetime-local"> (local time). */
+export function toLocalInput(iso: string | undefined | Date): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+export function fromLocalInput(v: string): string | undefined {
+  if (!v) return undefined;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? v : d.toISOString();
 }
 
 const YES_NO = [
@@ -90,12 +202,35 @@ const YES_NO = [
 
 export function CameraForm(props: Props) {
   const c = props.initial;
-  const [label, setLabel] = useState(c?.label ?? '');
+  const [label, setLabel] = useState(c?.label ?? props.initialLabel ?? '');
   const [type, setType] = useState<string>(c?.type ?? 'dome');
   const [status, setStatus] = useState<string>(c?.status ?? 'surveyed');
   const [siteId, setSiteId] = useState(c?.siteId ?? props.defaultSiteId ?? '');
-  const [location, setLocation] = useState(toLatLngText(c?.location));
-  const [gpsAccuracyM, setGpsAccuracyM] = useState(str(c?.gpsAccuracyM));
+  const sheet = props.layout === 'sheet';
+  const [location, setLocation] = useState(
+    toLatLngText(c?.location ?? props.initialLocation),
+  );
+  const [gpsAccuracyM, setGpsAccuracyM] = useState(
+    str(c?.gpsAccuracyM ?? roundAccuracy(props.initialAccuracyM)),
+  );
+  const [surveyedAt, setSurveyedAt] = useState(() =>
+    toLocalInput(c ? c.surveyedAt : new Date()),
+  );
+  const [open, setOpen] = useState<Record<SectionKey, boolean>>({
+    location: true,
+    camera: !sheet,
+    structure: !sheet,
+    system: !sheet,
+    status: true,
+  });
+  const section = (key: SectionKey) =>
+    sheet
+      ? {
+          collapsible: true,
+          open: open[key],
+          onToggle: (v: boolean) => setOpen((o) => ({ ...o, [key]: v })),
+        }
+      : {};
   const [address, setAddress] = useState(c?.address ?? '');
   const [brand, setBrand] = useState(c?.brand ?? '');
   const [model, setModel] = useState(c?.model ?? '');
@@ -131,6 +266,17 @@ export function CameraForm(props: Props) {
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
+  function revealErrors(fields: FieldErrors) {
+    const keys = Object.keys(fields).map((f) => FIELD_SECTION[f.split('.')[0]]);
+    if (keys.some(Boolean)) {
+      setOpen((o) => {
+        const next = { ...o };
+        for (const k of keys) if (k) next[k] = true;
+        return next;
+      });
+    }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setFormError(undefined);
@@ -149,6 +295,7 @@ export function CameraForm(props: Props) {
       },
       gpsAccuracyM: num(gpsAccuracyM, empty),
       address: text(address, empty),
+      surveyedAt: fromLocalInput(surveyedAt) ?? empty,
       brand: text(brand, empty),
       model: text(model, empty),
       resolutionMp: num(resolutionMp, empty),
@@ -180,6 +327,7 @@ export function CameraForm(props: Props) {
         : validate(updateCameraPointSchema, common);
     if (r.errors) {
       setErrors(r.errors);
+      revealErrors(r.errors);
       return;
     }
     setErrors({});
@@ -193,6 +341,7 @@ export function CameraForm(props: Props) {
     } catch (err) {
       const x = submitErrors(err, errorMessage);
       setErrors(x.fields);
+      revealErrors(x.fields);
       setFormError(x.message);
     } finally {
       setBusy(false);
@@ -246,11 +395,40 @@ export function CameraForm(props: Props) {
     ...values.map((v) => ({ value: v, label: labels[v] })),
   ];
 
+  const actions = (
+    <div
+      className={
+        sheet
+          ? 'sticky -bottom-5 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1'
+          : 'flex flex-col-reverse gap-2 border-t border-zinc-200 pt-5 sm:flex-row sm:justify-end dark:border-zinc-800'
+      }
+    >
+      {props.onCancel ? (
+        <Button type="button" variant="secondary" onClick={props.onCancel}>
+          ยกเลิก
+        </Button>
+      ) : (
+        props.cancelHref && (
+          <LinkButton href={props.cancelHref} variant="secondary">
+            ยกเลิก
+          </LinkButton>
+        )
+      )}
+      <Button type="submit" busy={busy}>
+        บันทึก
+      </Button>
+    </div>
+  );
+
   return (
-    <form onSubmit={submit} noValidate className="space-y-5">
+    <form onSubmit={submit} noValidate className="space-y-4">
       {formError && <Alert>{formError}</Alert>}
 
-      <Section title="ตำแหน่ง" detail="รหัสจุด พื้นที่ และพิกัดที่ติดตั้ง">
+      <Section
+        title="ตำแหน่ง"
+        detail="รหัสจุด พื้นที่ พิกัด และเวลาสำรวจ"
+        {...section('location')}
+      >
         <TextField
           id="label"
           label="ชื่อ / รหัสกล้อง"
@@ -271,7 +449,7 @@ export function CameraForm(props: Props) {
             required
             value={location}
             onChange={setLocation}
-            onLocated={(m) => setGpsAccuracyM(m.toFixed(1))}
+            onLocated={(m) => setGpsAccuracyM(str(roundAccuracy(m)))}
             error={errors.location}
           />
         </div>
@@ -283,17 +461,31 @@ export function CameraForm(props: Props) {
           'เติมให้อัตโนมัติเมื่อใช้ตำแหน่งปัจจุบัน',
         )}
         <TextField
-          id="address"
-          label="ที่อยู่ / จุดสังเกต"
-          maxLength={500}
-          placeholder="หน้าอาคาร A"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          error={errors.address}
+          id="surveyedAt"
+          label="วันเวลาสำรวจ"
+          type="datetime-local"
+          value={surveyedAt}
+          onChange={(e) => setSurveyedAt(e.target.value)}
+          error={errors.surveyedAt}
         />
+        <div className="sm:col-span-2">
+          <TextField
+            id="address"
+            label="ที่อยู่ / จุดสังเกต"
+            maxLength={500}
+            placeholder="หน้าอาคาร A"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            error={errors.address}
+          />
+        </div>
       </Section>
 
-      <Section title="กล้อง">
+      <Section
+        title="กล้อง"
+        detail="ประเภท อุปกรณ์ และมุมมอง"
+        {...section('camera')}
+      >
         {select(
           'type',
           'ประเภท',
@@ -303,14 +495,11 @@ export function CameraForm(props: Props) {
           true,
         )}
         {select(
-          'status',
-          'สถานะ',
-          status,
-          setStatus,
-          CAMERA_STATUSES.map((s) => ({
-            value: s,
-            label: CAMERA_STATUS_LABELS[s],
-          })),
+          'purpose',
+          'วัตถุประสงค์',
+          purpose,
+          setPurpose,
+          optional(CAMERA_PURPOSES, CAMERA_PURPOSE_LABELS),
         )}
         <TextField
           id="brand"
@@ -334,7 +523,6 @@ export function CameraForm(props: Props) {
           resolutionMp,
           setResolutionMp,
         )}
-        {numberField('lensMm', 'เลนส์ (มม.)', lensMm, setLensMm)}
         {numberField(
           'cameraCount',
           'จำนวนกล้องที่จุดนี้',
@@ -343,16 +531,14 @@ export function CameraForm(props: Props) {
           '1–64',
           'numeric',
         )}
-        {select(
-          'purpose',
-          'วัตถุประสงค์',
-          purpose,
-          setPurpose,
-          optional(CAMERA_PURPOSES, CAMERA_PURPOSE_LABELS),
+        {numberField(
+          'mountHeightM',
+          'ความสูงติดตั้ง (ม.)',
+          mountHeightM,
+          setMountHeightM,
+          '0–100',
         )}
-      </Section>
-
-      <Section title="ทิศทางและมุมมอง">
+        {numberField('lensMm', 'เลนส์ (มม.)', lensMm, setLensMm)}
         {numberField(
           'bearingDeg',
           'ทิศทาง (องศา)',
@@ -374,13 +560,6 @@ export function CameraForm(props: Props) {
           setViewDistanceM,
           'ใช้วาดพื้นที่มองเห็นบนแผนที่',
         )}
-        {numberField(
-          'mountHeightM',
-          'ความสูงติดตั้ง (ม.)',
-          mountHeightM,
-          setMountHeightM,
-          '0–100',
-        )}
         {select(
           'mountType',
           'การยึดติด',
@@ -390,7 +569,11 @@ export function CameraForm(props: Props) {
         )}
       </Section>
 
-      <Section title="โครงสร้างและสาธารณูปโภค">
+      <Section
+        title="โครงสร้าง"
+        detail="ที่ติดตั้งและระยะสาย"
+        {...section('structure')}
+      >
         {select(
           'structureType',
           'โครงสร้างที่ติดตั้ง',
@@ -419,6 +602,13 @@ export function CameraForm(props: Props) {
           setCableLengthM,
           '0–1000',
         )}
+      </Section>
+
+      <Section
+        title="ระบบ"
+        detail="ไฟฟ้า เครือข่าย ไฟเบอร์"
+        {...section('system')}
+      >
         {select(
           'powerAvailable',
           'ไฟฟ้า',
@@ -447,15 +637,31 @@ export function CameraForm(props: Props) {
         ])}
       </Section>
 
-      <TextAreaField
-        id="notes"
-        label="หมายเหตุ"
-        maxLength={5000}
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        error={errors.notes}
-      />
-      <FormActions busy={busy} cancelHref={props.cancelHref} />
+      <Section title="สถานะ" {...section('status')}>
+        {select(
+          'status',
+          'สถานะ',
+          status,
+          setStatus,
+          CAMERA_STATUSES.map((s) => ({
+            value: s,
+            label: CAMERA_STATUS_LABELS[s],
+          })),
+          true,
+        )}
+        <div className="sm:col-span-2">
+          <TextAreaField
+            id="notes"
+            label="หมายเหตุ"
+            maxLength={5000}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            error={errors.notes}
+          />
+        </div>
+      </Section>
+
+      {actions}
     </form>
   );
 }

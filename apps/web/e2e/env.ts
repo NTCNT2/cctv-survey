@@ -80,3 +80,12 @@ export async function seedProject(
 /** The project list on /projects (names also appear in the desktop overview). */
 export const projectList = (page: Page) =>
   page.getByRole('list', { name: 'รายการโครงการ' });
+
+/** Map tiles come from openstreetmap.org: never fetch them in tests. */
+export async function blockTiles(page: Page) {
+  await page.route(/tile\.openstreetmap\.org/, (r) => r.abort());
+}
+
+/** A camera marker on the survey map, by its label. */
+export const mapMarker = (page: Page, label: string) =>
+  page.locator('.cctv-pin-label', { hasText: new RegExp(`^${label}$`) });

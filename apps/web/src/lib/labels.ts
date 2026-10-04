@@ -63,12 +63,22 @@ export const CAMERA_STATUS_LABELS: Record<CameraStatus, string> = {
 
 /** Badge colour per camera status (design system, Phase 1). */
 export const CAMERA_STATUS_TONES: Record<CameraStatus, BadgeTone> = {
-  pending_survey: 'neutral',
+  pending_survey: 'amber',
   surveyed: 'blue',
   pending_design: 'orange',
   pending_install: 'violet',
   installed: 'green',
   issue: 'red',
+};
+
+/** Marker colours on the survey map (same hues as the badges, solid). */
+export const CAMERA_STATUS_COLORS: Record<CameraStatus, string> = {
+  pending_survey: '#eab308', // yellow
+  surveyed: '#3b82f6', // blue
+  pending_design: '#f97316', // orange
+  pending_install: '#8b5cf6', // purple
+  installed: '#10b981', // green
+  issue: '#ef4444', // red
 };
 
 export const CAMERA_TYPE_LABELS: Record<CameraType, string> = {

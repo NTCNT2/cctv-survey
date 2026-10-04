@@ -24,3 +24,58 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans-thai), system-ui, sans-serif;
 }
+
+/* ---- Survey map (Leaflet) ------------------------------------------- */
+.cctv-pin-wrap {
+  background: none;
+  border: 0;
+}
+/* The pin's dot sits exactly on the point; the label floats to the right. */
+.cctv-pin {
+  position: absolute;
+  left: -9px;
+  top: -9px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-family: var(--font-sans-thai), system-ui, sans-serif;
+}
+.cctv-pin-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--pin);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.cctv-pin-label {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.92);
+  color: #18181b;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+.leaflet-marker-icon:focus-visible .cctv-pin-dot {
+  outline: 3px solid #4f46e5;
+  outline-offset: 2px;
+}
+/* Zoom buttons large enough for touch (tablets). */
+.leaflet-touch .leaflet-bar a,
+.leaflet-bar a {
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+  font-size: 20px;
+}
+.leaflet-container {
+  font-family: var(--font-sans-thai), system-ui, sans-serif;
+}
+/* Phones: keep the OSM attribution and controls above the map's bottom menu. */
+@media (max-width: 767px) {
+  .leaflet-container .leaflet-bottom {
+    bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}

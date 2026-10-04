@@ -15,6 +15,7 @@ import {
   IconCamera,
   IconCheck,
   IconClock,
+  IconMap,
   IconSearch,
 } from '@/components/icons';
 import { ConfirmButton } from '@/components/confirm-button';
@@ -94,6 +95,10 @@ function ProjectDetail({ project }: { project: Project }) {
         }
         actions={
           <>
+            <LinkButton href={`/projects/${project.id}/map`}>
+              <IconMap className="size-4" />
+              แผนที่สำรวจ
+            </LinkButton>
             {canWrite && (
               <LinkButton
                 href={`/projects/${project.id}/edit`}

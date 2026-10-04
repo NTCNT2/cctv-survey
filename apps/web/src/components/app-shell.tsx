@@ -69,6 +69,7 @@ const isCurrent = (item: NavItem, pathname: string) =>
 function sectionTitle(pathname: string): string {
   if (pathname.startsWith('/account')) return 'ตั้งค่าบัญชี';
   if (pathname.startsWith('/design-system')) return 'Design system';
+  if (isImmersive(pathname)) return 'แผนที่สำรวจ';
   return 'โครงการ';
 }
 
@@ -92,8 +93,13 @@ function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
  * Signed-in layout: sidebar (desktop), icon rail (tablet), top header and a
  * bottom navigation bar on phones. Sections without a page yet are disabled.
  */
+/** Full-screen pages (the survey map): no page padding, own phone chrome. */
+export const isImmersive = (pathname: string) =>
+  /^\/projects\/[^/]+\/map$/.test(pathname);
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const immersive = isImmersive(pathname);
   return (
     <div className="flex min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <a
@@ -104,15 +110,19 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       <Sidebar pathname={pathname} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar pathname={pathname} />
+        <TopBar pathname={pathname} immersive={immersive} />
         <main
           id="main"
-          className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 md:pb-10 lg:px-8 lg:pt-8"
+          className={
+            immersive
+              ? 'relative flex-1'
+              : 'mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 md:pb-10 lg:px-8 lg:pt-8'
+          }
         >
           {children}
         </main>
       </div>
-      <BottomNav pathname={pathname} />
+      {!immersive && <BottomNav pathname={pathname} />}
     </div>
   );
 }
@@ -214,9 +224,21 @@ function SideLink({ item, current }: { item: NavItem; current: boolean }) {
   );
 }
 
-function TopBar({ pathname }: { pathname: string }) {
+function TopBar({
+  pathname,
+  immersive,
+}: {
+  pathname: string;
+  immersive: boolean;
+}) {
   return (
-    <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/85">
+    <header
+      className={cx(
+        'sticky top-0 z-30 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/85',
+        // Phones: the survey map draws its own top bar.
+        immersive && 'hidden md:block',
+      )}
+    >
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link
           href="/projects"

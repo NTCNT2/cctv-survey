@@ -17,6 +17,8 @@ export function BottomSheet({
   description,
   children,
   footer,
+  tall,
+  side,
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,6 +27,10 @@ export function BottomSheet({
   children: ReactNode;
   /** Sticky action row (Save / Cancel); stays reachable above the keyboard. */
   footer?: ReactNode;
+  /** Nearly full height on phones (long forms). */
+  tall?: boolean;
+  /** From `lg`: a panel on the right edge instead of a centred box (map). */
+  side?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -55,6 +61,9 @@ export function BottomSheet({
       className={cx(
         'm-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-3xl border-0 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-zinc-950/40 backdrop:backdrop-blur-[2px]',
         'sm:m-auto sm:max-w-lg sm:rounded-3xl',
+        tall && 'h-[94dvh] max-h-[94dvh] sm:h-auto sm:max-h-[90dvh]',
+        side &&
+          'lg:my-0 lg:ml-auto lg:mr-0 lg:h-dvh lg:max-h-dvh lg:max-w-md lg:rounded-none lg:rounded-l-3xl',
         'dark:bg-zinc-900 dark:text-zinc-100',
         'open:flex open:flex-col',
       )}
@@ -171,5 +180,38 @@ export function Fab({
       {icon}
       {label}
     </button>
+  );
+}
+
+/**
+ * Short confirmation ("✓ บันทึก CCTV-001 สำเร็จ"), announced politely to
+ * screen readers and hidden after a few seconds.
+ */
+export function Toast({
+  message,
+  onDone,
+  ms = 3500,
+}: {
+  message: string | undefined;
+  onDone: () => void;
+  ms?: number;
+}) {
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(onDone, ms);
+    return () => clearTimeout(t);
+  }, [message, onDone, ms]);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4"
+    >
+      {message && (
+        <p className="pointer-events-auto rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
