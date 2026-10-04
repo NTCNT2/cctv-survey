@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { devices, expect, test, type Page } from '@playwright/test';
 import { adminApi, projectList, seedProject, storage } from './env';
 import { googleMarker, stubGoogleMaps, tapGoogleMap } from './google-maps-stub';
 
@@ -310,5 +312,372 @@ test.describe('survey map — GPS not allowed', () => {
     await expect(page.getByText('✓ บันทึก NOGPS-01 สำเร็จ')).toBeVisible();
     await expect(googleMarker(page, 'NOGPS-01')).toBeVisible();
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe('Add Point Bottom Sheet options are visible and clickable', () => {
+  test.use({ storageState: storage.admin });
+
+  for (const [width, height] of [
+    [375, 812],
+    [390, 844],
+    [430, 932],
+    [360, 800],
+    // iPhone 13 Pro Max: measured on the device, Playwright's profile, and
+    // Safari with collapsed toolbars.
+    [428, 761],
+    [428, 746],
+    [428, 926],
+  ] as const) {
+    test(`${width}×${height}: both options on screen without scrolling, pick flow works`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await stubGoogleMaps(page);
+      await page.goto(`/projects/${seeded.project.id}/map`);
+      await expect(googleMarker(page, 'CAM-01')).toBeVisible();
+
+      await page.getByRole('button', { name: 'เพิ่มจุดติดตั้ง' }).tap();
+      const sheet = page.getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' });
+      await expect(sheet).toBeVisible();
+      // The page behind is modal: its bottom navigation and FAB are hidden.
+      await expect(
+        page.getByRole('navigation', { name: 'เมนูแผนที่' }),
+      ).toBeHidden();
+
+      const options = [
+        sheet.getByRole('button', { name: /ใช้ตำแหน่งปัจจุบัน/ }),
+        sheet.getByRole('button', { name: /เลือกตำแหน่งบนแผนที่/ }),
+        sheet.getByRole('button', { name: 'ยกเลิก' }),
+      ];
+      const sheetBox = (await sheet.boundingBox())!;
+      expect(sheetBox.y).toBeGreaterThanOrEqual(0);
+      expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(height + 1);
+      for (const o of options) {
+        await expect(o).toBeVisible();
+        const b = (await o.boundingBox())!;
+        // Fully on screen and inside the sheet as laid out (no scrolling).
+        expect(b.height).toBeGreaterThanOrEqual(44);
+        expect(b.y).toBeGreaterThanOrEqual(sheetBox.y);
+        expect(b.y + b.height).toBeLessThanOrEqual(
+          Math.min(height, sheetBox.y + sheetBox.height),
+        );
+      }
+      // Nothing inside the sheet needs scrolling at this size.
+      const scrolls = await sheet.evaluate((d) =>
+        [...d.querySelectorAll('*')].some(
+          (e) =>
+            e.scrollHeight > e.clientHeight + 1 &&
+            getComputedStyle(e).overflowY !== 'visible',
+        ),
+      );
+      expect(scrolls).toBe(false);
+
+      // iOS regression (Safari ≤ 16 collapsed a basis-0 scroll body to 0 px):
+      // header / footer never shrink, the body is content-sized and scrolls.
+      const layout = await sheet.evaluate((d) => {
+        const css = (sel: string) => getComputedStyle(d.querySelector(sel)!);
+        const body = d.querySelector<HTMLElement>('[data-sheet-body]')!;
+        return {
+          display: getComputedStyle(d).display,
+          direction: getComputedStyle(d).flexDirection,
+          header: css('[data-sheet-header]').flex,
+          footer: css('[data-sheet-footer]').flex,
+          footerPosition: css('[data-sheet-footer]').position,
+          footerPaddingBottom: css('[data-sheet-footer]').paddingBottom,
+          footerSafeArea: !!d.querySelector(
+            '[data-sheet-footer] > [data-sheet-safe-area]',
+          ),
+          footerInBody: !!body.querySelector('[data-sheet-footer]'),
+          basis: css('[data-sheet-body]').flexBasis,
+          minHeight: css('[data-sheet-body]').minHeight,
+          overflow: css('[data-sheet-body]').overflowY,
+          blockPadding: [
+            css('[data-sheet-body]').paddingTop,
+            css('[data-sheet-body]').paddingBottom,
+          ].join(' '),
+          collapsed: body.clientHeight < body.scrollHeight - 1,
+        };
+      });
+      expect(layout).toEqual({
+        display: 'flex',
+        direction: 'column',
+        header: '0 0 auto',
+        footer: '0 0 auto',
+        footerPosition: 'static',
+        footerPaddingBottom: '0px',
+        footerSafeArea: true,
+        footerInBody: false,
+        basis: 'auto',
+        minHeight: '0px',
+        overflow: 'auto',
+        blockPadding: '0px 0px',
+        collapsed: false,
+      });
+      // The footer (ยกเลิก) sits below the options, never on top of them.
+      const footerTop = (await sheet
+        .locator('[data-sheet-footer]')
+        .boundingBox())!.y;
+      const lastOption = (await options[1].boundingBox())!;
+      expect(lastOption.y + lastOption.height).toBeLessThanOrEqual(footerTop);
+
+      await options[1].tap();
+      await expect(sheet).toBeHidden();
+      await expect(
+        page.getByText('แตะตำแหน่งที่ต้องการติดตั้งกล้อง'),
+      ).toBeVisible();
+      await tapGoogleMap(page, 13.7444, 100.5555);
+      await expect(page.getByTestId('picked-marker')).toBeVisible();
+      await page.getByRole('button', { name: 'ยืนยันตำแหน่ง' }).tap();
+      const form = page.getByRole('dialog', { name: 'จุดกล้องใหม่' });
+      await expect(form).toContainText('เลือกบนแผนที่');
+      await expect(form.getByLabel('ละติจูด (lat)')).toHaveValue('13.7444');
+      await expect(
+        form.getByRole('button', { name: 'บันทึก' }),
+      ).toBeInViewport();
+    });
+  }
+});
+
+test.describe('Add Point Bottom Sheet on a short screen', () => {
+  test.use({ storageState: storage.admin });
+
+  test('360×480: the options scroll inside the sheet, header and footer stay', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 480 });
+    await stubGoogleMaps(page);
+    await page.goto(`/projects/${seeded.project.id}/map`);
+    await page.getByRole('button', { name: 'เพิ่มจุดติดตั้ง' }).tap();
+    const sheet = page.getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' });
+    // Make the content taller than the sheet can be.
+    await sheet.evaluate((d) => {
+      const body = d.querySelector('[data-sheet-body]')!;
+      const pad = document.createElement('div');
+      pad.style.height = '400px';
+      body.prepend(pad);
+    });
+    const body = sheet.locator('[data-sheet-body]');
+    const m = await body.evaluate((b) => ({
+      scrolls: b.scrollHeight > b.clientHeight,
+      page: document.documentElement.scrollHeight <= innerHeight,
+    }));
+    expect(m).toEqual({ scrolls: true, page: true });
+    const box = (await sheet.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(480 + 1);
+    await expect(sheet.getByRole('heading')).toBeInViewport();
+    await expect(sheet.getByRole('button', { name: 'ปิด' })).toBeInViewport();
+    await expect(
+      sheet.getByRole('button', { name: 'ยกเลิก' }),
+    ).toBeInViewport();
+    // Scroll the body (not the page) to reach the second option, then use it.
+    await body.evaluate((b) => (b.scrollTop = b.scrollHeight));
+    const pick = sheet.getByRole('button', { name: /เลือกตำแหน่งบนแผนที่/ });
+    await expect(pick).toBeInViewport();
+    await pick.tap();
+    await expect(sheet).toBeHidden();
+    await expect(
+      page.getByText('แตะตำแหน่งที่ต้องการติดตั้งกล้อง'),
+    ).toBeVisible();
+  });
+});
+
+test.describe('Add Point Bottom Sheet screenshot', () => {
+  test.use({ storageState: storage.admin });
+
+  for (const [width, height, name] of [
+    [390, 844, '390x844'],
+    [428, 746, 'iphone-13-pro-max'],
+  ] as const) {
+    test(`${name}: header, both options and footer as designed`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height });
+      await stubGoogleMaps(page);
+      await page.goto(`/projects/${seeded.project.id}/map`);
+      await expect(googleMarker(page, 'CAM-01')).toBeVisible();
+      await page.getByRole('button', { name: 'เพิ่มจุดติดตั้ง' }).tap();
+      const sheet = page.getByRole('dialog', {
+        name: 'เพิ่มจุดติดตั้ง CCTV',
+      });
+      await expect(
+        sheet.getByRole('button', { name: /เลือกตำแหน่งบนแผนที่/ }),
+      ).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+
+      // The real sheet DOM + CSS, for scripts/webkit-sheet-check.sh (older
+      // WebKit builds, closer to shipping Safari than Playwright's WebKit).
+      const html = await page.evaluate(() => {
+        const css = [...document.styleSheets]
+          .map((sh) => {
+            try {
+              return [...sh.cssRules].map((r) => r.cssText).join('\n');
+            } catch {
+              return '';
+            }
+          })
+          .join('\n')
+          .replaceAll('url("/_next/', `url("${location.origin}/_next/`);
+        const d = document.querySelector('dialog[open]')!.cloneNode(true);
+        (d as HTMLDialogElement).removeAttribute('open');
+        return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>${css}</style></head><body class="${document.body.className}">${(d as HTMLElement).outerHTML}<script>document.querySelector('dialog').showModal()</script></body></html>`;
+      });
+      const dir = path.join(testInfo.project.outputDir, 'sheet-dom');
+      await mkdir(dir, { recursive: true });
+      await writeFile(
+        path.join(dir, `${testInfo.project.name}-${name}.html`),
+        html,
+      );
+
+      // The sheet only: the map behind it carries per-run data.
+      await expect(sheet).toHaveScreenshot(`add-point-sheet-${name}.png`, {
+        animations: 'disabled',
+        caret: 'hide',
+      });
+    });
+  }
+});
+
+// iPhone 13 Pro Max (Safari user agent, 3× screen, touch); in the
+// iphone-webkit project this runs in WebKit.
+// test.use() cannot change the browser inside a file: keep the project's.
+const iPhone13ProMax = Object.fromEntries(
+  Object.entries(devices['iPhone 13 Pro Max']).filter(
+    ([k]) => k !== 'defaultBrowserType',
+  ),
+);
+
+test.describe('Add Point Bottom Sheet — iPhone 13 Pro Max', () => {
+  // Viewport measured on the physical device (Safari, toolbars shown).
+  test.use({
+    ...iPhone13ProMax,
+    viewport: { width: 428, height: 761 },
+    storageState: storage.admin,
+  });
+
+  test('options and cancel: real boxes, inside the viewport, not covered; content scrolls', async ({
+    page,
+  }) => {
+    await stubGoogleMaps(page);
+    await page.goto(`/projects/${seeded.project.id}/map`);
+    await expect(googleMarker(page, 'CAM-01')).toBeVisible();
+    await page.getByRole('button', { name: 'เพิ่มจุดติดตั้ง' }).tap();
+    const sheet = page.getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole('heading')).toHaveText('เพิ่มจุดติดตั้ง CCTV');
+    const first = await sheet.boundingBox();
+
+    // The collapse seen on the physical iPhone: sheet 177 px, scroll area
+    // 20 px (its padding) with 172 px of content, footer over the options.
+    const m = await sheet.evaluate((d) => {
+      const body = d.querySelector<HTMLElement>('[data-sheet-body]')!;
+      const footer = d.querySelector('[data-sheet-footer]')!;
+      const options = [...body.querySelectorAll('button')];
+      return {
+        sheet: d.getBoundingClientRect().height,
+        parts: [...d.children].reduce(
+          (sum, c) => sum + c.getBoundingClientRect().height,
+          0,
+        ),
+        clientHeight: body.clientHeight,
+        scrollHeight: body.scrollHeight,
+        footerTop: footer.getBoundingClientRect().top,
+        lastOptionBottom: options.at(-1)!.getBoundingClientRect().bottom,
+      };
+    });
+    expect(m.sheet).toBeGreaterThan(177);
+    // Content-sized, not stretched to its max-height: grip + header +
+    // content + footer is the whole sheet.
+    expect(Math.abs(m.sheet - m.parts)).toBeLessThanOrEqual(1);
+    expect(m.sheet).toBeLessThan(761 * 0.6);
+    expect(m.clientHeight).toBeGreaterThan(20);
+    expect(m.scrollHeight).toBeGreaterThanOrEqual(m.clientHeight);
+    // Two options fit: nothing is hidden behind a scroll.
+    expect(m.clientHeight).toBeGreaterThanOrEqual(m.scrollHeight - 1);
+    expect(m.lastOptionBottom).toBeLessThanOrEqual(m.footerTop);
+
+    const boxes = await sheet.evaluate((d) => {
+      const names = ['ใช้ตำแหน่งปัจจุบัน', 'เลือกตำแหน่งบนแผนที่', 'ยกเลิก'];
+      const buttons = [...d.querySelectorAll('button')];
+      return names.map((n) => {
+        const b = buttons.find((x) => x.textContent?.includes(n))!;
+        const r = b.getBoundingClientRect();
+        // Probe 5 points inside the button: each must hit the button itself.
+        const probes = [
+          [0.5, 0.5],
+          [0.15, 0.2],
+          [0.85, 0.2],
+          [0.15, 0.8],
+          [0.85, 0.8],
+        ].map(([x, y]) => {
+          const hit = document.elementFromPoint(
+            r.left + r.width * x,
+            r.top + r.height * y,
+          );
+          return !!hit && b.contains(hit);
+        });
+        return {
+          name: n,
+          width: r.width,
+          height: r.height,
+          inside:
+            r.left >= 0 &&
+            r.top >= 0 &&
+            r.right <= innerWidth &&
+            r.bottom <= innerHeight,
+          uncovered: probes.every(Boolean),
+        };
+      });
+    });
+    for (const b of boxes) {
+      expect(b.width, b.name).toBeGreaterThan(0);
+      expect(b.height, b.name).toBeGreaterThanOrEqual(44);
+      expect(b.inside, `${b.name} inside the viewport`).toBe(true);
+      expect(b.uncovered, `${b.name} not covered`).toBe(true);
+    }
+
+    // No horizontal overflow, page or sheet.
+    const overflow = await sheet.evaluate((d) => ({
+      page: document.documentElement.scrollWidth <= innerWidth,
+      sheet: d.scrollWidth <= d.clientWidth,
+      body: (() => {
+        const b = d.querySelector<HTMLElement>('[data-sheet-body]')!;
+        return b.scrollWidth <= b.clientWidth;
+      })(),
+    }));
+    expect(overflow).toEqual({ page: true, sheet: true, body: true });
+
+    // No layout shift after the sheet settles.
+    await page.waitForTimeout(600);
+    expect(await sheet.boundingBox()).toEqual(first);
+
+    // More content than fits: the scroll area (only it) scrolls.
+    const body = sheet.locator('[data-sheet-body]');
+    const scroll = await body.evaluate((b) => {
+      const extra = document.createElement('div');
+      extra.style.height = '900px';
+      b.firstElementChild!.prepend(extra);
+      const before = {
+        scrollHeight: b.scrollHeight,
+        clientHeight: b.clientHeight,
+      };
+      b.scrollTop = 0;
+      b.scrollBy(0, 400);
+      return { ...before, scrolled: b.scrollTop, page: scrollY };
+    });
+    expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
+    expect(scroll.clientHeight).toBeGreaterThan(100);
+    expect(scroll.scrolled).toBeGreaterThan(0);
+    expect(scroll.page).toBe(0);
+    const sheetBox = (await sheet.boundingBox())!;
+    expect(sheetBox.y).toBeGreaterThanOrEqual(0);
+    expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(
+      page.viewportSize()!.height + 1,
+    );
+    await expect(
+      sheet.getByRole('button', { name: 'ยกเลิก' }),
+    ).toBeInViewport();
+    await expect(sheet.getByRole('heading')).toBeInViewport();
   });
 });

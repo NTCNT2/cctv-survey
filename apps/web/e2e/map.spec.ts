@@ -190,6 +190,7 @@ test.describe('survey map — responsive', () => {
     [390, 844],
     [430, 932],
     [1280, 800],
+    [1280, 720],
   ] as const) {
     test(`${width}×${height}: map fills the screen, controls reachable`, async ({
       page,

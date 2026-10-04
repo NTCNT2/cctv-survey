@@ -115,6 +115,12 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [toast, setToast] = useState<string>();
   const clearToast = useCallback(() => setToast(undefined), []);
+  /**
+   * A sheet is a modal flow: the map's own controls and the bottom
+   * navigation step aside (kept mounted, so focus returns to the opener).
+   */
+  const sheetOpen =
+    addOpen || !!draft || !!selected || !!stack || listOpen || moreOpen;
 
   const points = useMemo(() => cameras.data ?? [], [cameras.data]);
   const camera = points.find((c) => c.id === selected);
@@ -272,7 +278,10 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
           aria-label="ไปยังตำแหน่งปัจจุบัน"
           title="ไปยังตำแหน่งปัจจุบัน"
           aria-busy={locating || undefined}
-          className="absolute bottom-[calc(10rem+env(safe-area-inset-bottom))] right-4 z-10 grid size-14 place-items-center rounded-2xl bg-white text-indigo-600 shadow-lg ring-1 ring-zinc-900/5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:opacity-60 md:bottom-28 md:right-8 dark:bg-zinc-900 dark:text-indigo-300 dark:ring-white/10"
+          className={cx(
+            sheetOpen && 'invisible',
+            'absolute bottom-[calc(10rem+env(safe-area-inset-bottom))] right-4 z-10 grid size-14 place-items-center rounded-2xl bg-white text-indigo-600 shadow-lg ring-1 ring-zinc-900/5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:opacity-60 md:bottom-28 md:right-8 dark:bg-zinc-900 dark:text-indigo-300 dark:ring-white/10',
+          )}
         >
           <svg
             viewBox="0 0 24 24"
@@ -294,6 +303,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
         <Fab
           label="เพิ่มจุดติดตั้ง"
           icon={<IconPlus />}
+          hidden={sheetOpen}
           onClick={() => {
             setGpsError(undefined);
             setAddOpen(true);
@@ -363,7 +373,10 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
       {!picking && (
         <nav
           aria-label="เมนูแผนที่"
-          className="absolute inset-x-0 bottom-0 z-10 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-900/95"
+          className={cx(
+            sheetOpen && 'invisible',
+            'absolute inset-x-0 bottom-0 z-10 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-900/95',
+          )}
         >
           <ul className="grid grid-cols-3">
             <li>

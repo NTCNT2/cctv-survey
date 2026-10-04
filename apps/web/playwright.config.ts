@@ -40,5 +40,20 @@ export default defineConfig({
       use: { ...devices['iPhone 13'], browserName: 'chromium' },
       testMatch: /mobile\.spec\.ts/,
     },
+    // Real WebKit (Safari's engine) when a Playwright server is available,
+    // e.g. the official image on loopback (see scripts/web-e2e.sh):
+    // E2E_WEBKIT_WS=ws://127.0.0.1:3333/
+    ...(process.env.E2E_WEBKIT_WS
+      ? [
+          {
+            name: 'iphone-webkit',
+            use: {
+              ...devices['iPhone 13'],
+              connectOptions: { wsEndpoint: process.env.E2E_WEBKIT_WS },
+            },
+            testMatch: /mobile\.spec\.ts/,
+          },
+        ]
+      : []),
   ],
 });

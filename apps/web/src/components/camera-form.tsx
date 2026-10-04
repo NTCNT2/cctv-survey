@@ -399,7 +399,7 @@ export function CameraForm(props: Props) {
     <div
       className={
         sheet
-          ? 'sticky -bottom-5 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1'
+          ? 'sticky bottom-0 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1'
           : 'flex flex-col-reverse gap-2 border-t border-zinc-200 pt-5 sm:flex-row sm:justify-end dark:border-zinc-800'
       }
     >

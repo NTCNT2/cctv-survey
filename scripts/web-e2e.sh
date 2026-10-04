@@ -61,6 +61,7 @@ cleanup() {
   [[ -n ${WEB_PID:-} ]] && kill "$WEB_PID" 2>/dev/null
   [[ -n ${WEB_NOMAP_PID:-} ]] && kill "$WEB_NOMAP_PID" 2>/dev/null
   [[ -n ${WEB_OSM_PID:-} ]] && kill "$WEB_OSM_PID" 2>/dev/null
+  [[ -n ${WEBKIT_CID:-} ]] && docker stop "$WEBKIT_CID" >/dev/null 2>&1
   wait 2>/dev/null
   for port in $API_PORT $WEB_PORT $WEB_NOMAP_PORT $WEB_OSM_PORT; do
     ! ss -ltn | grep -q "127.0.0.1:$port " || echo "warning: something still listens on $port"
@@ -122,8 +123,43 @@ for pair in surveyor:surveyor viewer:viewer login:viewer pwchange:surveyor victi
 done
 curl -sf -b "$JAR" -X POST "$BASE/api/auth/logout" >/dev/null; rm -f "$JAR"
 
+# Optional: E2E_WEBKIT=1 also runs mobile.spec.ts in real WebKit (Safari's
+# engine), served by the official Playwright image on loopback only.
+if [[ ${E2E_WEBKIT:-} == 1 ]]; then
+  WEBKIT_PORT=3333
+  PW_VERSION=$(node -p 'require("./apps/web/node_modules/@playwright/test/package.json").version')
+  ! ss -ltn | grep -q "127.0.0.1:$WEBKIT_PORT " || die "port $WEBKIT_PORT is in use"
+  WEBKIT_CID=$(docker run -d --rm --init --network host --user pwuser --workdir /home/pwuser \
+    "mcr.microsoft.com/playwright:v$PW_VERSION-noble" \
+    /bin/sh -c "npx -y playwright@$PW_VERSION run-server --port $WEBKIT_PORT --host 127.0.0.1")
+  for _ in $(seq 1 120); do ss -ltn | grep -q "127.0.0.1:$WEBKIT_PORT " && break; sleep 0.5; done
+  ss -ltn | grep -q "127.0.0.1:$WEBKIT_PORT " || die "WebKit server did not start"
+  export E2E_WEBKIT_WS="ws://127.0.0.1:$WEBKIT_PORT/"
+fi
+
 echo "== playwright"
 export E2E_BASE_URL="$BASE" E2E_NOMAP_BASE_URL="http://127.0.0.1:$WEB_NOMAP_PORT" \
   E2E_OSM_BASE_URL="http://127.0.0.1:$WEB_OSM_PORT" E2E_PREFIX="$PREFIX"
 cd apps/web
 node_modules/.bin/playwright test "$@"
+
+# Optional: E2E_WEBKIT_LEGACY=1 re-checks the bottom sheet DOM the tests dumped
+# in older WebKit builds (Safari 17/18 engines) and the current one. Shipping
+# Safari can lag Playwright's WebKit; servers are still up for the web fonts.
+if [[ ${E2E_WEBKIT_LEGACY:-} == 1 ]]; then
+  echo "== bottom sheet in WebKit 17.4 / 18.2 / 18.4 / current"
+  PW_VERSION=$(node -p 'require("./node_modules/@playwright/test/package.json").version')
+  docker run --rm --init --network host \
+    -v "$PWD/test-results/sheet-dom:/work:ro" -v "$ROOT/scripts/webkit-sheet-check.cjs:/check.cjs:ro" \
+    -v cctv-pw-legacy-cache:/cache \
+    "mcr.microsoft.com/playwright:v$PW_VERSION-noble" sh -c '
+      set -e; rc=0
+      for V in 1.45.0 1.49.0 1.52.0 '"$PW_VERSION"'; do
+        D=/cache/pw-$V; mkdir -p $D
+        [ -d $D/node_modules/playwright ] || (cd $D && npm i -s --no-audit --no-fund playwright@$V >/dev/null 2>&1)
+        export PLAYWRIGHT_BROWSERS_PATH=/cache/browsers-$V
+        [ "$V" = "'"$PW_VERSION"'" ] && export PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+        (cd $D && npx playwright install webkit >/dev/null 2>&1)
+        NODE_PATH=$D/node_modules node /check.cjs || rc=1
+      done; exit $rc'
+fi

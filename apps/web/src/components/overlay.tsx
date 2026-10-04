@@ -59,19 +59,26 @@ export function BottomSheet({
         if (e.target === e.currentTarget) onClose();
       }}
       className={cx(
-        'm-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-3xl border-0 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-zinc-950/40 backdrop:backdrop-blur-[2px]',
+        // cctv-sheet (globals.css): height fit-content (sized by its
+        // content), max-height 92vh, then 92dvh where supported.
+        'cctv-sheet m-0 mt-auto min-h-0 w-full max-w-none overflow-hidden rounded-t-3xl border-0 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-zinc-950/40 backdrop:backdrop-blur-[2px]',
         'sm:m-auto sm:max-w-lg sm:rounded-3xl',
-        tall && 'h-[94dvh] max-h-[94dvh] sm:h-auto sm:max-h-[90dvh]',
+        tall && 'cctv-sheet-tall sm:h-auto',
         side &&
           'lg:my-0 lg:ml-auto lg:mr-0 lg:h-dvh lg:max-h-dvh lg:max-w-md lg:rounded-none lg:rounded-l-3xl',
         'dark:bg-zinc-900 dark:text-zinc-100',
-        'open:flex open:flex-col',
+        // Plain [open] selector: Tailwind's `open:` variant compiles to
+        // :is([open], :popover-open, :open), which older Safari may not match.
+        '[&[open]]:flex [&[open]]:flex-col',
       )}
     >
-      <div className="flex justify-center pt-3 sm:hidden" aria-hidden>
+      <div className="flex flex-none justify-center pt-3 sm:hidden" aria-hidden>
         <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
       </div>
-      <header className="flex items-start justify-between gap-3 px-5 pb-2 pt-3 sm:pt-5">
+      <header
+        data-sheet-header
+        className="flex flex-none items-start justify-between gap-3 px-5 pb-2 pt-3 sm:pt-5"
+      >
         <div className="min-w-0">
           <h2 id={titleId} className="text-lg font-semibold tracking-tight">
             {title}
@@ -104,15 +111,48 @@ export function BottomSheet({
           </svg>
         </button>
       </header>
-      <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
-        {children}
+      {/*
+        Header / scroll area / footer are separate flex children of the sheet,
+        whose height is auto (content-sized) up to its max-height.
+        - Scroll area: the only scrolling element. flex: 1 1 auto, never
+          flex: 1 1 0% — on an iPhone 13 Pro Max (iOS 26.6.2, Safari) a basis-0
+          area collapsed to its 20 px padding (scrollHeight 172, clientHeight
+          20) and the footer covered the options. min-height: 0 lets it shrink
+          and scroll at max-height. No vertical padding on the scroll
+          container: spacing is real children (content wrapper + end spacer).
+        - Safe area: a spacer element at the end of the footer (or of the
+          sheet when there is no footer), never padding of the scroll area.
+      */}
+      <div
+        data-sheet-body
+        className="min-h-0 flex-auto overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch]"
+      >
+        <div className="px-5">{children}</div>
+        <div aria-hidden data-sheet-scroll-end className="h-5 shrink-0" />
       </div>
-      {footer && (
-        <div className="flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1">
-          {footer}
+      {footer ? (
+        <div
+          data-sheet-footer
+          className="flex flex-none flex-col border-t border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+        >
+          <div className="flex gap-3 px-5 py-3 [&>*]:flex-1">{footer}</div>
+          <SafeAreaSpacer />
         </div>
+      ) : (
+        <SafeAreaSpacer />
       )}
     </dialog>
+  );
+}
+
+/** Bottom safe area (home indicator) as a real element, 0 px elsewhere. */
+function SafeAreaSpacer() {
+  return (
+    <div
+      aria-hidden
+      data-sheet-safe-area
+      className="h-[env(safe-area-inset-bottom,0px)] flex-none"
+    />
   );
 }
 
@@ -166,16 +206,22 @@ export function Fab({
   label,
   icon,
   onClick,
+  hidden,
 }: {
   label: string;
   icon: ReactNode;
   onClick: () => void;
+  /** Out of sight while a sheet is open; stays mounted so focus can return. */
+  hidden?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-20 inline-flex min-h-14 items-center gap-2 rounded-2xl bg-indigo-600 pl-4 pr-5 text-base font-semibold text-white shadow-lg shadow-indigo-600/30 transition-colors hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 active:scale-[0.98] md:bottom-8 md:right-8 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+      className={cx(
+        hidden && 'invisible',
+        'fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-20 inline-flex min-h-14 items-center gap-2 rounded-2xl bg-indigo-600 pl-4 pr-5 text-base font-semibold text-white shadow-lg shadow-indigo-600/30 transition-colors hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 active:scale-[0.98] md:bottom-8 md:right-8 dark:bg-indigo-500 dark:hover:bg-indigo-400',
+      )}
     >
       {icon}
       {label}

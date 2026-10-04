@@ -143,3 +143,23 @@ body {
   left: -13px;
   top: -26px;
 }
+
+/* ---- Bottom sheet (components/overlay.tsx) ----------------------------- */
+/* Plain cascade fallback: browsers without dvh keep the vh value. Utilities
+   (sm:, lg: variants on the dialog) still override these. */
+@layer components {
+  /* Content-sized: a modal <dialog> is pinned with top: 0 and bottom: 0, so
+     height: auto would stretch it to its max-height. fit-content keeps it as
+     tall as header + content + footer, up to the max-height. */
+  .cctv-sheet {
+    height: -webkit-fit-content;
+    height: fit-content;
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+  /* Long forms: the full sheet height on phones, its content scrolls. */
+  .cctv-sheet-tall {
+    height: 92vh;
+    height: 92dvh;
+  }
+}
