@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PROJECT_STATUSES } from './enums.js';
+import { PROJECT_STATUSES, type CameraStatus } from './enums.js';
 import { latLngSchema } from './geo.js';
 
 export const createProjectSchema = z.object({
@@ -30,8 +30,17 @@ export const updateProjectSchema = z
   .refine((v) => Object.keys(v).length > 0, 'at least one field is required');
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 
+/** Camera points of a project, counted per status. */
+export interface ProjectCameraSummary {
+  total: number;
+  /** Statuses with no camera are omitted. */
+  byStatus: Partial<Record<CameraStatus, number>>;
+}
+
 export interface Project extends CreateProjectInput {
   id: string;
   createdAt: string;
   updatedAt: string;
+  /** Present in GET /projects and GET /projects/:id responses. */
+  cameras?: ProjectCameraSummary;
 }

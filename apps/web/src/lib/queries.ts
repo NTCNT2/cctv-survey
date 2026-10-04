@@ -43,7 +43,13 @@ export function useProjects() {
 }
 
 /** Largest page the API serves (GET /projects?limit ≤ 500). */
-export const OVERVIEW_LIMIT = 500;
+export const API_MAX_LIMIT = 500;
+
+/**
+ * Projects used for the overview. One less than the API maximum, so that the
+ * extra row that detects "there are more" still fits in one request.
+ */
+export const OVERVIEW_LIMIT = API_MAX_LIMIT - 1;
 
 /**
  * Up to OVERVIEW_LIMIT projects in one request, for the summary cards and

@@ -40,6 +40,38 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
   }
 
   describe('projects', () => {
+    it('counts camera points per status in list and detail', async () => {
+      const p = await createProject();
+      const add = async (label: string, status?: string) => {
+        const res = await http
+          .post('/api/cameras')
+          .send({
+            projectId: p.id,
+            label,
+            type: 'dome',
+            location: { lat: 13.75, lng: 100.5 },
+            ...(status && { status }),
+          })
+          .expect(201);
+        created.cameras.push(res.body.id);
+        return res.body.id as string;
+      };
+      await add('C-1');
+      await add('C-2');
+      const third = await add('C-3', 'installed');
+
+      const one = await http.get(`/api/projects/${p.id}`).expect(200);
+      expect(one.body.cameras).toEqual({
+        total: 3,
+        byStatus: { proposed: 2, installed: 1 },
+      });
+
+      await http.delete(`/api/cameras/${third}`).expect(204);
+      const list = await http.get('/api/projects?limit=500').expect(200);
+      const row = list.body.find((x: { id: string }) => x.id === p.id);
+      expect(row.cameras).toEqual({ total: 2, byStatus: { proposed: 2 } });
+    });
+
     it('creates, reads, lists and updates with lat/lng round-trip', async () => {
       const p = await createProject({
         customerName: 'ACME',
@@ -60,6 +92,10 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
 
       const list = await http.get('/api/projects?limit=500').expect(200);
       expect(list.body.map((x: { id: string }) => x.id)).toContain(p.id);
+
+      // Reads carry a camera summary; a new project has none.
+      const listed = list.body.find((x: { id: string }) => x.id === p.id);
+      expect(listed.cameras).toEqual({ total: 0, byStatus: {} });
 
       // PATCH keeps status (no zod default leak) and null clears fields
       await http

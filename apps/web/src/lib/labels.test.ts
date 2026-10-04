@@ -12,6 +12,7 @@ import {
   MOUNT_TYPE_LABELS,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_TONES,
+  formatRelative,
   projectStage,
   ROLE_LABELS,
 } from './labels';
@@ -42,5 +43,21 @@ describe('project workflow helpers', () => {
     expect(projectStage('surveying')).toEqual({ step: 2, of: 6 });
     expect(projectStage('completed')).toEqual({ step: 6, of: 6 });
     expect(projectStage('cancelled')).toBeNull();
+  });
+});
+
+describe('formatRelative', () => {
+  const now = Date.parse('2026-10-04T12:00:00Z');
+  const ago = (s: number) => new Date(now - s * 1000).toISOString();
+
+  it('says "just now" under a minute', () => {
+    expect(formatRelative(ago(30), now)).toBe('เมื่อสักครู่');
+  });
+
+  it('uses the largest whole unit', () => {
+    expect(formatRelative(ago(5 * 60), now)).toBe('5 นาทีที่ผ่านมา');
+    expect(formatRelative(ago(3 * 3600), now)).toBe('3 ชั่วโมงที่ผ่านมา');
+    expect(formatRelative(ago(24 * 3600), now)).toBe('เมื่อวาน');
+    expect(formatRelative(ago(3 * 24 * 3600), now)).toBe('3 วันที่ผ่านมา');
   });
 });

@@ -1,4 +1,4 @@
-import type { APIRequestContext } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { request } from '@playwright/test';
 
 /** Values provided by scripts/web-e2e.sh (test database only). */
@@ -76,3 +76,7 @@ export async function seedProject(
   const camera = (await c.json()) as { id: string };
   return { project, site, camera };
 }
+
+/** The project list on /projects (names also appear in the desktop overview). */
+export const projectList = (page: Page) =>
+  page.getByRole('list', { name: 'รายการโครงการ' });

@@ -38,7 +38,9 @@ test.describe('project list states', () => {
     fail = false;
     await page.getByRole('button', { name: 'ลองใหม่' }).click();
     await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'โครงการ' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'โครงการ', exact: true }),
+    ).toBeVisible();
   });
 });
 

@@ -1,7 +1,9 @@
-import type {
-  CreateProjectInput,
-  Project,
-  UpdateProjectInput,
+import {
+  CAMERA_STATUSES,
+  type CreateProjectInput,
+  type Project,
+  type ProjectCameraSummary,
+  type UpdateProjectInput,
 } from '@cctv/shared';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { sql, type Selectable, type UpdateObject } from 'kysely';
@@ -23,10 +25,39 @@ const columns = [
   sql<number | null>`ST_X(location)`.as('lng'),
 ] as const;
 
+/**
+ * Camera points per status as one JSON object, e.g. {"proposed": 3}. Uses the
+ * (project_id, label) unique index; statuses without cameras are absent.
+ */
+const cameraCounts = sql<Record<string, number>>`(
+  SELECT coalesce(jsonb_object_agg(s.status, s.n), '{}'::jsonb)
+  FROM (
+    SELECT status, count(*)::int AS n
+    FROM camera_points
+    WHERE camera_points.project_id = projects.id
+    GROUP BY status
+  ) s
+)`.as('camera_counts');
+
+/** Columns for reads (list / get): the project plus its camera summary. */
+const readColumns = [...columns, cameraCounts] as const;
+
 type Row = Omit<Selectable<ProjectsTable>, 'location'> & {
   lat: number | null;
   lng: number | null;
+  camera_counts?: Record<string, number>;
 };
+
+function toSummary(counts: Record<string, number>): ProjectCameraSummary {
+  const byStatus: ProjectCameraSummary['byStatus'] = {};
+  let total = 0;
+  for (const status of CAMERA_STATUSES) {
+    const n = counts[status] ?? 0;
+    if (n > 0) byStatus[status] = n;
+    total += n;
+  }
+  return { total, byStatus };
+}
 
 function toProject(r: Row): Project {
   return {
@@ -39,6 +70,7 @@ function toProject(r: Row): Project {
     notes: r.notes ?? undefined,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
+    ...(r.camera_counts && { cameras: toSummary(r.camera_counts) }),
   };
 }
 
@@ -49,7 +81,7 @@ export class ProjectsService {
   async list({ limit, offset }: PageQuery): Promise<Project[]> {
     const rows = await this.db
       .selectFrom('projects')
-      .select(columns)
+      .select(readColumns)
       .orderBy('created_at', 'desc')
       .orderBy('id')
       .limit(limit)
@@ -61,7 +93,7 @@ export class ProjectsService {
   async get(id: string): Promise<Project> {
     const row = await this.db
       .selectFrom('projects')
-      .select(columns)
+      .select(readColumns)
       .where('id', '=', id)
       .executeTakeFirst();
     if (!row) throw new NotFoundException('project not found');

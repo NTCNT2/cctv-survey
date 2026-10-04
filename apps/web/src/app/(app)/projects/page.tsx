@@ -1,6 +1,10 @@
 'use client';
 
-import type { Project, ProjectStatus } from '@cctv/shared';
+import type {
+  Project,
+  ProjectCameraSummary,
+  ProjectStatus,
+} from '@cctv/shared';
 import { PROJECT_STATUSES } from '@cctv/shared';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -14,6 +18,7 @@ import {
 import {
   IconArrowRight,
   IconBuilding,
+  IconCamera,
   IconCheck,
   IconClock,
   IconFolder,
@@ -22,6 +27,7 @@ import {
   IconPin,
   IconSearch,
 } from '@/components/icons';
+import { CameraMix } from '@/components/camera-mix';
 import {
   Badge,
   Button,
@@ -36,11 +42,12 @@ import {
 import { errorMessage } from '@/lib/api';
 import {
   formatDate,
+  formatRelative,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_TONES,
   projectStage,
 } from '@/lib/labels';
-import { useProjectOverview, useProjects } from '@/lib/queries';
+import { OVERVIEW_LIMIT, useProjectOverview, useProjects } from '@/lib/queries';
 import { useCan } from '@/lib/session';
 
 const cx = (...c: (string | false | undefined)[]) =>
@@ -114,7 +121,7 @@ function Projects() {
   };
 
   // Paged list (20 at a time) when nothing is filtered; the overview (up to
-  // 500) feeds the summary cards and every search / filter.
+  // OVERVIEW_LIMIT) feeds the summary cards and every search / filter.
   const projects = useProjects();
   const overview = useProjectOverview();
 
@@ -162,6 +169,10 @@ function Projects() {
       </div>
 
       <Summary overview={overview} />
+
+      {!filtering && overview.data && overview.data.projects.length > 0 && (
+        <OfficeOverview projects={overview.data.projects} />
+      )}
 
       <Toolbar
         q={q}
@@ -218,7 +229,8 @@ function Projects() {
               className="mb-3 text-sm text-zinc-600 dark:text-zinc-400"
             >
               พบ {items.length.toLocaleString('th-TH')} โครงการ
-              {overview.data?.truncated && ' (ค้นหาจาก 500 โครงการล่าสุด)'}
+              {overview.data?.truncated &&
+                ` (ค้นหาจาก ${OVERVIEW_LIMIT.toLocaleString('th-TH')} โครงการล่าสุด)`}
             </p>
           )}
           <ul
@@ -535,9 +547,22 @@ function ProjectCard({ project: p }: { project: Project }) {
           </Meta>
         )}
         {where && <Meta icon={<IconPin className="size-4" />}>{where}</Meta>}
+        {p.cameras && (
+          <Meta icon={<IconCamera className="size-4" />}>
+            {cameraText(p.cameras)}
+          </Meta>
+        )}
       </div>
-      <div className="mb-5 mt-5">
+      <div className="mb-5 mt-5 space-y-4">
         <StageBar status={p.status} />
+        {p.cameras && p.cameras.total > 0 && (
+          <div>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              สถานะจุดกล้อง
+            </p>
+            <CameraMix summary={p.cameras} className="mt-2" />
+          </div>
+        )}
       </div>
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
         <p className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
@@ -579,6 +604,11 @@ function ProjectRow({ project: p }: { project: Project }) {
             </Meta>
           )}
           {where && <Meta icon={<IconPin className="size-4" />}>{where}</Meta>}
+          {p.cameras && (
+            <Meta icon={<IconCamera className="size-4" />}>
+              {cameraText(p.cameras)}
+            </Meta>
+          )}
         </div>
       </div>
       <div className="sm:w-40">
@@ -595,5 +625,123 @@ function ProjectRow({ project: p }: { project: Project }) {
         <IconArrowRight />
       </span>
     </article>
+  );
+}
+
+const cameraText = (c: ProjectCameraSummary) =>
+  c.total === 0
+    ? 'ยังไม่มีจุดกล้อง'
+    : `กล้อง ${c.total.toLocaleString('th-TH')} ตัว`;
+
+// ---------------------------------------------------------------------------
+// Office overview (desktop): project status, camera points, recent updates.
+// Phones skip it: surveyors go straight to the project list.
+// ---------------------------------------------------------------------------
+
+function Panel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function OfficeOverview({ projects }: { projects: Project[] }) {
+  const byStatus = PROJECT_STATUSES.map((s) => ({
+    status: s,
+    count: projects.filter((p) => p.status === s).length,
+  }));
+  const max = Math.max(1, ...byStatus.map((b) => b.count));
+
+  const cameras: ProjectCameraSummary = { total: 0, byStatus: {} };
+  for (const p of projects) {
+    if (!p.cameras) continue;
+    cameras.total += p.cameras.total;
+    for (const [k, n] of Object.entries(p.cameras.byStatus)) {
+      const key = k as keyof ProjectCameraSummary['byStatus'];
+      cameras.byStatus[key] = (cameras.byStatus[key] ?? 0) + (n ?? 0);
+    }
+  }
+
+  const recent = [...projects]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 5);
+
+  return (
+    <div
+      role="region"
+      aria-label="ภาพรวมสำหรับสำนักงาน"
+      className="mb-8 hidden gap-4 lg:grid lg:grid-cols-3"
+    >
+      <Panel title="สถานะโครงการ">
+        <ul className="space-y-2.5">
+          {byStatus.map((b) => (
+            <li
+              key={b.status}
+              className="grid grid-cols-[7.5rem_1fr_2rem] items-center gap-3 text-sm"
+            >
+              <span className="truncate text-zinc-600 dark:text-zinc-400">
+                {PROJECT_STATUS_LABELS[b.status]}
+              </span>
+              <span className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <span
+                  className={cx(
+                    'block h-full rounded-full',
+                    b.status === 'completed'
+                      ? 'bg-emerald-500'
+                      : 'bg-indigo-500',
+                    b.count === 0 && 'hidden',
+                  )}
+                  style={{ width: `${(b.count / max) * 100}%` }}
+                />
+              </span>
+              <span className="text-right font-medium tabular-nums">
+                {b.count}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
+      <Panel title="ภาพรวมจุดกล้อง">
+        <p className="text-3xl font-semibold tabular-nums tracking-tight">
+          {cameras.total.toLocaleString('th-TH')}
+          <span className="ml-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">
+            จุดในทุกโครงการ
+          </span>
+        </p>
+        {cameras.total > 0 ? (
+          <CameraMix summary={cameras} legend className="mt-4" />
+        ) : (
+          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+            ยังไม่มีการสำรวจจุดกล้อง
+          </p>
+        )}
+      </Panel>
+
+      <Panel title="อัปเดตล่าสุด">
+        <ol className="space-y-1">
+          {recent.map((p) => (
+            <li key={p.id}>
+              <Link
+                href={`/projects/${p.id}`}
+                className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-xl px-2 py-1.5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-zinc-800"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">
+                    {p.name}
+                  </span>
+                  <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                    {formatRelative(p.updatedAt)}
+                  </span>
+                </span>
+                <StatusBadge status={p.status} />
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </Panel>
+    </div>
   );
 }

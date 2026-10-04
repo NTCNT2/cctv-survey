@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { adminApi, seedProject, storage } from './env';
+import { adminApi, projectList, seedProject, storage } from './env';
 
 /** Runs on the emulated phones (Pixel 7, iPhone 13 — Chromium). */
 
@@ -38,14 +38,16 @@ test.describe('signed in', () => {
 
   test('list, detail and forms fit the screen', async ({ page }, info) => {
     await page.goto('/projects');
-    await expect(page.getByText(seeded.project.name)).toBeVisible();
+    await expect(
+      projectList(page).getByText(seeded.project.name),
+    ).toBeVisible();
     await expectNoHorizontalScroll(page);
     await info.attach('projects', {
       body: await page.screenshot(),
       contentType: 'image/png',
     });
 
-    await page.getByText(seeded.project.name).tap();
+    await projectList(page).getByText(seeded.project.name).tap();
     await expect(
       page.getByRole('heading', { name: seeded.project.name }),
     ).toBeVisible();

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { adminApi, seedProject, storage } from './env';
+import { adminApi, projectList, seedProject, storage } from './env';
 
 let seeded: Awaited<ReturnType<typeof seedProject>>;
 
@@ -14,12 +14,43 @@ test.describe('viewer (read-only)', () => {
 
   test('sees data but no create, edit or delete controls', async ({ page }) => {
     await page.goto('/projects');
-    await expect(page.getByText(seeded.project.name)).toBeVisible();
+    await expect(
+      projectList(page).getByText(seeded.project.name),
+    ).toBeVisible();
+    // The card shows the real camera count from the API (seeded: CAM-01).
+    await expect(
+      page.getByRole('article').filter({ hasText: seeded.project.name }),
+    ).toContainText('กล้อง 1 ตัว');
+    // Summary cards come from the real API (no "—" = request accepted).
+    const summary = page.getByRole('region', { name: 'สรุปโครงการ' });
+    await expect(summary.getByText('—')).toHaveCount(0);
+    await expect(
+      summary.getByRole('definition').filter({ hasText: /^\d/ }).first(),
+    ).toBeVisible();
+    // Search filters through the overview query against the real API.
+    await page
+      .getByRole('searchbox', { name: 'ค้นหาในรายการโครงการ' })
+      .fill(seeded.project.name);
+    await expect(page.getByRole('status')).toContainText('พบ');
+    await expect(
+      page.getByRole('list', { name: 'รายการโครงการ' }).getByRole('listitem'),
+    ).toHaveCount(1);
+    await page
+      .getByRole('searchbox', { name: 'ค้นหาในรายการโครงการ' })
+      .fill('');
+    // Desktop office overview.
+    const overview = page.getByRole('region', {
+      name: 'ภาพรวมสำหรับสำนักงาน',
+    });
+    await expect(overview).toBeVisible();
+    await expect(
+      overview.getByRole('heading', { name: 'ภาพรวมจุดกล้อง' }),
+    ).toBeVisible();
     await expect(
       page.getByRole('link', { name: '+ สร้างโครงการ' }),
     ).toHaveCount(0);
 
-    await page.getByText(seeded.project.name).click();
+    await projectList(page).getByText(seeded.project.name).click();
     await expect(
       page.getByRole('heading', { name: seeded.project.name }),
     ).toBeVisible();
