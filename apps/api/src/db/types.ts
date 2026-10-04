@@ -1,8 +1,10 @@
 import type {
+  CameraPurpose,
   CameraStatus,
   CameraType,
   MountType,
   ProjectStatus,
+  StructureType,
   UserRole,
 } from '@cctv/shared';
 import type { ColumnType, Generated } from 'kysely';
@@ -59,6 +61,25 @@ export interface CameraPointsTable {
   poe: boolean | null;
   cable_length_m: number | null;
   notes: string | null;
+  // 0004_survey_fields
+  gps_accuracy_m: number | null;
+  address: string | null;
+  surveyed_at: ColumnType<
+    Date | null,
+    string | Date | null,
+    string | Date | null
+  >;
+  surveyor_id: ColumnType<string | null, string | null, never>;
+  brand: string | null;
+  camera_count: Generated<number>;
+  view_distance_m: number | null;
+  purpose: CameraPurpose | null;
+  structure_type: StructureType | null;
+  pole_height_m: number | null;
+  cabinet_distance_m: number | null;
+  power_available: boolean | null;
+  fiber_available: boolean | null;
+  network_available: boolean | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

@@ -24,7 +24,6 @@ import {
   StatCard,
   Tabs,
   TextField,
-  type BadgeTone,
 } from '@/components/ui';
 import {
   CAMERA_STATUS_LABELS,
@@ -37,16 +36,6 @@ import {
  * Living reference of the design system (Phase 1). Signed-in only, not in
  * the navigation; every component here is the one the app uses.
  */
-
-/** Survey statuses planned for Phase 3, with their agreed colours. */
-const SURVEY_PALETTE: { label: string; tone: BadgeTone }[] = [
-  { label: 'รอสำรวจ', tone: 'neutral' },
-  { label: 'สำรวจแล้ว', tone: 'blue' },
-  { label: 'รอออกแบบ', tone: 'orange' },
-  { label: 'รอติดตั้ง', tone: 'violet' },
-  { label: 'ติดตั้งแล้ว', tone: 'green' },
-  { label: 'มีปัญหา', tone: 'red' },
-];
 
 function Section({
   title,
@@ -91,16 +80,9 @@ export default function DesignSystemPage() {
 
       <Section
         title="สถานะจุดกล้อง"
-        detail="ชุดสีของสถานะการสำรวจ (ใช้จริงเมื่อเพิ่มสถานะใหม่ใน Phase 3) และสถานะที่ใช้อยู่ตอนนี้"
+        detail="วงจรงานสำรวจ: รอสำรวจ → สำรวจแล้ว → รอออกแบบ → รอติดตั้ง → ติดตั้งแล้ว (มีปัญหา = ต้องตรวจสอบ)"
       >
-        <div className="flex flex-wrap gap-2" aria-label="ชุดสีสถานะการสำรวจ">
-          {SURVEY_PALETTE.map((s) => (
-            <Badge key={s.label} tone={s.tone} dot>
-              {s.label}
-            </Badge>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
           {CAMERA_STATUSES.map((s) => (
             <Badge key={s} tone={CAMERA_STATUS_TONES[s]} dot>
               {CAMERA_STATUS_LABELS[s]}

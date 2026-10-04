@@ -148,10 +148,16 @@ const SURVEY_WRITES = new Set([
   'delete camera',
 ]);
 
+/** Engineers add and edit camera points (camera:write) only. */
+const ENGINEER_WRITES = new Set(['create camera', 'update camera']);
+
 /** Allowed? per role — mirrors ROLE_PERMISSIONS in packages/shared. */
 function allowed(role: UserRole, name: string): boolean {
   if (role === 'admin') return true;
   if (role === 'surveyor') return READS.has(name) || SURVEY_WRITES.has(name);
+  if (role === 'engineer') {
+    return READS.has(name) || ENGINEER_WRITES.has(name);
+  }
   return READS.has(name);
 }
 
@@ -170,7 +176,7 @@ describe('Role-based access control (e2e)', () => {
     app = await createTestApp();
     users = new UserFactory(app);
     admin = await loginAgent(app, await users.create('admin'));
-    for (const role of ['admin', 'surveyor', 'viewer'] as const) {
+    for (const role of ['admin', 'surveyor', 'engineer', 'viewer'] as const) {
       agents[role] = await loginAgent(app, await users.create(role));
     }
   });
@@ -240,7 +246,7 @@ describe('Role-based access control (e2e)', () => {
     }
   });
 
-  for (const role of ['viewer', 'surveyor', 'admin'] as const) {
+  for (const role of ['viewer', 'engineer', 'surveyor', 'admin'] as const) {
     it(`${role}: allowed routes succeed, others are 403`, async () => {
       for (const [i, c] of ROUTES.entries()) {
         // Deletes need a target without children, so seed per route.

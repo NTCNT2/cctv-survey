@@ -1,8 +1,10 @@
 import type {
+  CameraPurpose,
   CameraStatus,
   CameraType,
   MountType,
   ProjectStatus,
+  StructureType,
   UserRole,
 } from '@cctv/shared';
 import type { BadgeTone } from '@/components/ui';
@@ -51,23 +53,22 @@ export function projectStage(
 }
 
 export const CAMERA_STATUS_LABELS: Record<CameraStatus, string> = {
-  proposed: 'เสนอ',
-  approved: 'อนุมัติแล้ว',
+  pending_survey: 'รอสำรวจ',
+  surveyed: 'สำรวจแล้ว',
+  pending_design: 'รอออกแบบ',
+  pending_install: 'รอติดตั้ง',
   installed: 'ติดตั้งแล้ว',
-  removed: 'ถอดออก',
+  issue: 'มีปัญหา',
 };
 
-/**
- * Badge colour per camera status. Design palette (Phase 1): gray = not yet
- * surveyed, blue = surveyed, orange = in design, violet = waiting for
- * installation, green = installed, red = problem. Mapped onto today's statuses
- * until the survey statuses arrive (Phase 3).
- */
+/** Badge colour per camera status (design system, Phase 1). */
 export const CAMERA_STATUS_TONES: Record<CameraStatus, BadgeTone> = {
-  proposed: 'blue',
-  approved: 'violet',
+  pending_survey: 'neutral',
+  surveyed: 'blue',
+  pending_design: 'orange',
+  pending_install: 'violet',
   installed: 'green',
-  removed: 'muted',
+  issue: 'red',
 };
 
 export const CAMERA_TYPE_LABELS: Record<CameraType, string> = {
@@ -76,7 +77,24 @@ export const CAMERA_TYPE_LABELS: Record<CameraType, string> = {
   turret: 'Turret',
   ptz: 'PTZ',
   fisheye: 'Fisheye',
-  box: 'Box',
+  box: 'Fixed (Box)',
+};
+
+export const CAMERA_PURPOSE_LABELS: Record<CameraPurpose, string> = {
+  entrance: 'ทางเข้า',
+  road: 'ถนน',
+  parking: 'ลานจอดรถ',
+  walkway: 'ทางเดิน',
+  building: 'อาคาร',
+  critical_area: 'พื้นที่สำคัญ',
+  other: 'อื่นๆ',
+};
+
+export const STRUCTURE_TYPE_LABELS: Record<StructureType, string> = {
+  new_pole: 'เสาใหม่',
+  existing_pole: 'เสาไฟเดิม',
+  building: 'อาคาร',
+  wall: 'ติดผนัง',
 };
 
 export const MOUNT_TYPE_LABELS: Record<MountType, string> = {
@@ -89,6 +107,7 @@ export const MOUNT_TYPE_LABELS: Record<MountType, string> = {
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'ผู้ดูแลระบบ',
   surveyor: 'ผู้สำรวจ',
+  engineer: 'วิศวกร',
   viewer: 'ผู้ดู',
 };
 

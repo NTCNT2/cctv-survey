@@ -26,15 +26,35 @@ const columns = [
   'poe',
   'cable_length_m',
   'notes',
+  'gps_accuracy_m',
+  'address',
+  'surveyed_at',
+  'surveyor_id',
+  'brand',
+  'camera_count',
+  'view_distance_m',
+  'purpose',
+  'structure_type',
+  'pole_height_m',
+  'cabinet_distance_m',
+  'power_available',
+  'fiber_available',
+  'network_available',
   'created_at',
   'updated_at',
   sql<number>`ST_Y(location)`.as('lat'),
   sql<number>`ST_X(location)`.as('lng'),
+  // A scalar subquery also works in INSERT / UPDATE … RETURNING.
+  sql<string | null>`(
+    SELECT coalesce(display_name, username) FROM users
+    WHERE users.id = camera_points.surveyor_id
+  )`.as('surveyor_name'),
 ] as const;
 
 type Row = Omit<Selectable<CameraPointsTable>, 'location'> & {
   lat: number;
   lng: number;
+  surveyor_name: string | null;
 };
 
 function toCamera(r: Row): CameraPoint {
@@ -56,6 +76,21 @@ function toCamera(r: Row): CameraPoint {
     poe: r.poe ?? undefined,
     cableLengthM: r.cable_length_m ?? undefined,
     notes: r.notes ?? undefined,
+    gpsAccuracyM: r.gps_accuracy_m ?? undefined,
+    address: r.address ?? undefined,
+    surveyedAt: r.surveyed_at?.toISOString(),
+    surveyorId: r.surveyor_id ?? undefined,
+    surveyorName: r.surveyor_name ?? undefined,
+    brand: r.brand ?? undefined,
+    cameraCount: r.camera_count,
+    viewDistanceM: r.view_distance_m ?? undefined,
+    purpose: r.purpose ?? undefined,
+    structureType: r.structure_type ?? undefined,
+    poleHeightM: r.pole_height_m ?? undefined,
+    cabinetDistanceM: r.cabinet_distance_m ?? undefined,
+    powerAvailable: r.power_available ?? undefined,
+    fiberAvailable: r.fiber_available ?? undefined,
+    networkAvailable: r.network_available ?? undefined,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
   };
@@ -88,7 +123,14 @@ export class CamerasService {
     return toCamera(row);
   }
 
-  async create(input: CreateCameraPointInput): Promise<CameraPoint> {
+  /**
+   * `surveyorId` is the signed-in user (never taken from the body);
+   * `surveyedAt` defaults to now when the client does not send one.
+   */
+  async create(
+    input: CreateCameraPointInput,
+    surveyorId: string,
+  ): Promise<CameraPoint> {
     const row = await this.db
       .insertInto('camera_points')
       .values({
@@ -108,6 +150,20 @@ export class CamerasService {
         poe: input.poe,
         cable_length_m: input.cableLengthM,
         notes: input.notes,
+        gps_accuracy_m: input.gpsAccuracyM,
+        address: input.address,
+        surveyed_at: input.surveyedAt ?? new Date(),
+        surveyor_id: surveyorId,
+        brand: input.brand,
+        camera_count: input.cameraCount,
+        view_distance_m: input.viewDistanceM,
+        purpose: input.purpose,
+        structure_type: input.structureType,
+        pole_height_m: input.poleHeightM,
+        cabinet_distance_m: input.cabinetDistanceM,
+        power_available: input.powerAvailable,
+        fiber_available: input.fiberAvailable,
+        network_available: input.networkAvailable,
       })
       .returning(columns)
       .executeTakeFirstOrThrow();
@@ -134,6 +190,19 @@ export class CamerasService {
       poe: input.poe,
       cable_length_m: input.cableLengthM,
       notes: input.notes,
+      gps_accuracy_m: input.gpsAccuracyM,
+      address: input.address,
+      surveyed_at: input.surveyedAt,
+      brand: input.brand,
+      camera_count: input.cameraCount,
+      view_distance_m: input.viewDistanceM,
+      purpose: input.purpose,
+      structure_type: input.structureType,
+      pole_height_m: input.poleHeightM,
+      cabinet_distance_m: input.cabinetDistanceM,
+      power_available: input.powerAvailable,
+      fiber_available: input.fiberAvailable,
+      network_available: input.networkAvailable,
     };
     const row = await this.db
       .updateTable('camera_points')

@@ -39,6 +39,100 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
     return res.body;
   }
 
+  describe('camera survey fields (0004)', () => {
+    it('stores every survey field, sets the surveyor from the session', async () => {
+      const p = await createProject();
+      const me = await http.get('/api/auth/me').expect(200);
+      const res = await http
+        .post('/api/cameras')
+        .send({
+          projectId: p.id,
+          label: 'CCTV-001',
+          type: 'bullet',
+          location: { lat: 13.75, lng: 100.5 },
+          gpsAccuracyM: 3.4,
+          address: 'หน้าอาคาร A',
+          brand: 'Sony',
+          model: 'XYZ',
+          resolutionMp: 4,
+          cameraCount: 2,
+          bearingDeg: 75,
+          fovDeg: 90,
+          viewDistanceM: 30,
+          purpose: 'entrance',
+          mountHeightM: 6,
+          structureType: 'new_pole',
+          poleHeightM: 6,
+          cabinetDistanceM: 125,
+          cableLengthM: 140,
+          powerAvailable: true,
+          fiberAvailable: false,
+          networkAvailable: true,
+          // Not accepted from the client: stripped by the schema.
+          surveyorId: '00000000-0000-4000-8000-000000000000',
+        })
+        .expect(201);
+      created.cameras.push(res.body.id);
+      expect(res.body).toMatchObject({
+        status: 'surveyed',
+        gpsAccuracyM: 3.4,
+        address: 'หน้าอาคาร A',
+        brand: 'Sony',
+        cameraCount: 2,
+        viewDistanceM: 30,
+        purpose: 'entrance',
+        structureType: 'new_pole',
+        poleHeightM: 6,
+        cabinetDistanceM: 125,
+        powerAvailable: true,
+        fiberAvailable: false,
+        networkAvailable: true,
+        surveyorId: me.body.id,
+        surveyorName: me.body.displayName ?? me.body.username,
+      });
+      expect(Date.now() - Date.parse(res.body.surveyedAt)).toBeLessThan(60_000);
+
+      // PATCH: null clears, cameraCount keeps its value when absent.
+      const upd = await http
+        .patch(`/api/cameras/${res.body.id}`)
+        .send({ status: 'pending_design', brand: null, purpose: null })
+        .expect(200);
+      expect(upd.body).toMatchObject({
+        status: 'pending_design',
+        cameraCount: 2,
+      });
+      expect(upd.body.brand).toBeUndefined();
+      expect(upd.body.purpose).toBeUndefined();
+      expect(upd.body.surveyorId).toBe(me.body.id);
+
+      const list = await http.get(`/api/projects/${p.id}/cameras`).expect(200);
+      expect(list.body[0].surveyorName).toBe(res.body.surveyorName);
+    });
+
+    it('rejects old statuses and out-of-range survey values', async () => {
+      const p = await createProject();
+      const base = {
+        projectId: p.id,
+        label: 'BAD',
+        type: 'dome',
+        location: { lat: 13.75, lng: 100.5 },
+      };
+      for (const bad of [
+        { status: 'proposed' },
+        { cameraCount: 0 },
+        { purpose: 'garden' },
+        { structureType: 'tree' },
+        { gpsAccuracyM: -1 },
+        { surveyedAt: 'yesterday' },
+      ]) {
+        await http
+          .post('/api/cameras')
+          .send({ ...base, ...bad })
+          .expect(400);
+      }
+    });
+  });
+
   describe('projects', () => {
     it('counts camera points per status in list and detail', async () => {
       const p = await createProject();
@@ -63,13 +157,13 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
       const one = await http.get(`/api/projects/${p.id}`).expect(200);
       expect(one.body.cameras).toEqual({
         total: 3,
-        byStatus: { proposed: 2, installed: 1 },
+        byStatus: { surveyed: 2, installed: 1 },
       });
 
       await http.delete(`/api/cameras/${third}`).expect(204);
       const list = await http.get('/api/projects?limit=500').expect(200);
       const row = list.body.find((x: { id: string }) => x.id === p.id);
-      expect(row.cameras).toEqual({ total: 2, byStatus: { proposed: 2 } });
+      expect(row.cameras).toEqual({ total: 2, byStatus: { surveyed: 2 } });
     });
 
     it('creates, reads, lists and updates with lat/lng round-trip', async () => {
@@ -213,7 +307,7 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
       created.cameras.push(cam.id);
       expect(cam).toMatchObject({
         siteId: site.id,
-        status: 'proposed',
+        status: 'surveyed',
         location: { lat: 13.7566, lng: 100.5021 },
         bearingDeg: 90,
         poe: true,

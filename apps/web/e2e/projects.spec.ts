@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { adminApi, PREFIX, seedProject, storage } from './env';
+import { adminApi, PREFIX, seedProject, storage, users } from './env';
 
 test.describe('project list states', () => {
   test.use({ storageState: storage.viewer });
@@ -100,12 +100,32 @@ test.describe('admin: full create / edit / delete flow', () => {
     await expect(page.getByText('ต้องน้อยกว่า 360')).toBeVisible();
     await page.getByLabel('ทิศทาง (องศา)').fill('90');
     await page.getByLabel('PoE').selectOption('true');
+    // Survey fields (0004)
+    await page.getByLabel('ยี่ห้อ').fill('Sony');
+    await page.getByLabel('วัตถุประสงค์').selectOption('entrance');
+    await page.getByLabel('ระยะมองเห็น (ม.)').fill('30');
+    await page.getByLabel('โครงสร้างที่ติดตั้ง').selectOption('new_pole');
+    await page.getByLabel('ไฟฟ้า').selectOption('true');
     await page.getByRole('button', { name: 'บันทึก' }).click();
 
     const cameras = page.getByRole('list', { name: 'รายการกล้อง' });
     await expect(cameras).toContainText('CAM-01');
     await expect(cameras).toContainText('อาคาร A');
     await expect(cameras).toContainText('ทิศ 90°');
+    await expect(cameras).toContainText('Sony');
+    // The surveyor is the signed-in user, set by the server.
+    await expect(cameras).toContainText(users.admin.username);
+    const overview = page.getByRole('region', { name: 'ภาพรวมจุดกล้อง' });
+    await expect(
+      overview.getByRole('definition').filter({ hasText: /^1$/ }).first(),
+    ).toBeVisible();
+    // Filters: no installed camera yet, then back to all.
+    await page.getByLabel('กรองตามสถานะ').selectOption('installed');
+    await expect(
+      page.getByText('ไม่พบจุดกล้องที่ตรงกับเงื่อนไข'),
+    ).toBeVisible();
+    await page.getByLabel('กรองตามสถานะ').selectOption('');
+    await expect(cameras).toContainText('CAM-01');
 
     // A second camera with the same label → API 409, shown on the form
     await page.getByRole('link', { name: '+ เพิ่มกล้อง' }).click();

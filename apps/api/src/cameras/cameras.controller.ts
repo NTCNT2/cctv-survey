@@ -1,4 +1,5 @@
 import {
+  type AuthUser,
   createCameraPointSchema,
   updateCameraPointSchema,
   type CameraPoint,
@@ -18,7 +19,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { z } from 'zod';
-import { RequirePermission } from '../auth/decorators.js';
+import { CurrentUser, RequirePermission } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { CamerasService } from './cameras.service.js';
@@ -54,8 +55,9 @@ export class CamerasController {
   create(
     @Body(new ZodValidationPipe(createCameraPointSchema))
     body: CreateCameraPointInput,
+    @CurrentUser() user: AuthUser,
   ): Promise<CameraPoint> {
-    return this.cameras.create(body);
+    return this.cameras.create(body, user.id);
   }
 
   @RequirePermission('camera:write')

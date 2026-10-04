@@ -113,9 +113,17 @@ const SURVEY: readonly Action[] = [
   'camera:delete',
 ];
 
+/**
+ * Engineer: reviews survey data and works on the design — adds and edits
+ * camera points (status, direction, FOV, structure; `camera:write` covers
+ * both). Cannot delete points or change projects / sites.
+ */
+const ENGINEER: readonly Action[] = [...READ, 'camera:write'];
+
 export const ROLE_PERMISSIONS: Readonly<Record<UserRole, readonly Action[]>> = {
   viewer: READ,
   surveyor: SURVEY,
+  engineer: ENGINEER,
   admin: ACTIONS,
 };
 

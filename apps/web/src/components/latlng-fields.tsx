@@ -19,12 +19,15 @@ export function LatLngFields({
   onChange,
   error,
   required,
+  onLocated,
 }: {
   id: string;
   value: LatLngText;
   onChange: (v: LatLngText) => void;
   error?: string;
   required?: boolean;
+  /** Called with the GPS accuracy (metres) after "use my location". */
+  onLocated?: (accuracyM: number) => void;
 }) {
   // Only known in the browser; `false` during server rendering avoids a
   // markup mismatch.
@@ -46,6 +49,7 @@ export function LatLngFields({
           lat: pos.coords.latitude.toFixed(7),
           lng: pos.coords.longitude.toFixed(7),
         });
+        onLocated?.(pos.coords.accuracy);
       },
       (err) => {
         setLocating(false);
