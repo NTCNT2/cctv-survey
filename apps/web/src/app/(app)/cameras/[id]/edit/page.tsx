@@ -19,14 +19,15 @@ const allProjects = { href: '/projects', label: 'โครงการทั้�
 export default function EditCameraPage() {
   const { id } = useParams<{ id: string }>();
   const allowed = useCan('camera:write');
-  const camera = useCamera(id);
+  // The form starts from what is in the database now, not a cached copy.
+  const camera = useCamera(id, { fresh: true });
 
   return !allowed ? (
     <>
       <PageHeader title="แก้ไขกล้อง" back={allProjects} />
       <Forbidden />
     </>
-  ) : camera.isPending ? (
+  ) : camera.isPending || (camera.isFetching && !camera.isFetchedAfterMount) ? (
     <Skeleton />
   ) : camera.isError ? (
     <>
@@ -69,7 +70,8 @@ function EditCamera({ camera }: { camera: CameraPoint }) {
             initial={camera}
             cancelHref={back.href}
             onSubmit={async (v) => {
-              await update.mutateAsync(v);
+              // Nothing changed: no request.
+              if (Object.keys(v).length > 0) await update.mutateAsync(v);
               router.replace(back.href);
             }}
           />

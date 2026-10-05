@@ -262,6 +262,39 @@ export function CameraForm(props: Props) {
     yesNo(c?.networkAvailable),
   );
   const [notes, setNotes] = useState(c?.notes ?? '');
+  /** Every field as typed, keyed like the request body. */
+  const typed = {
+    siteId,
+    label,
+    type,
+    status,
+    location: `${location.lat}|${location.lng}`,
+    gpsAccuracyM,
+    address,
+    surveyedAt,
+    brand,
+    model,
+    resolutionMp,
+    lensMm,
+    cameraCount,
+    purpose,
+    bearingDeg,
+    fovDeg,
+    viewDistanceM,
+    mountType,
+    mountHeightM,
+    structureType,
+    poleHeightM,
+    cabinetDistanceM,
+    cableLengthM,
+    poe,
+    powerAvailable,
+    fiberAvailable,
+    networkAvailable,
+    notes,
+  };
+  /** What the form opened with: on edit, only fields that differ are sent. */
+  const [opened] = useState(typed);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -317,14 +350,27 @@ export function CameraForm(props: Props) {
       fiberAvailable: bool(fiberAvailable),
       networkAvailable: bool(networkAvailable),
       notes: text(notes, empty),
-    };
+    } satisfies Record<keyof typeof typed, unknown>;
+    // Edit: a field the user left alone is not sent, so the database keeps
+    // its value (never the form's default or its formatting of it).
+    const changes = Object.fromEntries(
+      Object.entries(common).filter(
+        ([k]) =>
+          typed[k as keyof typeof typed] !== opened[k as keyof typeof opened],
+      ),
+    );
+    if (props.mode === 'edit' && Object.keys(changes).length === 0) {
+      setErrors({});
+      await props.onSubmit({});
+      return;
+    }
     const r =
       props.mode === 'create'
         ? validate(createCameraPointSchema, {
             projectId: props.projectId,
             ...common,
           })
-        : validate(updateCameraPointSchema, common);
+        : validate(updateCameraPointSchema, changes);
     if (r.errors) {
       setErrors(r.errors);
       revealErrors(r.errors);

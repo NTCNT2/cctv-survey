@@ -85,8 +85,13 @@ export const useCameras = (projectId: string) =>
     queryFn: () => api.cameras.list(projectId),
   });
 
-export const useCamera = (id: string) =>
-  useQuery({ queryKey: keys.camera(id), queryFn: () => api.cameras.get(id) });
+/** `fresh`: always re-read on mount (an edit form must not start from a cached copy). */
+export const useCamera = (id: string, opts?: { fresh?: boolean }) =>
+  useQuery({
+    queryKey: keys.camera(id),
+    queryFn: () => api.cameras.get(id),
+    ...(opts?.fresh && { refetchOnMount: 'always' as const }),
+  });
 
 // ---------------------------------------------------------------------------
 // Mutations: each refreshes the lists and details it can affect.
