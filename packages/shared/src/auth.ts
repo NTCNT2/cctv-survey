@@ -99,6 +99,8 @@ export const ACTIONS = [
   'camera:read',
   'camera:write',
   'camera:delete',
+  /** Add / edit / (de)activate camera models in the master list. */
+  'camera_model:manage',
   'user:manage',
 ] as const;
 export type Action = (typeof ACTIONS)[number];

@@ -4,9 +4,11 @@ import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CameraModelsModule } from './camera-models/camera-models.module.js';
 import { CamerasModule } from './cameras/cameras.module.js';
 import { PgErrorFilter } from './common/pg-error.filter.js';
 import { DatabaseModule } from './db/database.module.js';
+import { PhotosModule } from './photos/photos.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { SitesModule } from './sites/sites.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -23,7 +25,9 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     ProjectsModule,
     SitesModule,
+    CameraModelsModule,
     CamerasModule,
+    PhotosModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_FILTER, useClass: PgErrorFilter }],

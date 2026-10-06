@@ -1,7 +1,9 @@
 import { ACTIONS, can } from '@cctv/shared';
 import { PATH_METADATA } from '@nestjs/common/constants.js';
 import { AppController } from '../app.controller.js';
+import { CameraModelsController } from '../camera-models/camera-models.controller.js';
 import { CamerasController } from '../cameras/cameras.controller.js';
+import { PhotosController } from '../photos/photos.controller.js';
 import { ProjectsController } from '../projects/projects.controller.js';
 import { SitesController } from '../sites/sites.controller.js';
 import { UsersController } from '../users/users.controller.js';
@@ -15,6 +17,8 @@ const CONTROLLERS = [
   ProjectsController,
   SitesController,
   CamerasController,
+  CameraModelsController,
+  PhotosController,
 ];
 
 /** 'public', 'authenticated', or a permission action. */
@@ -48,7 +52,8 @@ describe('route access rules', () => {
   const rules = routeRules();
 
   it('finds every route', () => {
-    expect(rules.size).toBe(25); // 1 health + 4 auth + 5 users + 15 CRUD
+    // 1 health + 4 auth + 5 users + 15 CRUD + 3 camera models + 5 photos
+    expect(rules.size).toBe(33);
   });
 
   it('every route declares exactly one access rule', () => {

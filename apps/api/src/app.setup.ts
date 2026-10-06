@@ -1,3 +1,4 @@
+import { PHOTO_UPLOAD_TYPES } from '@cctv/shared';
 import {
   UnsupportedMediaTypeException,
   ValidationPipe,
@@ -13,18 +14,28 @@ const DEFAULT_CORS_ORIGIN = 'http://localhost:3000,http://127.0.0.1:3000';
 
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+/** POST /api/cameras/:id/photos takes a raw image body (photos.controller.ts). */
+const PHOTO_UPLOAD_PATH = /^\/api\/cameras\/[^/]+\/photos$/;
+
 /**
  * Request bodies must be JSON. HTML forms can only send urlencoded, multipart
  * or text/plain, so this also blocks form-based CSRF (on top of SameSite).
+ * The one exception, a photo upload, must be image/jpeg|png|webp — also not
+ * something a form can send.
  */
 function requireJsonBody(req: Request, _res: Response, next: NextFunction) {
   const hasBody =
     req.headers['transfer-encoding'] !== undefined ||
     Number(req.headers['content-length'] ?? 0) > 0;
   const declared = req.headers['content-type'] !== undefined;
+  const photoUpload =
+    req.method === 'POST' &&
+    PHOTO_UPLOAD_PATH.test(req.path) &&
+    req.is([...PHOTO_UPLOAD_TYPES]) !== false;
   if (
     BODY_METHODS.has(req.method) &&
     (hasBody || declared) &&
+    !photoUpload &&
     !req.is('application/json')
   ) {
     next(new UnsupportedMediaTypeException('request body must be JSON'));

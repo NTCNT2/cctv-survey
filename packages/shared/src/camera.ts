@@ -3,18 +3,26 @@ import {
   CAMERA_PURPOSES,
   CAMERA_STATUSES,
   CAMERA_TYPES,
+  type CameraType,
   MOUNT_TYPES,
   STRUCTURE_TYPES,
 } from './enums.js';
 import { latLngSchema } from './geo.js';
 
-export const createCameraPointSchema = z.object({
+const cameraPointFields = z.object({
   projectId: z.uuid(),
   /** Optional; must belong to the same project (the survey area). */
   siteId: z.uuid().optional(),
   /** Point code, e.g. CCTV-001; unique per project. */
   label: z.string().trim().min(1).max(50),
-  type: z.enum(CAMERA_TYPES),
+  /**
+   * Camera model from the master list (Quick Add). When set, the server copies
+   * its brand, model, type and resolution onto the point (a snapshot: the
+   * point keeps them if the model is later edited or deactivated).
+   */
+  cameraModelId: z.uuid().optional(),
+  /** Required unless `cameraModelId` is given. */
+  type: z.enum(CAMERA_TYPES).optional(),
   status: z.enum(CAMERA_STATUSES).default('surveyed'),
   location: latLngSchema,
 
@@ -56,9 +64,14 @@ export const createCameraPointSchema = z.object({
 
   notes: z.string().max(5000).optional(),
 });
+
+export const createCameraPointSchema = cameraPointFields.refine(
+  (v) => v.type !== undefined || v.cameraModelId !== undefined,
+  { path: ['type'], message: 'type is required without cameraModelId' },
+);
 export type CreateCameraPointInput = z.infer<typeof createCameraPointSchema>;
 
-const cam = createCameraPointSchema.shape;
+const cam = cameraPointFields.shape;
 
 /**
  * PATCH body: every field optional, `null` clears an optional field. Built
@@ -69,7 +82,9 @@ export const updateCameraPointSchema = z
   .object({
     siteId: cam.siteId.unwrap().nullable(),
     label: cam.label,
-    type: cam.type,
+    /** `null` unlinks the model; the point keeps its brand / model / type. */
+    cameraModelId: cam.cameraModelId.unwrap().nullable(),
+    type: cam.type.unwrap(),
     status: z.enum(CAMERA_STATUSES),
     location: cam.location,
     gpsAccuracyM: cam.gpsAccuracyM.unwrap().nullable(),
@@ -100,8 +115,25 @@ export const updateCameraPointSchema = z
   .refine((v) => Object.keys(v).length > 0, 'at least one field is required');
 export type UpdateCameraPointInput = z.infer<typeof updateCameraPointSchema>;
 
-export interface CameraPoint extends CreateCameraPointInput {
+export interface CameraPoint extends Omit<CreateCameraPointInput, 'type'> {
   id: string;
+  type: CameraType;
+  /** Whether the linked model is still offered for new points. */
+  cameraModelActive?: boolean;
+  /**
+   * The linked model as it is in the master list now. brand / model / type /
+   * resolutionMp above are the point's own copy from when it was chosen.
+   */
+  cameraModel?: {
+    id: string;
+    brand: string;
+    model: string;
+    cameraType: CameraType;
+    resolutionMp?: number;
+    active: boolean;
+  };
+  /** Field photos of this point. */
+  photoCount: number;
   /** The user who recorded the point (set by the server from the session). */
   surveyorId?: string;
   /** Display name (or username) of that user. */

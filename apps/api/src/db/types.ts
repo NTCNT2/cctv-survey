@@ -3,6 +3,7 @@ import type {
   CameraStatus,
   CameraType,
   MountType,
+  PhotoType,
   ProjectStatus,
   StructureType,
   UserRole,
@@ -80,8 +81,38 @@ export interface CameraPointsTable {
   power_available: boolean | null;
   fiber_available: boolean | null;
   network_available: boolean | null;
+  // 0005_camera_models_photos
+  camera_model_id: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
+}
+
+export interface CameraModelsTable {
+  id: Generated<string>;
+  brand: string;
+  model: string;
+  camera_type: CameraType;
+  resolution_mp: number | null;
+  active: Generated<boolean>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+/** Rows are inserted and deleted, never updated. */
+export interface CameraPhotosTable {
+  id: Generated<string>;
+  camera_point_id: string;
+  file_key: string;
+  thumb_key: string;
+  content_type: 'image/jpeg';
+  size_bytes: number;
+  width: number;
+  height: number;
+  uploaded_by: string | null;
+  created_at: Timestamp;
+  // 0006_photo_type_caption
+  photo_type: Generated<PhotoType>;
+  caption: string | null;
 }
 
 export interface UsersTable {
@@ -109,6 +140,8 @@ export interface DB {
   projects: ProjectsTable;
   sites: SitesTable;
   camera_points: CameraPointsTable;
+  camera_models: CameraModelsTable;
+  camera_photos: CameraPhotosTable;
   users: UsersTable;
   user_sessions: UserSessionsTable;
 }

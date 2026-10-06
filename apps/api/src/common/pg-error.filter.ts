@@ -17,6 +17,8 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   camera_points_project_id_fkey: 'projectId does not exist',
   camera_points_site_fk: 'siteId does not exist in this project',
   users_username_key: 'username already exists',
+  camera_models_brand_model_key: 'this camera model already exists',
+  camera_points_camera_model_id_fkey: 'cameraModelId does not exist',
   sites_boundary_check:
     'boundary polygon is invalid (self-intersecting or degenerate)',
 };

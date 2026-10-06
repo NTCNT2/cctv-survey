@@ -87,10 +87,10 @@ Expired and revoked session rows are kept for now; a cleanup job can be added la
 
 ## Roles (0003_app_role)
 
-| Role       | Used by                             | Privileges                                                                                                                                   |
-| ---------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cctv`     | migrations, `pnpm db:psql`, backups | superuser and owner of all objects (`POSTGRES_USER`)                                                                                         |
-| `cctv_app` | `prod-api` (`compose.prod.yaml`)    | `CONNECT`; `USAGE` on `public`; CRUD on `projects`, `sites`, `camera_points`; `SELECT/INSERT/UPDATE` on `users`, `user_sessions` (no DELETE) |
+| Role       | Used by                             | Privileges                                                                                                                                                                                                                                                 |
+| ---------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cctv`     | migrations, `pnpm db:psql`, backups | superuser and owner of all objects (`POSTGRES_USER`)                                                                                                                                                                                                       |
+| `cctv_app` | `prod-api` (`compose.prod.yaml`)    | `CONNECT`; `USAGE` on `public`; CRUD on `projects`, `sites`, `camera_points`; `SELECT/INSERT/UPDATE` on `camera_models` (no DELETE: deactivate); `SELECT/INSERT/DELETE` on `camera_photos`; `SELECT/INSERT/UPDATE` on `users`, `user_sessions` (no DELETE) |
 
 - `cctv_app` is `NOSUPERUSER NOINHERIT NOCREATEDB NOCREATEROLE NOBYPASSRLS`, max 20 connections,
   `statement_timeout = 15s`, `idle_in_transaction_session_timeout = 30s`. It has no access to
