@@ -45,6 +45,11 @@ services:
       # 'true' as soon as the site is served over HTTPS.
       COOKIE_SECURE: 'false'
       CORS_ORIGIN: ${PROD_CORS_ORIGIN:?PROD_CORS_ORIGIN must be set in .env}
+      # Field photos (0005): files on the volume below, metadata in Postgres.
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      # Photo files. Never delete: not in the database dumps (back up separately).
+      - uploads_prod:/data/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -173,3 +178,8 @@ volumes:
   # Caddy CA + certificates for prod. Never delete.
   caddy_prod_data:
   caddy_prod_config:
+  # Field photos written by prod-api (owned by the image's `node` user).
+  # Fixed name (no project prefix): scripts/backup.sh archives this volume.
+  # Never `docker compose down -v`.
+  uploads_prod:
+    name: cctv-survey-uploads-prod

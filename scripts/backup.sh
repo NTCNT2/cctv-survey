@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# PostgreSQL backups of the production database (Phase 7).
+# Backups of the production database (Phase 7) and the photo volume (0005).
 #   scripts/backup.sh run          production backup (cron): dump cctv_survey + globals,
-#                                  restore-test it, then mark it OK and prune
+#                                  archive the photo volume, restore-test both, then
+#                                  mark it OK and prune
 #   scripts/backup.sh check        fail unless a verified production backup is < 26 h old
 #                                  and its checksums still match (cron, after `run`)
 #   scripts/backup.sh test         same as `run`, but into auto/test/ (manual testing):
@@ -20,6 +21,15 @@
 #   failure the set is removed (incl. *.partial), ERROR is logged, exit != 0.
 # - The restore test uses a separate container: --network none, data on tmpfs,
 #   --rm. It never connects to the production database.
+# - Photos: the volume $PHOTO_VOLUME is mounted READ-ONLY into a throwaway
+#   container (--network none) that writes a tar.gz to stdout (owners, modes and
+#   mtimes kept, numeric ids) plus a manifest (sha256, mode, uid:gid, mtime,
+#   size of every file and directory). Its restore test extracts into tmpfs in
+#   another throwaway container and must reproduce the manifest exactly; every
+#   *.jpg must be a complete JPEG. The archive is taken right after the DB dump,
+#   so it may hold a photo uploaded meanwhile (harmless: a file without a row).
+#   No volume yet (photos not deployed): the set has no photo archive and the
+#   log says so; once the volume exists, `check` requires the archive.
 set -Eeuo pipefail
 umask 077
 
@@ -35,6 +45,30 @@ KEEP_TEST=${KEEP_TEST:-5}
 MAX_AGE_HOURS=${MAX_AGE_HOURS:-26}
 LOG="$AUTO/backup.log"
 TABLES=(projects sites camera_points users user_sessions schema_migrations)
+# Photo uploads of prod-api (compose.prod.yaml: uploads_prod). Read via Docker:
+# the host path below is root-only, it is only compared with the volume's
+# Mountpoint so that a different volume or path is never archived by mistake.
+PHOTO_VOLUME=${PHOTO_VOLUME:-cctv-survey-uploads-prod}
+PHOTO_SOURCE="/var/lib/docker/volumes/$PHOTO_VOLUME/_data"
+# prod-api writes the volume as `node` (infra/docker/api.Dockerfile). The
+# volume root must stay owned by it, or every upload fails with EACCES.
+PHOTO_OWNER=${PHOTO_OWNER:-1000:1000 750}
+# The ONLY way this script mounts the photo volume: read-only, and
+# volume-nocopy. Without volume-nocopy, mounting an EMPTY volume makes Docker
+# copy the mount point's owner/mode from the image into the volume root
+# (2026-10-06: `-v vol:/src:ro -w /src` reset it to root 755 and broke all
+# uploads). Never use -w on the mount point either: it creates that directory
+# (root 755) in the image layer first.
+photo_mount() { printf 'type=volume,src=%s,dst=%s,readonly,volume-nocopy' "$PHOTO_VOLUME" "$1"; }
+PHOTO_SET_FILE='' # name of this set's photo archive, if any
+
+# Inside the throwaway containers: one manifest line per entry below the
+# current directory, sorted by path:
+#   <sha256 | "dir"> <mode> <uid>:<gid> <mtime> <size | "-"> <path>
+MANIFEST_SH='find . -mindepth 1 | LC_ALL=C sort | while IFS= read -r p; do
+  if [ -d "$p" ]; then printf "dir %s - %s\n" "$(stat -c "%a %u:%g %Y" "$p")" "$p";
+  elif [ -f "$p" ]; then printf "%s %s %s %s\n" "$(sha256sum < "$p" | cut -c1-64)" "$(stat -c "%a %u:%g %Y" "$p")" "$(stat -c %s "$p")" "$p";
+  else echo "UNSUPPORTED $p"; fi; done'
 
 # Row count + md5 of the rows of each application table (same query for
 # production and the restore test, so a restore must reproduce the data exactly).
@@ -48,10 +82,15 @@ SET_DIR='' SET_TS='' SET_DONE=0 VERIFY_NAME='' FAILED_CMD='' ERR_LOGGED=0 RESTOR
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >>"$LOG"; printf '%s\n' "$*"; }
 die() { log "ERROR: $*"; ERR_LOGGED=1; exit 1; }
 
+# cctv-survey-photos-YYYYMMDD-HHMMSS.tar.gz for set timestamp YYYYMMDDTHHMMSSZ (UTC).
+photo_archive() { echo "cctv-survey-photos-${1:0:8}-${1:9:6}.tar.gz"; }
+
 set_files() { # all files of set $2 in directory $1 (incl. partials)
-  local d=$1 t=$2
+  local d=$1 t=$2 a
+  a=$(photo_archive "$t")
   printf '%s\n' "$d/cctv_survey_$t.dump" "$d/globals_$t.sql" "$d/counts_$t.txt" "$d/SHA256SUMS_$t" \
-    "$d/cctv_survey_$t.dump.partial" "$d/globals_$t.sql.partial" "$d/counts_$t.txt.partial"
+    "$d/cctv_survey_$t.dump.partial" "$d/globals_$t.sql.partial" "$d/counts_$t.txt.partial" \
+    "$d/$a" "$d/photos_$t.manifest" "$d/$a.partial" "$d/photos_$t.manifest.partial"
 }
 
 on_err() { FAILED_CMD="line $1: $2"; }
@@ -128,6 +167,74 @@ restore_test() {
   RESTORE_SUMMARY="rows+md5 match [$(awk '{printf "%s%s=%s", (NR>1?" ":""), $1, $2}' <<<"$got")] postgis=$postgis"
 }
 
+# Does the photo volume exist? Dies if it exists somewhere other than PHOTO_SOURCE.
+photo_volume_present() {
+  local mp
+  mp=$(docker volume inspect -f '{{.Mountpoint}}' "$PHOTO_VOLUME" 2>/dev/null) || return 1
+  [[ $mp == "$PHOTO_SOURCE" ]] || die "photo volume $PHOTO_VOLUME is at $mp, expected $PHOTO_SOURCE"
+}
+
+# "uid:gid mode" of the photo volume root (read-only, no copy-up).
+photo_owner() {
+  docker run --rm --network none --read-only --cap-drop ALL \
+    --mount "$(photo_mount /src)" "$IMAGE" stat -c '%u:%g %a' /src
+}
+
+# The volume root must be writable by prod-api; checked before and after.
+assert_photo_owner() {
+  local got
+  got=$(photo_owner) || die "photos: cannot read the owner of $PHOTO_VOLUME"
+  [[ $got == "$PHOTO_OWNER" ]] || die "photos: $PHOTO_VOLUME root is $got ($1), expected $PHOTO_OWNER — prod-api cannot write photos"
+}
+
+# Archive the photo volume into set $2 of directory $1 (read-only mount).
+photo_backup() {
+  local dir=$1 ts=$2 a n_src n_tar
+  a=$(photo_archive "$ts")
+  assert_photo_owner "before backup"
+  # One container: the manifest (stderr) and the archive (stdout) see the same
+  # files. tar errors also land on stderr and then fail the manifest check.
+  docker run --rm --network none --read-only --cap-drop ALL --cap-add DAC_READ_SEARCH \
+    --mount "$(photo_mount /src)" "$IMAGE" sh -ec \
+    "cd /src; ( $MANIFEST_SH ) >&2; tar --numeric-owner -cpzf - ." \
+    > "$dir/$a.partial" 2> "$dir/photos_$ts.manifest.partial" \
+    || die "photos: archiving $PHOTO_VOLUME failed"
+  if grep -qvE '^([0-9a-f]{64} [0-7]{3,4} [0-9]+:[0-9]+ [0-9]+ [0-9]+|dir [0-7]{3,4} [0-9]+:[0-9]+ [0-9]+ -) \./' \
+    "$dir/photos_$ts.manifest.partial"; then
+    die "photos: unexpected output while archiving (see $dir/photos_$ts.manifest.partial)"
+  fi
+  gzip -t "$dir/$a.partial" || die "photos: archive is not a valid gzip"
+  n_src=$(grep -cv '^dir ' "$dir/photos_$ts.manifest.partial" || true)
+  n_tar=$(tar -tvzf "$dir/$a.partial" | grep -c '^-' || true)
+  [[ $n_src == "$n_tar" ]] || die "photos: $n_src files in the volume, $n_tar in the archive"
+  assert_photo_owner "after backup"
+  mv -- "$dir/$a.partial" "$dir/$a"
+  mv -- "$dir/photos_$ts.manifest.partial" "$dir/photos_$ts.manifest"
+  PHOTO_SET_FILE=$a
+}
+
+# Extract the photo archive of set $2 (directory $1) into tmpfs in a throwaway
+# container; the result must match the manifest and every JPEG must be whole.
+photo_restore_test() {
+  local dir=$1 ts=$2 a got bad files
+  a=$(photo_archive "$ts")
+  got=$(docker run --rm --network none --read-only --tmpfs /restore:size=4g,mode=0755 \
+    -v "$dir/$a:/in/photos.tar.gz:ro" -w /restore "$IMAGE" sh -ec \
+    "tar --numeric-owner -xpzf /in/photos.tar.gz -C /restore && $MANIFEST_SH") \
+    || die "photos restore test: extract failed for $ts"
+  [[ $got == "$(cat "$dir/photos_$ts.manifest")" ]] \
+    || die "photos restore test: extracted files differ from the manifest for $ts"
+  bad=$(docker run --rm --network none --read-only --tmpfs /restore:size=4g,mode=0755 \
+    -v "$dir/$a:/in/photos.tar.gz:ro" -w /restore "$IMAGE" sh -ec \
+    'tar -xzf /in/photos.tar.gz -C /restore
+     find . -type f -name "*.jpg" | while IFS= read -r f; do
+       [ "$(head -c 3 "$f" | od -An -tx1 | tr -d " \n")" = ffd8ff ] && [ "$(tail -c 2 "$f" | od -An -tx1 | tr -d " \n")" = ffd9 ] || echo "$f"
+     done') || die "photos restore test: JPEG check failed for $ts"
+  [[ -z $bad ]] || die "photos restore test: not a complete JPEG: $(tr '\n' ' ' <<<"$bad")"
+  files=$(grep -cv '^dir ' "$dir/photos_$ts.manifest" || true)
+  RESTORE_SUMMARY+=" photos=$files files ($(stat -c %s "$dir/$a")B) restored+verified"
+}
+
 # Dump into auto/$1 ("daily" or "test"), restore-test, then mark complete.
 backup() {
   local kind=$1 dir="$AUTO/$1" ts start toc t f
@@ -156,14 +263,24 @@ backup() {
   [[ $(wc -l < "$dir/counts_$ts.txt.partial") == "${#TABLES[@]}" ]] || die "counts $ts incomplete"
 
   for f in "cctv_survey_$ts.dump" "globals_$ts.sql" "counts_$ts.txt"; do mv -- "$dir/$f.partial" "$dir/$f"; done
-  (cd "$dir" && sha256sum "cctv_survey_$ts.dump" "globals_$ts.sql" "counts_$ts.txt" > "SHA256SUMS_$ts")
+
+  # Photos, right after the database (see the header).
+  local set_list=("cctv_survey_$ts.dump" "globals_$ts.sql" "counts_$ts.txt")
+  if photo_volume_present; then
+    photo_backup "$dir" "$ts"
+    set_list+=("$PHOTO_SET_FILE" "photos_$ts.manifest")
+  else
+    log "photos: volume $PHOTO_VOLUME not found — set $ts has no photo archive (photos not deployed yet?)"
+  fi
+  (cd "$dir" && sha256sum "${set_list[@]}" > "SHA256SUMS_$ts")
 
   # Only a set that restores completely counts as a backup.
   restore_test "$dir" "$ts"
+  [[ -z $PHOTO_SET_FILE ]] || photo_restore_test "$dir" "$ts"
 
   if [[ $kind == daily && $(date -u +%u) == 7 ]]; then
     # Sunday: weekly copy (hard links: no extra space while both exist).
-    for f in "cctv_survey_$ts.dump" "globals_$ts.sql" "counts_$ts.txt" "SHA256SUMS_$ts"; do
+    for f in "${set_list[@]}" "SHA256SUMS_$ts"; do
       ln -f -- "$dir/$f" "$AUTO/weekly/$f"
     done
     log "weekly copy $ts"
@@ -191,6 +308,12 @@ cmd_check() {
   [[ $newest_ts == "$last" ]] || die "check: newest daily set ($newest_ts) is not the last verified one ($last)"
   [[ -f $AUTO/daily/cctv_survey_$last.dump ]] || die "check: set $last is missing"
   (cd "$AUTO/daily" && sha256sum -c --quiet "SHA256SUMS_$last") || die "check: checksum mismatch for $last"
+  # Once photos are deployed, a set without them is not a complete backup.
+  if photo_volume_present; then
+    [[ -f $AUTO/daily/$(photo_archive "$last") ]] \
+      || die "check: photo volume $PHOTO_VOLUME exists but set $last has no photo archive"
+    assert_photo_owner "check"
+  fi
   age=$(( ($(date -u +%s) - $(date -u -d "${last:0:4}-${last:4:2}-${last:6:2} ${last:9:2}:${last:11:2}:${last:13:2}" +%s)) / 3600 ))
   (( age < MAX_AGE_HOURS )) || die "check: last verified backup $last is ${age}h old (max ${MAX_AGE_HOURS}h)"
   log "check ok last=$last age=${age}h"
@@ -206,6 +329,7 @@ cmd_verify() {
   done
   [[ -n $dir ]] || die "verify: set $ts not found"
   restore_test "$dir" "$ts"
+  [[ ! -f $dir/$(photo_archive "$ts") ]] || photo_restore_test "$dir" "$ts"
   log "verify ok $(basename "$dir")/$ts $RESTORE_SUMMARY"
 }
 

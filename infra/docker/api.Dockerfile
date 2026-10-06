@@ -37,6 +37,10 @@ COPY --from=build /repo/packages/shared/package.json ./packages/shared/package.j
 COPY --from=build /repo/packages/shared/dist ./packages/shared/dist
 COPY --from=build /repo/apps/api/package.json ./apps/api/package.json
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
+# Photo upload volume mount point (compose.prod.yaml: uploads_prod). A new
+# named volume copies this directory's owner, so `node` can write to it while
+# the root filesystem stays read-only.
+RUN mkdir -p /data/uploads && chown node:node /data/uploads && chmod 750 /data/uploads
 WORKDIR /app/apps/api
 USER node
 EXPOSE 4000
