@@ -40,10 +40,10 @@ services:
       # Separate from the development JWT_SECRET: rotating it signs out prod only.
       JWT_SECRET: ${PROD_JWT_SECRET:?PROD_JWT_SECRET must be set in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
-      # TEMPORARY: plain-HTTP access via router NAT (<WAN>:5580 -> :80). The
-      # session cookie is NOT Secure, so it travels unencrypted. Set back to
-      # 'true' as soon as the site is served over HTTPS.
-      COOKIE_SECURE: 'false'
+      # HTTPS-only sessions (https://<WAN>:5443, Let's Encrypt IP certificate):
+      # the cookie is Secure, so logging in over plain http:// (:80, :5580) no
+      # longer works — browsers drop Secure cookies on http://.
+      COOKIE_SECURE: 'true'
       CORS_ORIGIN: ${PROD_CORS_ORIGIN:?PROD_CORS_ORIGIN must be set in .env}
       # Field photos (0005): files on the volume below, metadata in Postgres.
       UPLOAD_DIR: /data/uploads
@@ -128,6 +128,10 @@ services:
     environment:
       # Host name the site answers to (Caddyfile.prod). Step B: 127.0.0.1.
       PROD_SITE_HOST: ${PROD_SITE_HOST:?PROD_SITE_HOST must be set in .env}
+      # Let's Encrypt ACME directory. Default: staging (untrusted test
+      # certificates, generous rate limits). Production is set in .env once
+      # staging issuance works.
+      ACME_CA: ${ACME_CA:-https://acme-staging-v02.api.letsencrypt.org/directory}
     # Step B: loopback only, reached through `ssh -L 9443:127.0.0.1:9443`.
     # 9443 avoids the stacktest proxy's 8443. Caddy listens on 8443 inside the
     # container, so it needs no capabilities (see infra/docker/proxy.Dockerfile).
@@ -136,6 +140,10 @@ services:
       # Plain HTTP on the server's LAN IP only (router NAT <WAN>:5580 -> :80).
       # Caddy's :8080 site (Caddyfile.prod). Never 0.0.0.0.
       - '192.168.77.20:80:8080'
+      # HTTPS on the server's LAN IP only (router NAT <WAN>:5443 -> :443).
+      # Caddy's HTTPS listener stays :8443 inside the container (no
+      # capabilities needed). Never 0.0.0.0: Docker-published ports bypass UFW.
+      - '192.168.77.20:443:8443'
     volumes:
       - ./infra/proxy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       # CA / certificates (later: ACME account). Never delete.
@@ -152,11 +160,11 @@ services:
     cap_drop: [ALL]
     security_opt: ['no-new-privileges:true']
     healthcheck:
-      # Full path through Caddy (TLS) to web. No SNI for an IP address, so
-      # Caddy serves default_sni; the Host header selects the site.
+      # Through Caddy to web over :8080, so proxy health never depends on
+      # ACME issuance (TLS is checked separately after each deploy).
       test:
         - CMD-SHELL
-        - 'wget -q --spider --no-check-certificate --header "Host: $${PROD_SITE_HOST}" https://127.0.0.1:8443/login'
+        - 'wget -q --spider http://127.0.0.1:8080/login'
       interval: 10s
       timeout: 5s
       retries: 6
