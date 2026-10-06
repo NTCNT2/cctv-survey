@@ -1,19 +1,24 @@
 'use client';
 
 import {
-  CAMERA_PURPOSES,
   CAMERA_STATUSES,
-  CAMERA_TYPES,
   createCameraPointSchema,
   MOUNT_TYPES,
   STRUCTURE_TYPES,
   updateCameraPointSchema,
+  type CameraModel,
   type CameraPoint,
   type CreateCameraPointInput,
   type Site,
   type UpdateCameraPointInput,
 } from '@cctv/shared';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useRef,
+  useState,
+  type FocusEvent,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { errorMessage } from '@/lib/api';
 import {
   num,
@@ -23,13 +28,23 @@ import {
   type FieldErrors,
 } from '@/lib/form';
 import {
-  CAMERA_PURPOSE_LABELS,
   CAMERA_STATUS_LABELS,
-  CAMERA_TYPE_LABELS,
   MOUNT_TYPE_LABELS,
   STRUCTURE_TYPE_LABELS,
 } from '@/lib/labels';
+import type { PhotoUpload } from '@/lib/photo';
+import {
+  CameraModelPicker,
+  MANUAL,
+  type ModelPick,
+} from './camera-model-picker';
 import { LatLngFields, toLatLngText } from './latlng-fields';
+import {
+  PendingPhotos,
+  SavedPhotos,
+  usePhotoUpload,
+  type PendingPhoto,
+} from './photos';
 import {
   Alert,
   Button,
@@ -44,8 +59,10 @@ interface Common {
   /** Page form: a "back" link. Sheet form: use `onCancel`. */
   cancelHref?: string;
   onCancel?: () => void;
-  /** Sheet (survey map): collapsible sections, sticky save bar. */
+  /** Sheet (survey map): the save bar sticks to the bottom of the sheet. */
   layout?: 'page' | 'sheet';
+  /** Active camera models (brand / model pickers). */
+  models: CameraModel[];
   /** Pre-filled position (GPS or map picker) for a new point. */
   initialLocation?: { lat: number; lng: number };
   initialAccuracyM?: number;
@@ -61,7 +78,11 @@ type Props = Common &
         sites: Site[];
         initial?: undefined;
         defaultSiteId?: string;
-        onSubmit: (v: CreateCameraPointInput) => Promise<unknown>;
+        /** `photos`: chosen in the form, uploaded once the point exists. */
+        onSubmit: (
+          v: CreateCameraPointInput,
+          photos: PhotoUpload[],
+        ) => Promise<unknown>;
       }
     | {
         mode: 'edit';
@@ -78,108 +99,64 @@ const yesNo = (v: boolean | undefined) => (v === undefined ? '' : String(v));
 const roundAccuracy = (m: number | undefined) =>
   m === undefined ? undefined : Math.round(m * 10) / 10;
 
-type SectionKey = 'location' | 'camera' | 'structure' | 'system' | 'status';
-
-/** Which section holds a field (to open it when the field has an error). */
-const FIELD_SECTION: Record<string, SectionKey> = {
-  label: 'location',
-  siteId: 'location',
-  location: 'location',
-  gpsAccuracyM: 'location',
-  address: 'location',
-  surveyedAt: 'location',
-  type: 'camera',
-  brand: 'camera',
-  model: 'camera',
-  resolutionMp: 'camera',
-  lensMm: 'camera',
-  cameraCount: 'camera',
-  purpose: 'camera',
-  bearingDeg: 'camera',
-  fovDeg: 'camera',
-  viewDistanceM: 'camera',
-  mountHeightM: 'camera',
-  mountType: 'camera',
-  structureType: 'structure',
-  poleHeightM: 'structure',
-  cabinetDistanceM: 'structure',
-  cableLengthM: 'structure',
-  powerAvailable: 'system',
-  networkAvailable: 'system',
-  fiberAvailable: 'system',
-  poe: 'system',
-  status: 'status',
-  notes: 'status',
-};
+/** Anchors, e.g. /cameras/[id]/edit#section-install. */
+export const SECTION_IDS = {
+  location: 'section-location',
+  camera: 'section-camera',
+  install: 'section-install',
+  system: 'section-system',
+  photos: 'section-photos',
+  status: 'section-status',
+} as const;
 
 /**
- * A titled group of fields; one column on phones, two from `sm`. In the
- * sheet layout it is a <details> that can be folded away.
+ * One numbered card per topic, always open (no accordion: every field stays
+ * where the eye expects it). Two columns on phones for short inputs.
  */
 function Section({
+  id,
+  step,
   title,
   detail,
-  collapsible,
-  open,
-  onToggle,
   children,
 }: {
+  id: string;
+  step: number;
   title: string;
   detail?: string;
-  collapsible?: boolean;
-  open?: boolean;
-  onToggle?: (open: boolean) => void;
   children: ReactNode;
 }) {
-  const box =
-    'rounded-2xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900';
-  const body = <div className="mt-4 grid gap-5 sm:grid-cols-2">{children}</div>;
-  if (collapsible) {
-    return (
-      <details
-        open={open}
-        onToggle={(e) => onToggle?.(e.currentTarget.open)}
-        className={`${box} group`}
-      >
-        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 text-base font-semibold [&::-webkit-details-marker]:hidden">
-          <span>
-            {title}
-            {detail && (
-              <span className="block text-xs font-normal text-zinc-500 dark:text-zinc-400">
-                {detail}
-              </span>
-            )}
-          </span>
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden
-            className="size-5 shrink-0 text-zinc-400 transition-transform group-open:rotate-180"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </summary>
-        <div className="px-4 pb-4">{body}</div>
-      </details>
-    );
-  }
   return (
-    <fieldset className={`${box} p-4 sm:p-5`}>
-      <legend className="sr-only">{title}</legend>
-      <p aria-hidden className="text-base font-semibold">
-        {title}
-      </p>
-      {detail && (
-        <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-          {detail}
-        </p>
-      )}
-      {body}
-    </fieldset>
+    <section
+      id={id}
+      aria-labelledby={`${id}-title`}
+      className="scroll-mt-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <div className="mb-4 flex items-baseline gap-2">
+        <span
+          aria-hidden
+          className="grid size-6 shrink-0 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white"
+        >
+          {step}
+        </span>
+        <div className="min-w-0">
+          <h2 id={`${id}-title`} className="text-base font-semibold">
+            {title}
+          </h2>
+          {detail && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">{detail}</p>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4">{children}</div>
+    </section>
   );
 }
+
+/** Spans both columns of a section. */
+const Wide = ({ children }: { children: ReactNode }) => (
+  <div className="col-span-2">{children}</div>
+);
 
 /** ISO instant <-> value of an <input type="datetime-local"> (local time). */
 export function toLocalInput(iso: string | undefined | Date): string {
@@ -200,44 +177,74 @@ const YES_NO = [
   { value: 'false', label: 'ไม่มี' },
 ];
 
+/**
+ * The models the pickers offer: the active ones, plus the point's own model
+ * when it has been deactivated since (so an old point still shows it).
+ */
+function catalogFor(models: CameraModel[], c?: CameraPoint): CameraModel[] {
+  if (!c?.cameraModelId || models.some((m) => m.id === c.cameraModelId)) {
+    return models;
+  }
+  return [
+    ...models,
+    {
+      id: c.cameraModelId,
+      brand: c.cameraModel?.brand ?? c.brand ?? '—',
+      model: c.cameraModel?.model ?? c.model ?? '—',
+      cameraType: c.type,
+      resolutionMp: c.resolutionMp,
+      active: c.cameraModelActive ?? false,
+      usedBy: 0,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    },
+  ];
+}
+
+function initialPick(catalog: CameraModel[], c?: CameraPoint): ModelPick {
+  const linked = catalog.find((m) => m.id === c?.cameraModelId);
+  const manual = {
+    brand: c?.brand ?? '',
+    model: c?.model ?? '',
+    type: c?.type ?? '',
+    resolutionMp: str(c?.resolutionMp),
+  };
+  if (linked) return { brand: linked.brand, modelId: linked.id, manual };
+  // An existing point without a model (or typed by hand): its values as typed.
+  if (c) return { brand: MANUAL, modelId: MANUAL, manual };
+  return { brand: '', modelId: '', manual };
+}
+
+/**
+ * Camera point form (new and edit), six sections:
+ * 1 ตำแหน่ง · 2 กล้อง · 3 จุดติดตั้ง · 4 ระบบ · 5 รูปหน้างาน · 6 สถานะ.
+ * Only code, position and camera are required; the GPS button, the model
+ * list and the defaults fill the rest. On edit only changed fields are sent.
+ */
 export function CameraForm(props: Props) {
   const c = props.initial;
+  const sheet = props.layout === 'sheet';
+  const [catalog] = useState(() => catalogFor(props.models, c));
+  const [pick, setPick] = useState(() => initialPick(catalog, c));
+  const chosen = catalog.find((m) => m.id === pick.modelId);
+  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
+
   const [label, setLabel] = useState(c?.label ?? props.initialLabel ?? '');
-  const [type, setType] = useState<string>(c?.type ?? 'dome');
   const [status, setStatus] = useState<string>(c?.status ?? 'surveyed');
   const [siteId, setSiteId] = useState(c?.siteId ?? props.defaultSiteId ?? '');
-  const sheet = props.layout === 'sheet';
   const [location, setLocation] = useState(
     toLatLngText(c?.location ?? props.initialLocation),
   );
   const [gpsAccuracyM, setGpsAccuracyM] = useState(
     str(c?.gpsAccuracyM ?? roundAccuracy(props.initialAccuracyM)),
   );
+  // New point: now (the user may correct it).
   const [surveyedAt, setSurveyedAt] = useState(() =>
     toLocalInput(c ? c.surveyedAt : new Date()),
   );
-  const [open, setOpen] = useState<Record<SectionKey, boolean>>({
-    location: true,
-    camera: !sheet,
-    structure: !sheet,
-    system: !sheet,
-    status: true,
-  });
-  const section = (key: SectionKey) =>
-    sheet
-      ? {
-          collapsible: true,
-          open: open[key],
-          onToggle: (v: boolean) => setOpen((o) => ({ ...o, [key]: v })),
-        }
-      : {};
   const [address, setAddress] = useState(c?.address ?? '');
-  const [brand, setBrand] = useState(c?.brand ?? '');
-  const [model, setModel] = useState(c?.model ?? '');
-  const [resolutionMp, setResolutionMp] = useState(str(c?.resolutionMp));
   const [lensMm, setLensMm] = useState(str(c?.lensMm));
   const [cameraCount, setCameraCount] = useState(str(c?.cameraCount ?? 1));
-  const [purpose, setPurpose] = useState<string>(c?.purpose ?? '');
   const [bearingDeg, setBearingDeg] = useState(str(c?.bearingDeg));
   const [fovDeg, setFovDeg] = useState(str(c?.fovDeg));
   const [viewDistanceM, setViewDistanceM] = useState(str(c?.viewDistanceM));
@@ -262,22 +269,36 @@ export function CameraForm(props: Props) {
     yesNo(c?.networkAvailable),
   );
   const [notes, setNotes] = useState(c?.notes ?? '');
+
+  /** Camera as shown: from the chosen model, or typed by hand. */
+  const camera = chosen
+    ? {
+        brand: chosen.brand,
+        model: chosen.model,
+        type: chosen.cameraType,
+        resolutionMp: str(chosen.resolutionMp),
+      }
+    : pick.modelId === MANUAL || pick.brand === MANUAL || catalog.length === 0
+      ? pick.manual
+      : // Nothing chosen yet: no camera values (and no stale typed ones).
+        { brand: '', model: '', type: '', resolutionMp: '' };
+
   /** Every field as typed, keyed like the request body. */
   const typed = {
     siteId,
     label,
-    type,
+    cameraModelId: chosen?.id ?? '',
+    type: camera.type,
     status,
     location: `${location.lat}|${location.lng}`,
     gpsAccuracyM,
     address,
     surveyedAt,
-    brand,
-    model,
-    resolutionMp,
+    brand: camera.brand,
+    model: camera.model,
+    resolutionMp: camera.resolutionMp,
     lensMm,
     cameraCount,
-    purpose,
     bearingDeg,
     fovDeg,
     viewDistanceM,
@@ -299,27 +320,18 @@ export function CameraForm(props: Props) {
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
-  function revealErrors(fields: FieldErrors) {
-    const keys = Object.keys(fields).map((f) => FIELD_SECTION[f.split('.')[0]]);
-    if (keys.some(Boolean)) {
-      setOpen((o) => {
-        const next = { ...o };
-        for (const k of keys) if (k) next[k] = true;
-        return next;
-      });
-    }
-  }
-
   async function submit(e: FormEvent) {
     e.preventDefault();
     setFormError(undefined);
     const empty = props.mode === 'create' ? undefined : null;
     const choice = (v: string) => (v === '' ? empty : v);
     const bool = (v: string) => (v === '' ? empty : v === 'true');
-    const common = {
+    const all: Record<keyof typeof typed, unknown> = {
       siteId: choice(siteId),
       label,
-      type,
+      cameraModelId: chosen?.id ?? empty,
+      // Required (no "clear"): blank means "not chosen".
+      type: camera.type || undefined,
       status,
       // Location is required for cameras: blank fields fail validation.
       location: {
@@ -329,13 +341,12 @@ export function CameraForm(props: Props) {
       gpsAccuracyM: num(gpsAccuracyM, empty),
       address: text(address, empty),
       surveyedAt: fromLocalInput(surveyedAt) ?? empty,
-      brand: text(brand, empty),
-      model: text(model, empty),
-      resolutionMp: num(resolutionMp, empty),
+      brand: text(camera.brand, empty),
+      model: text(camera.model, empty),
+      resolutionMp: num(camera.resolutionMp, empty),
       lensMm: num(lensMm, empty),
       // Required with a default of 1: blank means "not changed".
       cameraCount: num(cameraCount, undefined),
-      purpose: choice(purpose),
       bearingDeg: num(bearingDeg, empty),
       fovDeg: num(fovDeg, empty),
       viewDistanceM: num(viewDistanceM, empty),
@@ -350,11 +361,17 @@ export function CameraForm(props: Props) {
       fiberAvailable: bool(fiberAvailable),
       networkAvailable: bool(networkAvailable),
       notes: text(notes, empty),
-    } satisfies Record<keyof typeof typed, unknown>;
+    };
+    // A model from the list: the server copies brand / model / type / MP.
+    if (chosen) {
+      for (const k of ['brand', 'model', 'type', 'resolutionMp'] as const) {
+        delete all[k];
+      }
+    }
     // Edit: a field the user left alone is not sent, so the database keeps
     // its value (never the form's default or its formatting of it).
     const changes = Object.fromEntries(
-      Object.entries(common).filter(
+      Object.entries(all).filter(
         ([k]) =>
           typed[k as keyof typeof typed] !== opened[k as keyof typeof opened],
       ),
@@ -368,30 +385,79 @@ export function CameraForm(props: Props) {
       props.mode === 'create'
         ? validate(createCameraPointSchema, {
             projectId: props.projectId,
-            ...common,
+            ...all,
           })
         : validate(updateCameraPointSchema, changes);
     if (r.errors) {
       setErrors(r.errors);
-      revealErrors(r.errors);
+      firstError(r.errors);
       return;
     }
     setErrors({});
     setBusy(true);
     try {
       if (props.mode === 'create') {
-        await props.onSubmit(r.data as CreateCameraPointInput);
+        await props.onSubmit(
+          r.data as CreateCameraPointInput,
+          photos.map((p) => ({
+            file: p.file,
+            type: p.type,
+            caption: p.caption || undefined,
+          })),
+        );
       } else {
         await props.onSubmit(r.data as UpdateCameraPointInput);
       }
     } catch (err) {
       const x = submitErrors(err, errorMessage);
       setErrors(x.fields);
-      revealErrors(x.fields);
       setFormError(x.message);
     } finally {
       setBusy(false);
     }
+  }
+
+  const saveBar = useRef<HTMLDivElement>(null);
+
+  /**
+   * A focused field must not end up under the sticky save bar or the
+   * on-screen keyboard (visualViewport shrinks when it opens). Browsers
+   * scroll a focused field into view, but WebKit ignores scroll-padding on
+   * the page, so check the real positions once things have settled.
+   */
+  function keepClear(e: FocusEvent<HTMLFormElement>) {
+    const el = e.target;
+    if (
+      !(el instanceof HTMLElement) ||
+      !el.matches('input, select, textarea')
+    ) {
+      return;
+    }
+    const check = () => {
+      const box = el.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      const bar = saveBar.current?.getBoundingClientRect();
+      const limit = Math.min(visibleBottom, bar ? bar.top : Infinity) - 8;
+      if (box.bottom > limit || box.top < 0) {
+        el.scrollIntoView({ block: 'center' });
+      }
+    };
+    requestAnimationFrame(check);
+    // iOS: again once the keyboard has opened.
+    window.setTimeout(check, 350);
+  }
+
+  /** Bring the first invalid field into view (the form is long on a phone). */
+  function firstError(fields: FieldErrors) {
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(
+        Object.keys(fields)
+          .map((f) => `[aria-invalid="true"], #${f}, #${f}-lat`)
+          .join(','),
+      );
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
   }
 
   const numberField = (
@@ -407,6 +473,7 @@ export function CameraForm(props: Props) {
       label={label}
       inputMode={inputMode}
       autoComplete="off"
+      enterKeyHint="next"
       value={value}
       onChange={(e) => set(e.target.value)}
       error={errors[id]}
@@ -441,12 +508,15 @@ export function CameraForm(props: Props) {
     ...values.map((v) => ({ value: v, label: labels[v] })),
   ];
 
+  // Save bar: always on screen. On the page it sits above the phone's bottom
+  // navigation (4rem + safe area); in the map sheet at the sheet's bottom.
   const actions = (
     <div
+      ref={saveBar}
       className={
         sheet
-          ? 'sticky bottom-0 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1'
-          : 'flex flex-col-reverse gap-2 border-t border-zinc-200 pt-5 sm:flex-row sm:justify-end dark:border-zinc-800'
+          ? 'sticky bottom-0 z-10 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1'
+          : 'sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:bottom-4 dark:border-zinc-800 dark:bg-zinc-900/95 [&>*]:flex-1'
       }
     >
       {props.onCancel ? (
@@ -467,19 +537,22 @@ export function CameraForm(props: Props) {
   );
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4">
+    <form
+      onSubmit={submit}
+      onFocus={keepClear}
+      noValidate
+      // Focused fields scroll clear of the sticky save bar (and keyboard).
+      className="space-y-4 [&_input]:scroll-mb-40 [&_select]:scroll-mb-40 [&_textarea]:scroll-mb-40"
+    >
       {formError && <Alert>{formError}</Alert>}
 
-      <Section
-        title="ตำแหน่ง"
-        detail="รหัสจุด พื้นที่ พิกัด และเวลาสำรวจ"
-        {...section('location')}
-      >
+      <Section id={SECTION_IDS.location} step={1} title="ตำแหน่ง">
         <TextField
           id="label"
-          label="ชื่อ / รหัสกล้อง"
+          label="รหัสกล้อง"
           required
           maxLength={50}
+          autoComplete="off"
           placeholder="CCTV-001"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -489,92 +562,66 @@ export function CameraForm(props: Props) {
           { value: '', label: '— ไม่ระบุ —' },
           ...props.sites.map((s) => ({ value: s.id, label: s.name })),
         ])}
-        <div className="sm:col-span-2">
+        <Wide>
           <LatLngFields
             id="location"
+            compact
             required
             value={location}
             onChange={setLocation}
             onLocated={(m) => setGpsAccuracyM(str(roundAccuracy(m)))}
             error={errors.location}
+            accuracy={
+              <TextField
+                id="gpsAccuracyM"
+                label="GPS Accuracy (±ม.)"
+                inputMode="decimal"
+                autoComplete="off"
+                value={gpsAccuracyM}
+                onChange={(e) => setGpsAccuracyM(e.target.value)}
+                error={errors.gpsAccuracyM}
+              />
+            }
           />
-        </div>
-        {numberField(
-          'gpsAccuracyM',
-          'ความแม่นยำ GPS (ม.)',
-          gpsAccuracyM,
-          setGpsAccuracyM,
-          'เติมให้อัตโนมัติเมื่อใช้ตำแหน่งปัจจุบัน',
-        )}
-        <TextField
-          id="surveyedAt"
-          label="วันเวลาสำรวจ"
-          type="datetime-local"
-          value={surveyedAt}
-          onChange={(e) => setSurveyedAt(e.target.value)}
-          error={errors.surveyedAt}
-        />
-        <div className="sm:col-span-2">
+        </Wide>
+        <Wide>
+          <TextField
+            id="surveyedAt"
+            label="วันที่/เวลา"
+            type="datetime-local"
+            value={surveyedAt}
+            onChange={(e) => setSurveyedAt(e.target.value)}
+            error={errors.surveyedAt}
+          />
+        </Wide>
+        <Wide>
           <TextField
             id="address"
-            label="ที่อยู่ / จุดสังเกต"
+            label="จุดสังเกต"
             maxLength={500}
             placeholder="หน้าอาคาร A"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             error={errors.address}
           />
-        </div>
+        </Wide>
       </Section>
 
-      <Section
-        title="กล้อง"
-        detail="ประเภท อุปกรณ์ และมุมมอง"
-        {...section('camera')}
-      >
-        {select(
-          'type',
-          'ประเภท',
-          type,
-          setType,
-          CAMERA_TYPES.map((t) => ({ value: t, label: CAMERA_TYPE_LABELS[t] })),
-          true,
-        )}
-        {select(
-          'purpose',
-          'วัตถุประสงค์',
-          purpose,
-          setPurpose,
-          optional(CAMERA_PURPOSES, CAMERA_PURPOSE_LABELS),
-        )}
-        <TextField
-          id="brand"
-          label="ยี่ห้อ"
-          maxLength={100}
-          value={brand}
-          onChange={(e) => setBrand(e.target.value)}
-          error={errors.brand}
-        />
-        <TextField
-          id="model"
-          label="รุ่น"
-          maxLength={100}
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          error={errors.model}
-        />
-        {numberField(
-          'resolutionMp',
-          'ความละเอียด (MP)',
-          resolutionMp,
-          setResolutionMp,
-        )}
+      <Section id={SECTION_IDS.camera} step={2} title="กล้อง">
+        <Wide>
+          <CameraModelPicker
+            models={catalog}
+            value={pick}
+            onChange={setPick}
+            error={errors.type ?? errors.cameraModelId ?? errors.resolutionMp}
+          />
+        </Wide>
         {numberField(
           'cameraCount',
-          'จำนวนกล้องที่จุดนี้',
+          'จำนวนกล้อง',
           cameraCount,
           setCameraCount,
-          '1–64',
+          undefined,
           'numeric',
         )}
         {numberField(
@@ -582,79 +629,64 @@ export function CameraForm(props: Props) {
           'ความสูงติดตั้ง (ม.)',
           mountHeightM,
           setMountHeightM,
-          '0–100',
         )}
-        {numberField('lensMm', 'เลนส์ (มม.)', lensMm, setLensMm)}
+        {numberField('lensMm', 'Lens (มม.)', lensMm, setLensMm)}
         {numberField(
           'bearingDeg',
-          'ทิศทาง (องศา)',
+          'ทิศทาง (°)',
           bearingDeg,
           setBearingDeg,
-          '0–359 วัดตามเข็มนาฬิกาจากทิศเหนือ',
+          '0–359 จากทิศเหนือ',
         )}
-        {numberField(
-          'fovDeg',
-          'มุมมองภาพ FOV (องศา)',
-          fovDeg,
-          setFovDeg,
-          'มากกว่า 0 ถึง 360',
-        )}
+        {numberField('fovDeg', 'FOV (°)', fovDeg, setFovDeg)}
         {numberField(
           'viewDistanceM',
           'ระยะมองเห็น (ม.)',
           viewDistanceM,
           setViewDistanceM,
-          'ใช้วาดพื้นที่มองเห็นบนแผนที่',
         )}
-        {select(
-          'mountType',
-          'การยึดติด',
-          mountType,
-          setMountType,
-          optional(MOUNT_TYPES, MOUNT_TYPE_LABELS),
-        )}
+        <Wide>
+          {select(
+            'mountType',
+            'การยึดติดตั้ง',
+            mountType,
+            setMountType,
+            optional(MOUNT_TYPES, MOUNT_TYPE_LABELS),
+          )}
+        </Wide>
       </Section>
 
-      <Section
-        title="โครงสร้าง"
-        detail="ที่ติดตั้งและระยะสาย"
-        {...section('structure')}
-      >
-        {select(
-          'structureType',
-          'โครงสร้างที่ติดตั้ง',
-          structureType,
-          setStructureType,
-          optional(STRUCTURE_TYPES, STRUCTURE_TYPE_LABELS),
-        )}
+      <Section id={SECTION_IDS.install} step={3} title="จุดติดตั้ง">
+        <Wide>
+          {select(
+            'structureType',
+            'โครงสร้างที่ติดตั้ง',
+            structureType,
+            setStructureType,
+            optional(STRUCTURE_TYPES, STRUCTURE_TYPE_LABELS),
+          )}
+        </Wide>
         {numberField(
           'poleHeightM',
           'ความสูงเสา (ม.)',
           poleHeightM,
           setPoleHeightM,
-          '0–50',
         )}
         {numberField(
           'cabinetDistanceM',
           'ระยะถึงตู้ (ม.)',
           cabinetDistanceM,
           setCabinetDistanceM,
-          '0–5000',
         )}
         {numberField(
           'cableLengthM',
           'ความยาวสาย (ม.)',
           cableLengthM,
           setCableLengthM,
-          '0–1000',
         )}
       </Section>
 
-      <Section
-        title="ระบบ"
-        detail="ไฟฟ้า เครือข่าย ไฟเบอร์"
-        {...section('system')}
-      >
+      <Section id={SECTION_IDS.system} step={4} title="ระบบ">
         {select(
           'powerAvailable',
           'ไฟฟ้า',
@@ -678,36 +710,72 @@ export function CameraForm(props: Props) {
         )}
         {select('poe', 'PoE', poe, setPoe, [
           { value: '', label: '— ไม่ระบุ —' },
-          { value: 'true', label: 'ใช่' },
-          { value: 'false', label: 'ไม่ใช่' },
+          { value: 'true', label: 'ใช้' },
+          { value: 'false', label: 'ไม่ใช้' },
         ])}
       </Section>
 
-      <Section title="สถานะ" {...section('status')}>
-        {select(
-          'status',
-          'สถานะ',
-          status,
-          setStatus,
-          CAMERA_STATUSES.map((s) => ({
-            value: s,
-            label: CAMERA_STATUS_LABELS[s],
-          })),
-          true,
-        )}
-        <div className="sm:col-span-2">
+      <Section
+        id={SECTION_IDS.photos}
+        step={5}
+        title="รูปหน้างาน"
+        detail={
+          props.mode === 'edit'
+            ? 'รูปที่เพิ่ม แก้ไข หรือลบที่นี่ บันทึกทันที'
+            : undefined
+        }
+      >
+        <Wide>
+          {props.mode === 'create' ? (
+            <PendingPhotos photos={photos} onChange={setPhotos} />
+          ) : (
+            <EditPhotos camera={props.initial} />
+          )}
+        </Wide>
+      </Section>
+
+      <Section id={SECTION_IDS.status} step={6} title="สถานะ">
+        <Wide>
+          {select(
+            'status',
+            'สถานะ',
+            status,
+            setStatus,
+            CAMERA_STATUSES.map((s) => ({
+              value: s,
+              label: CAMERA_STATUS_LABELS[s],
+            })),
+            true,
+          )}
+        </Wide>
+        <Wide>
           <TextAreaField
             id="notes"
-            label="หมายเหตุ"
+            label="หมายเหตุ (ไม่บังคับ)"
             maxLength={5000}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             error={errors.notes}
           />
-        </div>
+        </Wide>
       </Section>
 
       {actions}
     </form>
+  );
+}
+
+/** Saved point: photos go straight to the Photo API. */
+function EditPhotos({ camera }: { camera: CameraPoint }) {
+  const uploader = usePhotoUpload(camera.id, camera.projectId);
+  return (
+    <SavedPhotos
+      cameraId={camera.id}
+      projectId={camera.projectId}
+      canWrite
+      uploader={uploader}
+      withButtons
+      heading={false}
+    />
   );
 }

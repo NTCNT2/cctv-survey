@@ -3,6 +3,7 @@ import type {
   CameraStatus,
   CameraType,
   MountType,
+  PhotoType,
   ProjectStatus,
   StructureType,
   UserRole,
@@ -112,6 +113,16 @@ export const MOUNT_TYPE_LABELS: Record<MountType, string> = {
   ceiling: 'เพดาน',
   pole: 'เสา',
   corner: 'มุม',
+};
+
+/** Photo types of the API (0006), in the order offered to the user. */
+export const PHOTO_TYPE_LABELS: Record<PhotoType, string> = {
+  installation_point: 'จุดติดตั้ง',
+  pole_structure: 'เสา/โครงสร้าง',
+  cabinet_equipment: 'ตู้ควบคุม/อุปกรณ์',
+  cable_route: 'แนวเดินสาย',
+  site: 'ภาพรวมหน้างาน',
+  other: 'อื่น ๆ',
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {

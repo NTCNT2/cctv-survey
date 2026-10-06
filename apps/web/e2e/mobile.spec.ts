@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { devices, expect, test, type Page } from '@playwright/test';
-import { adminApi, projectList, seedProject, storage } from './env';
+import { adminApi, pickCamera, projectList, seedProject, storage } from './env';
 import { googleMarker, stubGoogleMaps, tapGoogleMap } from './google-maps-stub';
 
 /** Runs on the emulated phones (Pixel 7, iPhone 13 — Chromium). */
@@ -61,7 +61,7 @@ test.describe('signed in', () => {
     });
 
     await page.getByRole('link', { name: 'แก้ไข', exact: true }).tap();
-    await expect(page.getByLabel('ชื่อ / รหัสกล้อง')).toHaveValue('CAM-01');
+    await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CAM-01');
     await expectNoHorizontalScroll(page);
     await info.attach('camera-form', {
       body: await page.screenshot({ fullPage: true }),
@@ -169,12 +169,13 @@ test.describe('survey map — Google Maps (stubbed), GPS ±5 m', () => {
     await fab.tap();
     const add = page.getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' });
     await add.getByRole('button', { name: /ใช้ตำแหน่งปัจจุบัน/ }).tap();
-    const form = page.getByRole('dialog', { name: 'จุดกล้องใหม่' });
+    const form = page.getByRole('dialog', { name: 'เพิ่มกล้อง' });
     await expect(form).toContainText('จาก GPS');
-    await expect(form.getByLabel('ชื่อ / รหัสกล้อง')).toHaveValue('CCTV-001');
+    await expect(form.getByLabel('รหัสกล้อง')).toHaveValue('CCTV-001');
     await expect(form.getByLabel('ละติจูด (lat)')).toHaveValue('13.7401');
     await expect(form.getByLabel('ลองจิจูด (lng)')).toHaveValue('100.5602');
-    await expect(form.getByLabel('ความแม่นยำ GPS (ม.)')).toHaveValue('5');
+    await expect(form.getByLabel('GPS Accuracy (±ม.)')).toHaveValue('5');
+    await pickCamera(form);
     await form.getByRole('button', { name: 'บันทึก' }).tap();
     await expect(page.getByText('✓ บันทึก CCTV-001 สำเร็จ')).toBeVisible();
     await expect(form).toBeHidden();
@@ -196,10 +197,11 @@ test.describe('survey map — Google Maps (stubbed), GPS ±5 m', () => {
     await expect(page.getByTestId('pick-coords')).toContainText('100.57000000');
     await page.getByRole('button', { name: 'ยืนยันตำแหน่ง' }).tap();
     await expect(form).toContainText('เลือกบนแผนที่');
-    await expect(form.getByLabel('ชื่อ / รหัสกล้อง')).toHaveValue('CCTV-002');
+    await expect(form.getByLabel('รหัสกล้อง')).toHaveValue('CCTV-002');
     await expect(form.getByLabel('ละติจูด (lat)')).toHaveValue('13.75');
     // A picked point has no GPS accuracy.
-    await expect(form.getByLabel('ความแม่นยำ GPS (ม.)')).toHaveValue('');
+    await expect(form.getByLabel('GPS Accuracy (±ม.)')).toHaveValue('');
+    await pickCamera(form);
     await form.getByRole('button', { name: 'บันทึก' }).tap();
     await expect(page.getByText('✓ บันทึก CCTV-002 สำเร็จ')).toBeVisible();
     await expect(googleMarker(page, 'CCTV-002')).toBeVisible();
@@ -236,11 +238,15 @@ test.describe('survey map — Google Maps (stubbed), GPS ±5 m', () => {
     const detail = page.getByRole('dialog', { name: 'CCTV-001' });
     await expect(detail).toContainText('สำรวจแล้ว');
     await expect(detail).toContainText('13.740100');
-    await expect(detail).toContainText('±5 ม.');
-    await expect(detail.getByRole('link', { name: 'แก้ไข' })).toHaveAttribute(
-      'href',
-      /\/cameras\/.+\/edit$/,
-    );
+    await expect(detail).toContainText('GPS Accuracy ±5 m');
+    await expect(detail).toContainText('IPC2122LB-AF28-ECO');
+    await expect(detail).toContainText('Dome · 5 MP');
+    await expect(
+      detail.getByRole('link', { name: 'แก้ไขข้อมูลกล้อง' }),
+    ).toHaveAttribute('href', /\/cameras\/.+\/edit$/);
+    await expect(
+      detail.getByRole('link', { name: /รายละเอียด Survey/ }),
+    ).toHaveAttribute('href', /\/cameras\/.+\/edit#section-camera$/);
     await expect(detail.getByRole('link', { name: 'นำทาง' })).toHaveAttribute(
       'href',
       'https://www.google.com/maps/dir/?api=1&destination=13.7401,100.5602',
@@ -264,12 +270,174 @@ test.describe('survey map — Google Maps (stubbed), GPS ±5 m', () => {
       .getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' })
       .getByRole('button', { name: /ใช้ตำแหน่งปัจจุบัน/ })
       .tap();
-    const form = page.getByRole('dialog', { name: 'จุดกล้องใหม่' });
+    const form = page.getByRole('dialog', { name: 'เพิ่มกล้อง' });
     await expect(form).toContainText('ยังบันทึกได้');
     await expect(page.getByTestId('gps-status')).toContainText('GPS อ่อน');
-    await form.getByLabel('ชื่อ / รหัสกล้อง').fill('WEAK-01');
+    await form.getByLabel('รหัสกล้อง').fill('WEAK-01');
+    await pickCamera(form);
     await form.getByRole('button', { name: 'บันทึก' }).tap();
     await expect(page.getByText('✓ บันทึก WEAK-01 สำเร็จ')).toBeVisible();
+  });
+});
+
+test.describe('camera form on a phone (iPhone flow)', () => {
+  test.use({
+    storageState: storage.surveyor,
+    permissions: ['geolocation'],
+    geolocation: { latitude: 15.1201, longitude: 100.5402, accuracy: 2 },
+  });
+
+  test('walk up → add → GPS → brand → model → photo → save, save bar always reachable', async ({
+    page,
+  }, info) => {
+    await stubGoogleMaps(page);
+    await page.goto(`/projects/${seeded.project.id}/map`);
+    await expect(googleMarker(page, 'CAM-01')).toBeVisible();
+
+    // 1) เพิ่มกล้อง  2) GPS ปัจจุบัน
+    await page.getByRole('button', { name: 'เพิ่มจุดติดตั้ง' }).tap();
+    await page
+      .getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' })
+      .getByRole('button', { name: /ใช้ตำแหน่งปัจจุบัน/ })
+      .tap();
+    const form = page.getByRole('dialog', { name: 'เพิ่มกล้อง' });
+    await expect(form.getByLabel('ละติจูด (lat)')).toHaveValue('15.1201');
+    await expect(form.getByLabel('ลองจิจูด (lng)')).toHaveValue('100.5402');
+    await expect(form.getByLabel('GPS Accuracy (±ม.)')).toHaveValue('2');
+
+    // 3) ยี่ห้อ  4) รุ่น → MP + type shown, nothing typed
+    await pickCamera(form);
+    await expect(form.getByTestId('camera-spec')).toHaveText('5 MP · Dome');
+
+    // 5) ถ่ายรูปหน้างาน (camera input) → thumbnail → preview
+    const png = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      c.width = 1200;
+      c.height = 1600;
+      const ctx = c.getContext('2d')!;
+      ctx.fillStyle = '#0ea5e9';
+      ctx.fillRect(0, 0, 1200, 1600);
+      return c.toDataURL('image/png').split(',')[1];
+    });
+    const camInput = form.getByLabel('ถ่ายรูปหน้างาน');
+    await expect(camInput).toHaveAttribute('capture', 'environment');
+    await expect(form.getByLabel('+ เพิ่มรูป')).toHaveAttribute(
+      'accept',
+      'image/*',
+    );
+    await camInput.setInputFiles({
+      name: 'site.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(png, 'base64'),
+    });
+    const pending = form.getByRole('list', { name: 'รูปที่จะบันทึก' });
+    await expect(pending.locator('img')).toHaveCount(1);
+    await pending.getByRole('button', { name: /ดูรูปที่ 1/ }).tap();
+    const editor = page.getByRole('dialog', { name: 'รูปหน้างาน' });
+    const big = editor.getByRole('img', { name: 'รูปหน้างาน' });
+    await expect(big).toBeInViewport();
+    await expect(
+      editor.getByRole('button', { name: 'บันทึกรูป' }),
+    ).toBeInViewport();
+    await expect(editor.getByRole('button', { name: 'ปิด' })).toBeInViewport();
+    await info.attach('photo-preview', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+    await editor.getByLabel('ประเภทรูป').selectOption('cabinet_equipment');
+    await editor.getByRole('button', { name: 'บันทึกรูป' }).tap();
+    await expect(pending).toContainText('ตู้ควบคุม/อุปกรณ์');
+
+    // Every section is reachable and the save bar stays on screen, never
+    // covering the field in view; nothing scrolls sideways.
+    const save = form.getByRole('button', { name: 'บันทึก', exact: true });
+    for (const name of [
+      'ตำแหน่ง',
+      'กล้อง',
+      'จุดติดตั้ง',
+      'ระบบ',
+      'รูปหน้างาน',
+      'สถานะ',
+    ]) {
+      const heading = form.getByRole('heading', { name, exact: true });
+      await heading.scrollIntoViewIfNeeded();
+      await expect(heading, name).toBeInViewport();
+      await expect(save, name).toBeInViewport();
+    }
+    // Focus (as the keyboard does) scrolls the field clear of the save bar.
+    const notes = form.getByLabel('หมายเหตุ (ไม่บังคับ)');
+    await notes.focus();
+    const n = (await notes.boundingBox())!;
+    const b = (await save.boundingBox())!;
+    expect(n.y + n.height, 'last field above the save bar').toBeLessThanOrEqual(
+      b.y,
+    );
+    expect(b.height).toBeGreaterThanOrEqual(44);
+    expect(b.y + b.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await expectNoHorizontalScroll(page);
+    await info.attach('camera-form-sheet', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+
+    // 6) บันทึก
+    await save.tap();
+    await expect(
+      page.getByText(/✓ บันทึก CCTV-\d+ สำเร็จ \(รูป 1\)/),
+    ).toBeVisible();
+    await expect(form).toBeHidden();
+
+    // Marker detail: camera and the photo with its type
+    const label = (await page
+      .getByText(/✓ บันทึก (CCTV-\d+)/)
+      .textContent())!.match(/CCTV-\d+/)![0];
+    await googleMarker(page, label).tap();
+    const detail = page.getByRole('dialog', { name: label });
+    await expect(detail).toContainText('GPS Accuracy ±2 m');
+    await expect(detail).toContainText('Dome · 5 MP');
+    await expect(detail).toContainText('รูปหน้างาน (1)');
+    await expect(detail).toContainText('ตู้ควบคุม/อุปกรณ์');
+    const thumb = detail
+      .getByRole('list', { name: 'รูปหน้างาน' })
+      .locator('img')
+      .first();
+    await expect
+      .poll(() => thumb.evaluate((e: HTMLImageElement) => e.naturalWidth))
+      .toBeGreaterThan(0);
+    await expectNoHorizontalScroll(page);
+  });
+
+  test('page form: save bar sits above the bottom navigation, never over a field', async ({
+    page,
+  }, info) => {
+    await page.goto(`/projects/${seeded.project.id}/cameras/new`);
+    const save = page.getByRole('button', { name: 'บันทึก', exact: true });
+    const nav = page.getByRole('navigation', { name: 'เมนูหลัก (มือถือ)' });
+    await expect(save).toBeInViewport();
+    const check = async (where: string) => {
+      const b = (await save.boundingBox())!;
+      const v = (await nav.boundingBox())!;
+      expect(b.y + b.height, `${where}: save above nav`).toBeLessThanOrEqual(
+        v.y,
+      );
+    };
+    await check('top');
+    // GPS button fills lat / lng / accuracy.
+    await page.getByRole('button', { name: 'ใช้ตำแหน่งปัจจุบัน' }).tap();
+    await expect(page.getByLabel('GPS Accuracy (±ม.)')).toHaveValue('2');
+    await expect(page.getByLabel('ละติจูด (lat)')).toHaveValue('15.1201000');
+    const notes = page.getByLabel('หมายเหตุ (ไม่บังคับ)');
+    await notes.focus();
+    await check('bottom');
+    const n = (await notes.boundingBox())!;
+    expect(n.y + n.height, 'last field above the save bar').toBeLessThanOrEqual(
+      (await save.boundingBox())!.y,
+    );
+    await expectNoHorizontalScroll(page);
+    await info.attach('camera-form-page', {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
   });
 });
 
@@ -305,9 +473,10 @@ test.describe('survey map — GPS not allowed', () => {
     await tapGoogleMap(page, 13.745, 100.565);
     await expect(page.getByTestId('picked-marker')).toBeVisible();
     await page.getByRole('button', { name: 'ยืนยันตำแหน่ง' }).tap();
-    const form = page.getByRole('dialog', { name: 'จุดกล้องใหม่' });
+    const form = page.getByRole('dialog', { name: 'เพิ่มกล้อง' });
     await expect(form).toContainText('เลือกบนแผนที่');
-    await form.getByLabel('ชื่อ / รหัสกล้อง').fill('NOGPS-01');
+    await form.getByLabel('รหัสกล้อง').fill('NOGPS-01');
+    await pickCamera(form);
     await form.getByRole('button', { name: 'บันทึก' }).tap();
     await expect(page.getByText('✓ บันทึก NOGPS-01 สำเร็จ')).toBeVisible();
     await expect(googleMarker(page, 'NOGPS-01')).toBeVisible();
@@ -429,7 +598,7 @@ test.describe('Add Point Bottom Sheet options are visible and clickable', () => 
       await tapGoogleMap(page, 13.7444, 100.5555);
       await expect(page.getByTestId('picked-marker')).toBeVisible();
       await page.getByRole('button', { name: 'ยืนยันตำแหน่ง' }).tap();
-      const form = page.getByRole('dialog', { name: 'จุดกล้องใหม่' });
+      const form = page.getByRole('dialog', { name: 'เพิ่มกล้อง' });
       await expect(form).toContainText('เลือกบนแผนที่');
       await expect(form.getByLabel('ละติจูด (lat)')).toHaveValue('13.7444');
       await expect(

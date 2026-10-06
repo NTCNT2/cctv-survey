@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { adminApi, blockTiles, mapMarker, seedProject, storage } from './env';
+import {
+  adminApi,
+  blockTiles,
+  mapMarker,
+  pickCamera,
+  seedProject,
+  storage,
+} from './env';
 import { googleMarker, stubGoogleMaps, tapGoogleMap } from './google-maps-stub';
 
 /** The same web build without Google Maps settings (production rules). */
@@ -39,7 +46,10 @@ test.describe('survey map — Google Maps (stubbed), viewer', () => {
     await list.getByRole('button', { name: /CAM-01/ }).click();
     const detail = page.getByRole('dialog', { name: 'CAM-01' });
     await expect(detail).toContainText('อาคาร A');
-    await expect(detail.getByRole('link', { name: 'แก้ไข' })).toHaveCount(0);
+    await expect(
+      detail.getByRole('link', { name: 'แก้ไขข้อมูลกล้อง' }),
+    ).toHaveCount(0);
+    await expect(detail.getByText('เพิ่มรูป')).toHaveCount(0);
     await expect(detail.getByRole('link', { name: 'นำทาง' })).toBeVisible();
     await page.keyboard.press('Escape');
 
@@ -143,7 +153,7 @@ test.describe('survey map — fallbacks', () => {
     await expect(page.getByTestId('picked-marker')).toBeVisible();
     await page.getByRole('button', { name: 'ยืนยันตำแหน่ง' }).click();
     await expect(
-      page.getByRole('dialog', { name: 'จุดกล้องใหม่' }),
+      page.getByRole('dialog', { name: 'เพิ่มกล้อง' }),
     ).toContainText('เลือกบนแผนที่');
     expect(googleCalls).toBe(0);
   });
@@ -169,8 +179,9 @@ test.describe('survey map — Google Maps (stubbed), surveyor on desktop', () =>
       .click();
     await tapGoogleMap(page, 13.7571, 100.5031);
     await page.getByRole('button', { name: 'ยืนยันตำแหน่ง' }).click();
-    const form = page.getByRole('dialog', { name: 'จุดกล้องใหม่' });
-    await form.getByLabel('ชื่อ / รหัสกล้อง').fill('DESK-01');
+    const form = page.getByRole('dialog', { name: 'เพิ่มกล้อง' });
+    await form.getByLabel('รหัสกล้อง').fill('DESK-01');
+    await pickCamera(form);
     await form.getByRole('button', { name: 'บันทึก' }).click();
     await expect(page.getByText('✓ บันทึก DESK-01 สำเร็จ')).toBeVisible();
     await expect(googleMarker(page, 'DESK-01')).toBeVisible();
@@ -221,7 +232,7 @@ test.describe('survey map — responsive', () => {
         .getByRole('dialog', { name: 'เพิ่มจุดติดตั้ง CCTV' })
         .getByRole('button', { name: /ใช้ตำแหน่งปัจจุบัน/ })
         .click();
-      const form = page.getByRole('dialog', { name: 'จุดกล้องใหม่' });
+      const form = page.getByRole('dialog', { name: 'เพิ่มกล้อง' });
       const f = (await form.boundingBox())!;
       expect(f.y).toBeGreaterThanOrEqual(0);
       expect(f.y + f.height).toBeLessThanOrEqual(height + 1);

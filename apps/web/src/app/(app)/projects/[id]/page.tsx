@@ -8,6 +8,7 @@ import {
   type Project,
   type Site,
 } from '@cctv/shared';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
 import { CameraMix } from '@/components/camera-mix';
@@ -489,7 +490,12 @@ function CameraList({ projectId }: { projectId: string }) {
                 className="grid gap-x-4 gap-y-2 p-4 sm:px-5 lg:grid-cols-[minmax(8rem,1.1fr)_minmax(10rem,1.4fr)_minmax(9rem,1.2fr)_8rem_8rem_7rem_auto] lg:items-center"
               >
                 <div className="flex min-w-0 items-center justify-between gap-2 lg:block">
-                  <p className="break-all font-semibold">{c.label}</p>
+                  <Link
+                    href={`/cameras/${c.id}`}
+                    className="break-all font-semibold text-indigo-700 hover:underline dark:text-indigo-300"
+                  >
+                    {c.label}
+                  </Link>
                   <span className="lg:hidden">
                     <Badge tone={CAMERA_STATUS_TONES[c.status]} dot>
                       {CAMERA_STATUS_LABELS[c.status]}
@@ -509,7 +515,10 @@ function CameraList({ projectId }: { projectId: string }) {
                   )}
                 </div>
                 <div className="min-w-0 text-sm">
-                  <p className="truncate">{cameraLine(c)}</p>
+                  <p className="truncate">
+                    {cameraLine(c)}
+                    {c.photoCount > 0 && ` · รูป ${c.photoCount}`}
+                  </p>
                   <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                     {[
                       c.bearingDeg !== undefined && `ทิศ ${c.bearingDeg}°`,

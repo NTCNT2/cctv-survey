@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Button, TextField } from './ui';
 
 export interface LatLngText {
@@ -20,6 +20,8 @@ export function LatLngFields({
   error,
   required,
   onLocated,
+  compact,
+  accuracy,
 }: {
   id: string;
   value: LatLngText;
@@ -28,6 +30,10 @@ export function LatLngFields({
   required?: boolean;
   /** Called with the GPS accuracy (metres) after "use my location". */
   onLocated?: (accuracyM: number) => void;
+  /** Quick Add: lat / lng side by side on phones too. */
+  compact?: boolean;
+  /** A field shown beside the "use my location" button (GPS accuracy). */
+  accuracy?: ReactNode;
 }) {
   // Only known in the browser; `false` during server rendering avoids a
   // markup mismatch.
@@ -68,7 +74,13 @@ export function LatLngFields({
       <legend className="text-sm font-medium">
         พิกัด (WGS84){required && <span className="text-red-600"> *</span>}
       </legend>
-      <div className="mt-1 grid gap-3 sm:grid-cols-2">
+      <div
+        className={
+          compact
+            ? 'mt-1 grid grid-cols-2 gap-3'
+            : 'mt-1 grid gap-3 sm:grid-cols-2'
+        }
+      >
         <TextField
           id={`${id}-lat`}
           label="ละติจูด (lat)"
@@ -95,7 +107,14 @@ export function LatLngFields({
           {error}
         </p>
       )}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div
+        className={
+          accuracy
+            ? 'mt-3 grid grid-cols-2 items-end gap-3'
+            : 'mt-2 flex flex-wrap items-center gap-2'
+        }
+      >
+        {accuracy}
         {geoAvailable ? (
           <Button
             type="button"
@@ -111,8 +130,8 @@ export function LatLngFields({
             เท่านั้น
           </p>
         )}
-        {geoError && <p className="text-sm text-red-600">{geoError}</p>}
       </div>
+      {geoError && <p className="mt-1 text-sm text-red-600">{geoError}</p>}
     </fieldset>
   );
 }

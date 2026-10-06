@@ -1,15 +1,21 @@
 import type {
   AuthUser,
+  CameraModel,
+  CameraPhoto,
   CameraPoint,
+  CreateCameraModelInput,
   ChangePasswordInput,
   CreateCameraPointInput,
   CreateProjectInput,
   CreateSiteInput,
   LoginInput,
   LoginResponse,
+  PhotoType,
   Project,
   Site,
+  UpdateCameraModelInput,
   UpdateCameraPointInput,
+  UpdatePhotoInput,
   UpdateProjectInput,
   UpdateSiteInput,
 } from '@cctv/shared';
@@ -42,15 +48,21 @@ export async function request<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
+  // A Blob (photo upload) is sent as is, with its own image type; anything
+  // else as JSON.
+  const blob = body instanceof Blob ? body : undefined;
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
       cache: 'no-store',
-      headers:
-        body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: blob
+        ? { 'Content-Type': blob.type }
+        : body === undefined
+          ? undefined
+          : { 'Content-Type': 'application/json' },
+      body: blob ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
   } catch {
     throw new ApiError(0, 'network error');
@@ -119,6 +131,38 @@ export const api = {
       request<CameraPoint>('PATCH', `/cameras/${id}`, body),
     remove: (id: string) => request<void>('DELETE', `/cameras/${id}`),
   },
+  cameraModels: {
+    /** Active models only, unless `all` (admin list). */
+    list: (all = false) =>
+      request<CameraModel[]>('GET', `/camera-models${all ? '?all=true' : ''}`),
+    create: (body: CreateCameraModelInput) =>
+      request<CameraModel>('POST', '/camera-models', body),
+    update: (id: string, body: UpdateCameraModelInput) =>
+      request<CameraModel>('PATCH', `/camera-models/${id}`, body),
+  },
+  photos: {
+    list: (cameraId: string) =>
+      request<CameraPhoto[]>('GET', `/cameras/${cameraId}/photos`),
+    /** `photo`: an image Blob (see lib/photo.ts — already shrunk). */
+    upload: (
+      cameraId: string,
+      photo: Blob,
+      meta: { type: PhotoType; caption?: string },
+    ) =>
+      request<CameraPhoto>(
+        'POST',
+        `/cameras/${cameraId}/photos${q({ type: meta.type, caption: meta.caption || undefined })}`,
+        photo,
+      ),
+    update: (cameraId: string, photoId: string, body: UpdatePhotoInput) =>
+      request<CameraPhoto>(
+        'PATCH',
+        `/cameras/${cameraId}/photos/${photoId}`,
+        body,
+      ),
+    remove: (cameraId: string, photoId: string) =>
+      request<void>('DELETE', `/cameras/${cameraId}/photos/${photoId}`),
+  },
 };
 
 /** API messages that deserve a specific Thai explanation. */
@@ -134,6 +178,10 @@ const KNOWN_MESSAGES: Record<string, string> = {
   'projectId does not exist': 'ไม่พบโครงการนี้',
   'boundary polygon is invalid (self-intersecting or degenerate)':
     'ขอบเขตพื้นที่ไม่ถูกต้อง',
+  'this camera model already exists': 'มีรุ่นกล้องนี้ในรายการแล้ว',
+  'camera model is inactive': 'รุ่นกล้องนี้ถูกปิดใช้งานแล้ว กรุณาเลือกรุ่นอื่น',
+  'cameraModelId does not exist': 'ไม่พบรุ่นกล้องที่เลือก',
+  'the file is not a valid image': 'ไฟล์นี้ไม่ใช่รูปภาพที่รองรับ',
 };
 
 /** A user-facing Thai message for any error thrown by `request`. */
@@ -156,6 +204,8 @@ export function errorMessage(err: unknown): string {
       return 'ไม่พบข้อมูล';
     case 409:
       return 'ข้อมูลซ้ำหรือขัดแย้งกับข้อมูลที่มีอยู่';
+    case 413:
+      return 'ไฟล์ใหญ่เกินไป';
     case 415:
       return 'รูปแบบคำขอไม่ถูกต้อง';
     case 429:

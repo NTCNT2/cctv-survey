@@ -4,6 +4,7 @@ import type { CameraPoint, CreateCameraPointInput } from '@cctv/shared';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { CameraDetail } from '@/components/camera-detail';
 import { CameraForm } from '@/components/camera-form';
 import { GoogleSurveyMap } from '@/components/google-survey-map';
 import {
@@ -18,13 +19,7 @@ import {
 import { BottomSheet, Fab, SheetOption, Toast } from '@/components/overlay';
 import { SurveyMap } from '@/components/survey-map';
 import type { SurveyMapHandle } from '@/components/survey-map-types';
-import {
-  Alert,
-  Badge,
-  Button,
-  DefinitionList,
-  LinkButton,
-} from '@/components/ui';
+import { Alert, Badge, Button, LinkButton } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import {
   FRESH_MS,
@@ -35,16 +30,11 @@ import {
   type GpsStatus,
 } from '@/lib/geolocation';
 import { mapSetup, type MapsConfig } from '@/lib/google-maps';
-import {
-  CAMERA_PURPOSE_LABELS,
-  CAMERA_STATUS_LABELS,
-  CAMERA_STATUS_TONES,
-  CAMERA_TYPE_LABELS,
-  formatDateTime,
-  STRUCTURE_TYPE_LABELS,
-} from '@/lib/labels';
+import { CAMERA_STATUS_LABELS, CAMERA_STATUS_TONES } from '@/lib/labels';
 import { directionsUrl, type LatLng } from '@/lib/map-geo';
+import type { PhotoUpload } from '@/lib/photo';
 import {
+  useCameraModels,
   useCameras,
   useCreateCamera,
   useProject,
@@ -82,6 +72,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
   const project = useProject(id);
   const cameras = useCameras(id);
   const sites = useSites(id);
+  const models = useCameraModels();
   const create = useCreateCamera(id);
   const canWrite = useCan('camera:write');
   // No GPS request until the user asks (◎ or "ใช้ตำแหน่งปัจจุบัน").
@@ -162,11 +153,19 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
     setPicked(undefined);
   }
 
-  async function save(body: CreateCameraPointInput) {
-    const saved = await create.mutateAsync(body);
+  /** The point first, then its photos (a failed photo never loses the point). */
+  async function save(body: CreateCameraPointInput, photos: PhotoUpload[]) {
+    const { camera: saved, photosFailed } = await create.mutateAsync({
+      body,
+      photos,
+    });
     setDraft(undefined);
     setPicked(undefined);
-    setToast(`✓ บันทึก ${saved.label} สำเร็จ`);
+    setToast(
+      photosFailed > 0
+        ? `บันทึก ${saved.label} แล้ว แต่อัปโหลดรูปไม่สำเร็จ ${photosFailed} รูป — เพิ่มรูปได้จากรายละเอียดจุด`
+        : `✓ บันทึก ${saved.label} สำเร็จ${photos.length ? ` (รูป ${photos.length})` : ''}`,
+    );
     map.current?.flyTo(saved.location);
   }
 
@@ -467,14 +466,14 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
         </div>
       </BottomSheet>
 
-      {/* New point form (existing camera form) */}
+      {/* New point: Quick Add (survey details can be filled in later) */}
       <BottomSheet
         open={!!draft}
         onClose={() => setDraft(undefined)}
-        title="จุดกล้องใหม่"
+        title="เพิ่มกล้อง"
         description={
           draft &&
-          `${draft.source === 'gps' ? 'จาก GPS' : 'เลือกบนแผนที่'} · ${fmt(draft.location.lat)}, ${fmt(draft.location.lng)}${draft.accuracy !== undefined ? ` · ±${draft.accuracy.toFixed(1)} ม.` : ''}`
+          `${draft.source === 'gps' ? 'จาก GPS' : 'เลือกบนแผนที่'} · จำเป็นเฉพาะรหัส ตำแหน่ง และรุ่นกล้อง`
         }
         tall
         side
@@ -490,18 +489,34 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
                   </Alert>
                 </div>
               )}
-            <CameraForm
-              key={`${draft.source}:${draft.location.lat},${draft.location.lng}`}
-              mode="create"
-              layout="sheet"
-              projectId={id}
-              sites={sites.data ?? []}
-              initialLocation={draft.location}
-              initialAccuracyM={draft.accuracy}
-              initialLabel={nextPointCode(points.map((c) => c.label))}
-              onCancel={() => setDraft(undefined)}
-              onSubmit={save}
-            />
+            {models.isError ? (
+              <Alert>
+                โหลดรายการรุ่นกล้องไม่สำเร็จ: {errorMessage(models.error)}{' '}
+                <button
+                  type="button"
+                  className="min-h-11 font-medium underline"
+                  onClick={() => models.refetch()}
+                >
+                  ลองใหม่
+                </button>
+              </Alert>
+            ) : !models.data ? (
+              <p className="text-sm text-zinc-500">กำลังโหลดรายการรุ่นกล้อง…</p>
+            ) : (
+              <CameraForm
+                key={`${draft.source}:${draft.location.lat},${draft.location.lng}`}
+                mode="create"
+                layout="sheet"
+                projectId={id}
+                sites={sites.data ?? []}
+                models={models.data}
+                initialLocation={draft.location}
+                initialAccuracyM={draft.accuracy}
+                initialLabel={nextPointCode(points.map((c) => c.label))}
+                onCancel={() => setDraft(undefined)}
+                onSubmit={save}
+              />
+            )}
           </>
         )}
       </BottomSheet>
@@ -518,6 +533,17 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
             camera={camera}
             siteName={sites.data?.find((s) => s.id === camera.siteId)?.name}
             canWrite={canWrite}
+            extra={
+              // Maps URLs: opens Google Maps navigation; no API key, no API call.
+              <a
+                href={directionsUrl(camera.location)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              >
+                นำทาง
+              </a>
+            }
           />
         )}
       </BottomSheet>
@@ -756,131 +782,6 @@ function PointSearch({
           )}
         </ul>
       )}
-    </div>
-  );
-}
-
-function CameraDetail({
-  camera: c,
-  siteName,
-  canWrite,
-}: {
-  camera: CameraPoint;
-  siteName?: string;
-  canWrite: boolean;
-}) {
-  const [more, setMore] = useState(false);
-  const yes = (v?: boolean) =>
-    v === undefined ? undefined : v ? 'มี' : 'ไม่มี';
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={CAMERA_STATUS_TONES[c.status]} dot>
-          {CAMERA_STATUS_LABELS[c.status]}
-        </Badge>
-        <Badge>{CAMERA_TYPE_LABELS[c.type]}</Badge>
-      </div>
-      <DefinitionList
-        items={[
-          {
-            label: 'ยี่ห้อ / รุ่น',
-            value: [c.brand, c.model].filter(Boolean).join(' ') || undefined,
-          },
-          {
-            label: 'ความละเอียด',
-            value:
-              c.resolutionMp !== undefined ? `${c.resolutionMp} MP` : undefined,
-          },
-          {
-            label: 'ตำแหน่ง',
-            value:
-              [siteName, c.address].filter(Boolean).join(' · ') || undefined,
-          },
-          { label: 'ละติจูด', value: fmt(c.location.lat) },
-          { label: 'ลองจิจูด', value: fmt(c.location.lng) },
-          {
-            label: 'ความแม่นยำ GPS',
-            value:
-              c.gpsAccuracyM !== undefined
-                ? `±${c.gpsAccuracyM} ม.`
-                : 'เลือกบนแผนที่ / ไม่ระบุ',
-          },
-          {
-            label: 'วันที่สำรวจ',
-            value: c.surveyedAt ? formatDateTime(c.surveyedAt) : undefined,
-          },
-          { label: 'ผู้สำรวจ', value: c.surveyorName },
-        ]}
-      />
-      {more && (
-        <DefinitionList
-          items={[
-            { label: 'จำนวน', value: `${c.cameraCount ?? 1} ตัว` },
-            {
-              label: 'วัตถุประสงค์',
-              value: c.purpose && CAMERA_PURPOSE_LABELS[c.purpose],
-            },
-            {
-              label: 'ทิศทาง / FOV',
-              value:
-                [
-                  c.bearingDeg !== undefined && `${c.bearingDeg}°`,
-                  c.fovDeg !== undefined && `FOV ${c.fovDeg}°`,
-                  c.viewDistanceM !== undefined && `ระยะ ${c.viewDistanceM} ม.`,
-                ]
-                  .filter(Boolean)
-                  .join(' · ') || undefined,
-            },
-            {
-              label: 'ความสูงติดตั้ง',
-              value:
-                c.mountHeightM !== undefined
-                  ? `${c.mountHeightM} ม.`
-                  : undefined,
-            },
-            {
-              label: 'โครงสร้าง',
-              value: c.structureType && STRUCTURE_TYPE_LABELS[c.structureType],
-            },
-            { label: 'ไฟฟ้า', value: yes(c.powerAvailable) },
-            { label: 'เครือข่าย', value: yes(c.networkAvailable) },
-            { label: 'ไฟเบอร์', value: yes(c.fiberAvailable) },
-            {
-              label: 'ความยาวสาย',
-              value:
-                c.cableLengthM !== undefined
-                  ? `${c.cableLengthM} ม.`
-                  : undefined,
-            },
-            { label: 'หมายเหตุ', value: c.notes },
-          ]}
-        />
-      )}
-      <div className="grid grid-cols-3 gap-2">
-        <Button
-          variant="secondary"
-          aria-expanded={more}
-          onClick={() => setMore((v) => !v)}
-        >
-          {more ? 'ย่อ' : 'ดูรายละเอียด'}
-        </Button>
-        {canWrite ? (
-          <LinkButton href={`/cameras/${c.id}/edit`} variant="secondary">
-            แก้ไข
-          </LinkButton>
-        ) : (
-          <span />
-        )}
-        {/* Maps URLs: opens Google Maps navigation; no API key, no API call. */}
-        <a
-          href={directionsUrl(c.location)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-        >
-          นำทาง
-        </a>
-      </div>
     </div>
   );
 }

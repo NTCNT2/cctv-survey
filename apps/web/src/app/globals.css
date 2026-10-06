@@ -163,3 +163,13 @@ body {
     height: 92dvh;
   }
 }
+
+/*
+ * Phones: a field scrolled or focused into view (keyboard) stays clear of the
+ * fixed bottom navigation and a sticky save bar above it (camera form).
+ */
+@media (max-width: 767px) {
+  html {
+    scroll-padding-bottom: calc(10rem + env(safe-area-inset-bottom));
+  }
+}

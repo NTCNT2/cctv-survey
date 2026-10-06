@@ -1,4 +1,4 @@
-import type { APIRequestContext, Page } from '@playwright/test';
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
 import { request } from '@playwright/test';
 
 /** Values provided by scripts/web-e2e.sh (test database only). */
@@ -89,3 +89,40 @@ export async function blockTiles(page: Page) {
 /** A camera marker on the survey map, by its label. */
 export const mapMarker = (page: Page, label: string) =>
   page.locator('.cctv-pin-label', { hasText: new RegExp(`^${label}$`) });
+
+/**
+ * Camera models the suite works with (created in global-setup, removed by
+ * scripts/web-e2e.sh: brands start with PREFIX). Hikvision has two models,
+ * Dahua one (chosen automatically when the brand is picked).
+ */
+export const MODELS = {
+  hikDome: {
+    brand: `${PREFIX} Hikvision`,
+    model: 'IPC2122LB-AF28-ECO',
+    cameraType: 'dome',
+    resolutionMp: 5,
+  },
+  hikTurret: {
+    brand: `${PREFIX} Hikvision`,
+    model: 'DS-2CD2143G2-I',
+    cameraType: 'turret',
+    resolutionMp: 4,
+  },
+  dahuaBullet: {
+    brand: `${PREFIX} Dahua`,
+    model: 'HFW2441S',
+    cameraType: 'bullet',
+    resolutionMp: 8,
+  },
+} as const;
+
+/** Quick Add: brand ▼ then model ▼. */
+export async function pickCamera(
+  form: Locator,
+  m: { brand: string; model: string } = MODELS.hikDome,
+) {
+  await form.getByLabel('ยี่ห้อ', { exact: true }).selectOption(m.brand);
+  await form
+    .getByLabel('รุ่น', { exact: true })
+    .selectOption({ label: m.model });
+}

@@ -30,6 +30,8 @@ export function apiIssuesToFieldErrors(issues: ApiIssue[]): FieldErrors {
 /** Custom (English) messages defined in packages/shared schemas. */
 const SCHEMA_MESSAGES: Record<string, string> = {
   'at least one field is required': 'กรุณาแก้ไขอย่างน้อยหนึ่งช่อง',
+  'type is required without cameraModelId':
+    'กรุณาเลือกรุ่นกล้อง หรือระบุประเภทกล้อง',
   'password must be at least 12 characters':
     'รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษร',
   'password must be at most 128 characters': 'รหัสผ่านต้องไม่เกิน 128 ตัวอักษร',

@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { adminApi, PREFIX, seedProject, storage, users } from './env';
+import {
+  adminApi,
+  pickCamera,
+  PREFIX,
+  seedProject,
+  storage,
+  users,
+} from './env';
 
 test.describe('project list states', () => {
   test.use({ storageState: storage.viewer });
@@ -85,28 +92,51 @@ test.describe('admin: full create / edit / delete flow', () => {
       'อาคาร A',
     );
 
-    // Camera: location is required; then attach it to the site
+    // Camera: code, position and camera are required; everything else in the
+    // same form is optional and can also be filled in later.
     await page.getByRole('tab', { name: 'กล้อง' }).click();
     await page.getByRole('link', { name: '+ เพิ่มกล้อง' }).first().click();
-    await page.getByLabel('ชื่อ / รหัสกล้อง').fill('CAM-01');
+    await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CCTV-001');
+    await page.getByLabel('รหัสกล้อง').fill('CAM-01');
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(page.getByText('กรุณากรอกข้อมูล').first()).toBeVisible();
-    await page.getByLabel('Site').selectOption({ label: 'อาคาร A' });
-    await page.getByLabel('ประเภท').selectOption('bullet');
     await page.getByLabel('ละติจูด (lat)').fill('13.6601');
     await page.getByLabel('ลองจิจูด (lng)').fill('100.6002');
-    await page.getByLabel('ทิศทาง (องศา)').fill('360');
+    await page.getByRole('button', { name: 'บันทึก' }).click();
+    await expect(
+      page.getByText('กรุณาเลือกรุ่นกล้อง หรือระบุประเภทกล้อง'),
+    ).toBeVisible();
+    // Not in the model list: typed by hand.
+    await page
+      .getByLabel('ยี่ห้อ', { exact: true })
+      .selectOption({ label: 'อื่นๆ (ระบุเอง)' });
+    await page.getByLabel('ยี่ห้อ (ระบุเอง)').fill('Sony');
+    await page.getByLabel('ประเภท').selectOption('bullet');
+    await page.getByRole('button', { name: 'บันทึก' }).click();
+
+    // Camera detail, then the same form again for the details
+    await expect(page.getByRole('heading', { name: 'CAM-01' })).toBeVisible();
+    const detail = page.getByTestId('camera-detail');
+    await expect(detail).toContainText('Sony');
+    await expect(detail).toContainText('Bullet');
+    await detail
+      .getByRole('link', { name: /รายละเอียด Survey \(0\/15\)/ })
+      .click();
+    await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CAM-01');
+    await page.getByLabel('Site').selectOption({ label: 'อาคาร A' });
+    await page.getByLabel('ทิศทาง (°)').fill('360');
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(page.getByText('ต้องน้อยกว่า 360')).toBeVisible();
-    await page.getByLabel('ทิศทาง (องศา)').fill('90');
+    await page.getByLabel('ทิศทาง (°)').fill('90');
     await page.getByLabel('PoE').selectOption('true');
-    // Survey fields (0004)
-    await page.getByLabel('ยี่ห้อ').fill('Sony');
-    await page.getByLabel('วัตถุประสงค์').selectOption('entrance');
     await page.getByLabel('ระยะมองเห็น (ม.)').fill('30');
     await page.getByLabel('โครงสร้างที่ติดตั้ง').selectOption('new_pole');
     await page.getByLabel('ไฟฟ้า').selectOption('true');
     await page.getByRole('button', { name: 'บันทึก' }).click();
+    await expect(
+      detail.getByRole('link', { name: /รายละเอียด Survey \(5\/15\)/ }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'กลับไปที่โครงการ' }).click();
 
     const cameras = page.getByRole('list', { name: 'รายการกล้อง' });
     await expect(cameras).toContainText('CAM-01');
@@ -129,20 +159,26 @@ test.describe('admin: full create / edit / delete flow', () => {
 
     // A second camera with the same label → API 409, shown on the form
     await page.getByRole('link', { name: '+ เพิ่มกล้อง' }).click();
-    await page.getByLabel('ชื่อ / รหัสกล้อง').fill('CAM-01');
+    await page.getByLabel('รหัสกล้อง').fill('CAM-01');
     await page.getByLabel('ละติจูด (lat)').fill('13.66');
     await page.getByLabel('ลองจิจูด (lng)').fill('100.6');
+    await pickCamera(page.getByRole('main'));
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(page.getByRole('main').getByRole('alert')).toContainText(
       'มีกล้องที่ใช้ชื่อนี้ในโครงการแล้ว',
     );
     await page.getByRole('link', { name: 'ยกเลิก' }).click();
 
-    // Edit camera: rename, clear the bearing
+    // Edit camera data (rename); clear the bearing in the survey detail
     await cameras.getByRole('link', { name: 'แก้ไข' }).click();
-    await page.getByLabel('ชื่อ / รหัสกล้อง').fill('CAM-01A');
-    await page.getByLabel('ทิศทาง (องศา)').fill('');
+    await page.getByLabel('รหัสกล้อง').fill('CAM-01A');
     await page.getByRole('button', { name: 'บันทึก' }).click();
+    await expect(page.getByRole('heading', { name: 'CAM-01A' })).toBeVisible();
+    await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
+    await page.getByLabel('ทิศทาง (°)').fill('');
+    await page.getByRole('button', { name: 'บันทึก' }).click();
+    await expect(page.getByRole('heading', { name: 'CAM-01A' })).toBeVisible();
+    await page.getByRole('link', { name: 'กลับไปที่โครงการ' }).click();
     await expect(cameras).toContainText('CAM-01A');
     await expect(cameras).not.toContainText('ทิศ 90°');
 

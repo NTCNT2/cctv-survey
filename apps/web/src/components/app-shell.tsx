@@ -11,9 +11,10 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react';
+import { can, type Action } from '@cctv/shared';
 import { api, logoutEndedSession } from '@/lib/api';
 import { ROLE_LABELS } from '@/lib/labels';
-import { leaveToLogin, useSession } from '@/lib/session';
+import { leaveToLogin, useCan, useSession } from '@/lib/session';
 import {
   IconBell,
   IconCamera,
@@ -40,6 +41,18 @@ interface NavItem {
   href?: string;
   /** Path prefixes that mark the item as the current section. */
   match?: string[];
+  /** Only users with this permission get the link (others: disabled). */
+  permission?: Action;
+}
+
+/** NAV as this user sees it. */
+function useNav(): NavItem[] {
+  const user = useSession();
+  return NAV.map((i) =>
+    i.permission && !can(user.role, i.permission)
+      ? { ...i, href: undefined, match: undefined }
+      : i,
+  );
 }
 
 const NAV: NavItem[] = [
@@ -51,7 +64,14 @@ const NAV: NavItem[] = [
     match: ['/projects', '/sites', '/cameras'],
   },
   { label: 'แผนที่สำรวจ', icon: IconMap },
-  { label: 'กล้อง', icon: IconCamera },
+  // Admins: the camera model master (ข้อมูลกล้อง). Others: not built yet.
+  {
+    label: 'กล้อง',
+    icon: IconCamera,
+    href: '/camera-models',
+    match: ['/camera-models'],
+    permission: 'camera_model:manage',
+  },
   { label: 'รายงาน', icon: IconReport },
   {
     label: 'ตั้งค่า',
@@ -68,6 +88,7 @@ const isCurrent = (item: NavItem, pathname: string) =>
 /** Page context shown in the top header (the page itself has the <h1>). */
 function sectionTitle(pathname: string): string {
   if (pathname.startsWith('/account')) return 'ตั้งค่าบัญชี';
+  if (pathname.startsWith('/camera-models')) return 'ข้อมูลกล้อง';
   if (pathname.startsWith('/design-system')) return 'Design system';
   if (isImmersive(pathname)) return 'แผนที่สำรวจ';
   return 'โครงการ';
@@ -129,6 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function Sidebar({ pathname }: { pathname: string }) {
   const user = useSession();
+  const nav = useNav();
   return (
     <aside
       aria-label="เมนูหลัก"
@@ -151,7 +173,7 @@ function Sidebar({ pathname }: { pathname: string }) {
       </Link>
       <nav aria-label="เมนูหลัก" className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <li key={item.label}>
               <SideLink item={item} current={isCurrent(item, pathname)} />
             </li>
@@ -377,6 +399,7 @@ function Notifications() {
 
 function UserMenu() {
   const user = useSession();
+  const manageModels = useCan('camera_model:manage');
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string>();
@@ -449,6 +472,16 @@ function UserMenu() {
               <IconKey className="size-4 text-zinc-500" />
               เปลี่ยนรหัสผ่าน
             </Link>
+            {manageModels && (
+              <Link
+                href="/camera-models"
+                onClick={() => setMenuOpen(false)}
+                className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <IconCamera className="size-4 text-zinc-500" />
+                ข้อมูลกล้อง (รุ่นกล้อง)
+              </Link>
+            )}
             <Button
               variant="secondary"
               className="mt-1 w-full"
@@ -466,7 +499,7 @@ function UserMenu() {
 }
 
 function BottomNav({ pathname }: { pathname: string }) {
-  const items = NAV.filter((i) =>
+  const items = useNav().filter((i) =>
     ['โครงการ', 'แผนที่สำรวจ', 'กล้อง', 'ตั้งค่า'].includes(i.label),
   );
   return (

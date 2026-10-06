@@ -39,7 +39,7 @@ done
 echo "== test database"
 bash scripts/db.sh test-db >/dev/null
 [[ $(psql_test -c 'select current_database()') == "$TEST_DB" ]] || die "not the test database"
-counts=$(psql_test -c 'select (select count(*) from projects) + (select count(*) from users)')
+counts=$(psql_test -c 'select (select count(*) from projects) + (select count(*) from users) + (select count(*) from camera_models)')
 [[ $counts == 0 ]] || die "$TEST_DB is not empty ($counts rows) — clean it before running the suite"
 
 echo "== build"
@@ -52,8 +52,11 @@ pnpm --filter @cctv/api build >/dev/null
 DB_URL=$(grep -E '^DATABASE_URL=' .env | cut -d= -f2-)
 DB_URL=${DB_URL/\/cctv_survey\?//$TEST_DB?}
 [[ $DB_URL == *"/$TEST_DB?"* ]] || die "could not derive the test DATABASE_URL"
+# Photo files of this run: a throwaway directory, removed in cleanup.
+UPLOAD_TMP=$(mktemp -d -t cctv-e2e-web-uploads-XXXXXX)
 API_ENV=(DATABASE_URL="$DB_URL" JWT_SECRET="$(rand)$(rand)" JWT_EXPIRES_IN=8h
-  API_HOST=127.0.0.1 API_PORT=$API_PORT COOKIE_SECURE=false NODE_ENV=test)
+  API_HOST=127.0.0.1 API_PORT=$API_PORT COOKIE_SECURE=false NODE_ENV=test
+  UPLOAD_DIR="$UPLOAD_TMP")
 
 cleanup() {
   set +e
@@ -69,13 +72,17 @@ cleanup() {
   echo "== cleanup ($TEST_DB)"
   psql_test <<SQL
 DELETE FROM camera_points WHERE project_id IN (SELECT id FROM projects WHERE name LIKE '$PREFIX%');
+DELETE FROM camera_models WHERE brand LIKE '$PREFIX%';
 DELETE FROM sites WHERE project_id IN (SELECT id FROM projects WHERE name LIKE '$PREFIX%');
 DELETE FROM projects WHERE name LIKE '$PREFIX%';
 DELETE FROM user_sessions WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'e2e-web-%');
 DELETE FROM users WHERE username LIKE 'e2e-web-%';
 SELECT 'left in $TEST_DB: projects=' || (SELECT count(*) FROM projects)
-    || ' users=' || (SELECT count(*) FROM users);
+    || ' users=' || (SELECT count(*) FROM users)
+    || ' camera_models=' || (SELECT count(*) FROM camera_models)
+    || ' camera_photos=' || (SELECT count(*) FROM camera_photos);
 SQL
+  [[ -n ${UPLOAD_TMP:-} ]] && rm -rf "$UPLOAD_TMP"
   # Saved test-user sessions. Absolute path: the script has cd'ed by now.
   rm -rf "$ROOT/apps/web/e2e/.auth"
 }

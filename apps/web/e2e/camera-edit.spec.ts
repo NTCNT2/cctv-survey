@@ -46,8 +46,9 @@ test.describe('camera edit keeps untouched fields', () => {
   test('changing brand and model sends only those two', async ({ page }) => {
     const before = await read();
     await page.goto(`/cameras/${cameraId}/edit`);
-    await page.getByLabel('ยี่ห้อ').fill('TEST');
-    await page.getByLabel('รุ่น').fill('TEST-M');
+    // A point without a model shows its camera as typed by hand.
+    await page.locator('#brand').fill('TEST');
+    await page.locator('#model').fill('TEST-M');
 
     const patch = page.waitForResponse(
       (r) =>
@@ -75,10 +76,9 @@ test.describe('camera edit keeps untouched fields', () => {
       Date.parse(before.updatedAt as string),
     );
 
-    // The screen shows what the database has.
-    await expect(page).toHaveURL(/\/projects\/[^/]+$/);
-    const cameras = page.getByRole('list', { name: 'รายการกล้อง' });
-    await expect(cameras).toContainText('TEST');
+    // Back on the camera page, which shows what the database has.
+    await expect(page).toHaveURL(new RegExp(`/cameras/${cameraId}$`));
+    await expect(page.getByTestId('camera-detail')).toContainText('TEST-M');
   });
 
   test('saving without changes sends nothing', async ({ page }) => {
@@ -88,9 +88,9 @@ test.describe('camera edit keeps untouched fields', () => {
       if (r.method() === 'PATCH') patched = true;
     });
     await page.goto(`/cameras/${cameraId}/edit`);
-    await expect(page.getByLabel('ยี่ห้อ')).toBeVisible();
+    await expect(page.locator('#brand')).toBeVisible();
     await page.getByRole('button', { name: 'บันทึก' }).click();
-    await expect(page).toHaveURL(/\/projects\/[^/]+$/);
+    await expect(page).toHaveURL(new RegExp(`/cameras/${cameraId}$`));
     expect(patched).toBe(false);
     expect(await read()).toEqual(before);
   });
@@ -99,7 +99,7 @@ test.describe('camera edit keeps untouched fields', () => {
     page,
   }) => {
     await page.goto(`/cameras/${cameraId}/edit`);
-    await expect(page.getByLabel('ชื่อ / รหัสกล้อง')).toHaveValue('CAM-01');
+    await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CAM-01');
     // Changed elsewhere while this browser still has the old copy cached.
     const res = await api.patch(`/api/cameras/${cameraId}`, {
       data: { label: 'CAM-01-NEW', brand: 'ELSEWHERE' },
@@ -107,10 +107,10 @@ test.describe('camera edit keeps untouched fields', () => {
     expect(res.status()).toBe(200);
     await page.getByRole('link', { name: 'ยกเลิก' }).click();
     await page
-      .getByRole('list', { name: 'รายการกล้อง' })
-      .getByRole('link', { name: 'แก้ไข' })
+      .getByTestId('camera-detail')
+      .getByRole('link', { name: 'แก้ไขข้อมูลกล้อง' })
       .click();
-    await expect(page.getByLabel('ชื่อ / รหัสกล้อง')).toHaveValue('CAM-01-NEW');
-    await expect(page.getByLabel('ยี่ห้อ')).toHaveValue('ELSEWHERE');
+    await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CAM-01-NEW');
+    await expect(page.locator('#brand')).toHaveValue('ELSEWHERE');
   });
 });

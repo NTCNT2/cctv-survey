@@ -49,8 +49,13 @@ export function BottomSheet({
       aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
       // Escape (and the close button) end in the "close" event: keep React state in sync.
-      onClose={onClose}
+      // Only this sheet's own events: React passes close / cancel of a dialog
+      // opened inside the sheet (photo preview, confirm) up to here too.
+      onClose={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onCancel={(e) => {
+        if (e.target !== e.currentTarget) return;
         e.preventDefault();
         onClose();
       }}
@@ -125,7 +130,9 @@ export function BottomSheet({
       */}
       <div
         data-sheet-body
-        className="min-h-0 flex-auto overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch]"
+        // scroll-padding (not padding: see above) keeps a field that is scrolled
+        // or focused into view clear of a sticky save bar inside the sheet.
+        className="min-h-0 flex-auto scroll-pb-24 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch]"
       >
         <div className="px-5">{children}</div>
         <div aria-hidden data-sheet-scroll-end className="h-5 shrink-0" />
