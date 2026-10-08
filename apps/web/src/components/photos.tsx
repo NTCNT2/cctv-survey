@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { errorMessage } from '@/lib/api';
 import { formatDateTime, PHOTO_TYPE_LABELS } from '@/lib/labels';
+import { photoFailureMessage } from '@/lib/photo';
 import {
   useAddPhotos,
   useDeletePhoto,
@@ -442,8 +443,15 @@ export function PendingPhotos({
 // Saved camera: photos through the Photo API
 // ---------------------------------------------------------------------------
 
-/** Upload state shared by the photo section and a "เพิ่มรูป" button. */
-export function usePhotoUpload(cameraId: string, projectId: string) {
+/**
+ * Upload state shared by the photo section and a "เพิ่มรูป" button.
+ * `onDone`: after each batch (the camera page clears an older failure).
+ */
+export function usePhotoUpload(
+  cameraId: string,
+  projectId: string,
+  onDone?: (r: { uploaded: number; failed: number }) => void,
+) {
   const photos = usePhotos(cameraId);
   const add = useAddPhotos(cameraId, projectId);
   const [progress, setProgress] = useState<{ done: number; total: number }>();
@@ -460,13 +468,15 @@ export function usePhotoUpload(cameraId: string, projectId: string) {
         items: batch.map((file) => ({ file, type: DEFAULT_PHOTO_TYPE })),
         onProgress: (done) => setProgress({ done, total: batch.length }),
       });
+      // C2: the real cause of each failure, never one generic text.
       setMessage(
-        r.failed > 0
-          ? `อัปโหลดไม่สำเร็จ ${r.failed} จาก ${batch.length} รูป — ลองอีกครั้ง`
+        r.failures.length > 0
+          ? photoFailureMessage(r.failures, batch.length)
           : undefined,
       );
+      onDone?.(r);
     } catch (err) {
-      setMessage(errorMessage(err));
+      setMessage(`อัปโหลดรูปไม่สำเร็จ: ${errorMessage(err)}`);
     } finally {
       setProgress(undefined);
     }

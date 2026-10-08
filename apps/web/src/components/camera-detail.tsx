@@ -74,14 +74,17 @@ export function CameraDetail({
   canWrite,
   /** Extra action (map: navigation). */
   extra,
+  onPhotosDone,
 }: {
   camera: CameraPoint;
   siteName?: string;
   canWrite: boolean;
   extra?: ReactNode;
+  /** After each upload batch from this view. */
+  onPhotosDone?: (r: { uploaded: number; failed: number }) => void;
 }) {
   const [more, setMore] = useState(false);
-  const uploader = usePhotoUpload(c.id, c.projectId);
+  const uploader = usePhotoUpload(c.id, c.projectId, onPhotosDone);
   const survey = surveyItems(c);
   const filled = survey.filter((i) => i.value !== undefined).length;
   const cameraName = [c.brand, c.model].filter(Boolean);

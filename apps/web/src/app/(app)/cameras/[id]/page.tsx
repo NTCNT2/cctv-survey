@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { CameraDetail } from '@/components/camera-detail';
 import {
@@ -12,6 +12,7 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
+import { decodePhotoFailures, photoFailureMessage } from '@/lib/photo';
 import { useCamera, useSites } from '@/lib/queries';
 import { useCan } from '@/lib/session';
 
@@ -27,7 +28,11 @@ export default function CameraPage() {
 
 function CameraView() {
   const { id } = useParams<{ id: string }>();
-  const photosFailed = Number(useSearchParams().get('photosFailed') ?? 0);
+  const router = useRouter();
+  const params = useSearchParams();
+  const photosFailed = Number(params.get('photosFailed') ?? 0);
+  const photoFailures = decodePhotoFailures(params.get('why'));
+  const photosTried = Number(params.get('of') ?? photosFailed);
   const camera = useCamera(id);
   const canWrite = useCan('camera:write');
   const sites = useSites(camera.data?.projectId ?? '');
@@ -59,8 +64,10 @@ function CameraView() {
       {photosFailed > 0 && (
         <div className="mb-4">
           <Alert>
-            บันทึกจุดกล้องแล้ว แต่อัปโหลดรูปไม่สำเร็จ {photosFailed} รูป — กด
-            “เพิ่มรูป” เพื่อลองอีกครั้ง
+            {photoFailures.length > 0
+              ? photoFailureMessage(photoFailures, photosTried)
+              : `อัปโหลดรูปไม่สำเร็จ ${photosFailed} รูป`}{' '}
+            — บันทึกจุดกล้องแล้ว กด “เพิ่มรูป” เพื่อลองอีกครั้ง
           </Alert>
         </div>
       )}
@@ -69,6 +76,13 @@ function CameraView() {
           camera={c}
           siteName={sites.data?.find((s) => s.id === c.siteId)?.name}
           canWrite={canWrite}
+          // C3: once another batch is uploaded, the old failure no longer
+          // applies (a new failure is shown by the photo section itself).
+          onPhotosDone={() => {
+            if (photosFailed > 0) {
+              router.replace(`/cameras/${c.id}`, { scroll: false });
+            }
+          }}
         />
       </Card>
     </>

@@ -32,7 +32,7 @@ import {
 import { mapSetup, type MapsConfig } from '@/lib/google-maps';
 import { CAMERA_STATUS_LABELS, CAMERA_STATUS_TONES } from '@/lib/labels';
 import { directionsUrl, type LatLng } from '@/lib/map-geo';
-import type { PhotoUpload } from '@/lib/photo';
+import { photoFailureMessage, type PhotoUpload } from '@/lib/photo';
 import {
   useCameraModels,
   useCameras,
@@ -104,7 +104,10 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
   const [stack, setStack] = useState<string[]>();
   const [listOpen, setListOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [toast, setToast] = useState<string>();
+  const [toast, setToast] = useState<{
+    message: string;
+    tone?: 'status' | 'error';
+  }>();
   const clearToast = useCallback(() => setToast(undefined), []);
   /**
    * A sheet is a modal flow: the map's own controls and the bottom
@@ -121,7 +124,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
   async function goToMe() {
     const r = await gps.locate(FRESH_MS);
     if (r.fix) map.current?.flyTo(r.fix);
-    else setToast(gpsFailure(r.status));
+    else setToast({ message: gpsFailure(r.status) });
   }
 
   /** Fast path: one fresh GPS fix, then straight to the form. */
@@ -155,16 +158,23 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
 
   /** The point first, then its photos (a failed photo never loses the point). */
   async function save(body: CreateCameraPointInput, photos: PhotoUpload[]) {
-    const { camera: saved, photosFailed } = await create.mutateAsync({
+    const { camera: saved, photoFailures } = await create.mutateAsync({
       body,
       photos,
     });
     setDraft(undefined);
     setPicked(undefined);
+    // C1: a photo failure is its own red alert, starting with the failure;
+    // the point itself was saved either way.
     setToast(
-      photosFailed > 0
-        ? `บันทึก ${saved.label} แล้ว แต่อัปโหลดรูปไม่สำเร็จ ${photosFailed} รูป — เพิ่มรูปได้จากรายละเอียดจุด`
-        : `✓ บันทึก ${saved.label} สำเร็จ${photos.length ? ` (รูป ${photos.length})` : ''}`,
+      photoFailures.length > 0
+        ? {
+            tone: 'error',
+            message: `${photoFailureMessage(photoFailures, photos.length)} — บันทึกจุด ${saved.label} แล้ว เพิ่มรูปใหม่ได้จากรายละเอียดจุด`,
+          }
+        : {
+            message: `✓ บันทึก ${saved.label} สำเร็จ${photos.length ? ` (รูป ${photos.length})` : ''}`,
+          },
     );
     map.current?.flyTo(saved.location);
   }
@@ -623,7 +633,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
         </div>
       </BottomSheet>
 
-      <Toast message={toast} onDone={clearToast} />
+      <Toast message={toast?.message} tone={toast?.tone} onDone={clearToast} />
     </div>
   );
 }

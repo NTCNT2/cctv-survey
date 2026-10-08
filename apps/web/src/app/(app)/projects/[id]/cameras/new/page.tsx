@@ -12,6 +12,7 @@ import {
   useSites,
 } from '@/lib/queries';
 import { useCan } from '@/lib/session';
+import { encodePhotoFailures } from '@/lib/photo';
 import { nextPointCode } from '@/lib/survey';
 
 /** Quick Add on a page (the survey map has the same form in a sheet). */
@@ -59,9 +60,11 @@ export default function NewCameraPage() {
             cancelHref={back.href}
             onSubmit={async (body, photos) => {
               const r = await create.mutateAsync({ body, photos });
-              router.replace(
-                `/cameras/${r.camera.id}${r.photosFailed ? `?photosFailed=${r.photosFailed}` : ''}`,
-              );
+              // Failed photos: the camera page says why (and how many of how many).
+              const failed = r.photoFailures.length
+                ? `?photosFailed=${r.photoFailures.length}&of=${photos.length}&why=${encodePhotoFailures(r.photoFailures)}`
+                : '';
+              router.replace(`/cameras/${r.camera.id}${failed}`);
             }}
           />
         </div>

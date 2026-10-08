@@ -240,13 +240,20 @@ export function Fab({
  * Short confirmation ("✓ บันทึก CCTV-001 สำเร็จ"), announced politely to
  * screen readers and hidden after a few seconds.
  */
+/**
+ * Short message at the top. `tone="error"` (C1): announced at once
+ * (role="alert"), red, stays longer and can be closed; everything else is
+ * the neutral status style.
+ */
 export function Toast({
   message,
   onDone,
-  ms = 3500,
+  tone = 'status',
+  ms = tone === 'error' ? 12_000 : 3500,
 }: {
   message: string | undefined;
   onDone: () => void;
+  tone?: 'status' | 'error';
   ms?: number;
 }) {
   useEffect(() => {
@@ -254,16 +261,33 @@ export function Toast({
     const t = setTimeout(onDone, ms);
     return () => clearTimeout(t);
   }, [message, onDone, ms]);
+  const error = tone === 'error';
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4"
-    >
+    <div className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-50 flex justify-center px-4">
       {message && (
-        <p className="pointer-events-auto rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
-          {message}
-        </p>
+        <div
+          role={error ? 'alert' : 'status'}
+          aria-live={error ? 'assertive' : 'polite'}
+          data-tone={tone}
+          className={cx(
+            'pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-lg',
+            error
+              ? 'bg-red-600 text-white ring-2 ring-red-300 dark:bg-red-500'
+              : 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
+          )}
+        >
+          <p className="min-w-0 flex-1">{message}</p>
+          {error && (
+            <button
+              type="button"
+              onClick={onDone}
+              aria-label="ปิดข้อความ"
+              className="-m-1 grid size-8 shrink-0 place-items-center rounded-full text-lg leading-none hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              ×
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

@@ -19,7 +19,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { api } from './api';
-import { uploadPhotos, type PhotoUpload } from './photo';
+import { uploadPhotos, type PhotoFailure, type PhotoUpload } from './photo';
 
 export const PAGE_SIZE = 20;
 
@@ -183,14 +183,18 @@ export function useCreateCamera(projectId: string) {
       body: CreateCameraPointInput;
       photos?: PhotoUpload[];
       onPhotoProgress?: (done: number) => void;
-    }): Promise<{ camera: CameraPoint; photosFailed: number }> => {
+    }): Promise<{
+      camera: CameraPoint;
+      photosFailed: number;
+      photoFailures: PhotoFailure[];
+    }> => {
       const camera = await api.cameras.create(body);
-      const { failed } = await uploadPhotos(
+      const { failed, failures } = await uploadPhotos(
         photos,
         (p, meta) => api.photos.upload(camera.id, p, meta),
         onPhotoProgress,
       );
-      return { camera, photosFailed: failed };
+      return { camera, photosFailed: failed, photoFailures: failures };
     },
     onSuccess: ({ camera }) => {
       qc.removeQueries({ queryKey: keys.camera(camera.id) });
