@@ -17,8 +17,13 @@ export function nextPointCode(labels: string[]): string {
 
 /**
  * The survey detail of a camera point: 15 items in a fixed order. Each says
- * whether it is done, what it shows, and which form field fills it (the
- * "ยังขาด" list links to it).
+ * whether it is done, what it shows, which form field fills it (the "ยังขาด"
+ * list links to it) and its group:
+ * - main   (9) what the design needs; the progress counts only these
+ * - extra  (4) free text, optional
+ * - auto   (1) the system can suggest it (cable length from the cabinet distance)
+ * - status (1) set when the point is created; changed by hand when needed
+ * Nothing is required to save: the progress only shows what is still open.
  */
 export type SurveyValues = Partial<
   Pick<
@@ -43,9 +48,12 @@ export type SurveyValues = Partial<
   >
 >;
 
+export type SurveyGroup = 'main' | 'extra' | 'auto' | 'status';
+
 export interface SurveyItem {
   /** 1–15, as numbered in the form. */
   no: number;
+  group: SurveyGroup;
   label: string;
   /** Input id in the survey form. */
   field: string;
@@ -73,7 +81,7 @@ export function surveyItems(c: SurveyValues): SurveyItem[] {
   const power = has(c.powerAvailable, 'มีไฟ', 'ไม่มีไฟ');
   const network = has(c.networkAvailable, 'มี', 'ไม่มี');
   const fiber = has(c.fiberAvailable, 'มี', 'ไม่มี');
-  const items: Omit<SurveyItem, 'no' | 'done'>[] = [
+  const items: Omit<SurveyItem, 'no' | 'done' | 'group'>[] = [
     {
       label: 'ความสูงติดตั้งกล้อง',
       field: 'mountHeightM',
@@ -157,18 +165,70 @@ export function surveyItems(c: SurveyValues): SurveyItem[] {
   return items.map((i, n) => ({
     ...i,
     no: n + 1,
+    group: GROUPS[n],
     done: i.value !== undefined,
   }));
 }
 
-/** "8/15" and what is still missing. */
+/** Group of items 1–15, in order. */
+const GROUPS: readonly SurveyGroup[] = [
+  ...(['main', 'main', 'main', 'main', 'main', 'main', 'main'] as const),
+  'auto',
+  'main',
+  'main',
+  ...(['extra', 'extra', 'extra', 'extra'] as const),
+  'status',
+];
+
+/**
+ * "ข้อมูลหลัก 7/9" (main items) and which of them are still missing; the
+ * optional items are counted on their own ("เพิ่มเติม 1/4").
+ */
 export function surveyProgress(c: SurveyValues) {
   const items = surveyItems(c);
-  const missing = items.filter((i) => !i.done);
+  const main = items.filter((i) => i.group === 'main');
+  const extra = items.filter((i) => i.group === 'extra');
+  const missing = main.filter((i) => !i.done);
   return {
     items,
     missing,
-    done: items.length - missing.length,
-    total: items.length,
+    done: main.length - missing.length,
+    total: main.length,
+    extraDone: extra.filter((i) => i.done).length,
+    extraTotal: extra.length,
   };
+}
+
+/**
+ * Suggested cable length for a cabinet distance: the route is rarely
+ * straight, so 20 % more plus 5 m for the ends, rounded up to whole metres.
+ * Only a suggestion: the form offers it, the user decides.
+ */
+export function suggestCableLength(
+  cabinetDistanceM: number | undefined,
+): number | undefined {
+  if (cabinetDistanceM === undefined || !(cabinetDistanceM > 0)) {
+    return undefined;
+  }
+  return Math.min(1000, Math.ceil(cabinetDistanceM * 1.2 + 5));
+}
+
+/** The 8 compass directions offered as quick picks (degrees from north). */
+export const COMPASS: readonly { deg: number; short: string; name: string }[] =
+  [
+    { deg: 0, short: 'N', name: 'ทิศเหนือ' },
+    { deg: 45, short: 'NE', name: 'ทิศตะวันออกเฉียงเหนือ' },
+    { deg: 90, short: 'E', name: 'ทิศตะวันออก' },
+    { deg: 135, short: 'SE', name: 'ทิศตะวันออกเฉียงใต้' },
+    { deg: 180, short: 'S', name: 'ทิศใต้' },
+    { deg: 225, short: 'SW', name: 'ทิศตะวันตกเฉียงใต้' },
+    { deg: 270, short: 'W', name: 'ทิศตะวันตก' },
+    { deg: 315, short: 'NW', name: 'ทิศตะวันตกเฉียงเหนือ' },
+  ];
+
+/** Nearest of the 8 directions, e.g. 100° → ทิศตะวันออก. */
+export function compassName(deg: number | undefined): string | undefined {
+  if (deg === undefined || !Number.isFinite(deg)) return undefined;
+  const i = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+  return COMPASS[i].name;
 }

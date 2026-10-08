@@ -13,7 +13,7 @@ const TITLE = 'รายละเอียด Survey';
 
 /**
  * Survey detail of a camera point (the 15 items). Saving goes back to the
- * camera, which then shows the new "รายละเอียด Survey (n/15)".
+ * camera, which then shows the new "รายละเอียด Survey (n/9)" (main items).
  */
 export default function CameraSurveyPage() {
   const { id } = useParams<{ id: string }>();

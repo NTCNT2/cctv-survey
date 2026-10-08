@@ -8,7 +8,7 @@ import { adminApi, seedProject, storage } from './env';
 
 /**
  * Survey detail (15 items): Camera Detail → รายละเอียด Survey → fill in →
- * บันทึก Survey → back on the camera with the new n/15 → reopen: the values
+ * บันทึก Survey → back on the camera with the new n/9 → reopen: the values
  * are still there. Saving part of it is allowed (the rest later).
  */
 
@@ -40,29 +40,35 @@ const nextPatch = (page: Page) =>
 test.describe('survey detail (surveyor)', () => {
   test.use({ storageState: storage.surveyor });
 
-  test('fill in part, save, come back, finish: 1/15 → 3/15 → 15/15', async ({
+  test('main data with quick picks, save part, finish later, optional extra', async ({
     page,
   }) => {
     const id = seeded.camera!.id;
     await page.goto(`/cameras/${id}`);
     const detail = page.getByTestId('camera-detail');
-    // A new point: only the survey status (สำรวจแล้ว) is filled.
+    // A new point: none of the 9 main items yet (status does not count).
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (1/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (0/9)' }),
     ).toBeVisible();
     await expect(detail.getByTestId('survey-missing')).toContainText(
-      'Survey ยังขาด 14 รายการ: ความสูงติดตั้งกล้อง, ทิศทางกล้อง, ระยะมองโดยประมาณ และอีก 11 รายการ',
+      'ข้อมูลหลักยังขาด 9 รายการ: ความสูงติดตั้งกล้อง, ทิศทางกล้อง, ระยะมองโดยประมาณ และอีก 6 รายการ',
     );
 
-    // 1) Open the survey form.
+    // 1) Open the survey form: main data first, the optional part folded.
     await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
     await expect(page).toHaveURL(new RegExp(`/cameras/${id}/survey$`));
     await expect(
       page.getByRole('heading', { name: 'รายละเอียด Survey: CAM-01' }),
     ).toBeVisible();
     await expect(progress(page)).toContainText(
-      'กรอกแล้ว 1/15 · ยังขาด 14 รายการ',
+      'ข้อมูลหลัก 0/9 · ยังขาด 9 รายการ',
     );
+    await expect(progress(page)).toContainText(
+      'ข้อมูลเพิ่มเติม 0/4 (ไม่บังคับ)',
+    );
+    await expect(
+      page.getByLabel('11. ตำแหน่งตู้ Control / จุดรวมสาย'),
+    ).toBeHidden();
 
     // 2) A value out of range: shown at the field, nothing is saved.
     await page.getByLabel('2. ทิศทางกล้อง (°)').fill('400');
@@ -70,68 +76,88 @@ test.describe('survey detail (surveyor)', () => {
     await expect(page.getByText('ต้องน้อยกว่า 360')).toBeVisible();
     await expect(page).toHaveURL(/\/survey$/);
 
-    // 3) Part of it now: the progress follows as it is typed.
-    await page.getByLabel('1. ความสูงติดตั้งกล้อง (ม.)').fill('4,5');
-    await page.getByLabel('2. ทิศทางกล้อง (°)').fill('90');
-    await expect(progress(page)).toContainText('กรอกแล้ว 3/15');
+    // 3) Quick picks fill the number fields (which stay editable).
+    const heights = group(page, 'ความสูงติดตั้ง: ค่าที่ใช้บ่อย');
+    await heights.getByRole('button', { name: '5 ม.' }).click();
+    await expect(page.getByLabel('1. ความสูงติดตั้งกล้อง (ม.)')).toHaveValue(
+      '5',
+    );
+    await expect(heights.getByRole('button', { name: '5 ม.' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await group(page, 'ทิศทางกล้อง: ค่าที่ใช้บ่อย')
+      .getByRole('button', { name: 'ทิศตะวันออก (90°)' })
+      .click();
+    await expect(page.getByLabel('2. ทิศทางกล้อง (°)')).toHaveValue('90');
+    await expect(
+      page.getByText('ทิศตะวันออก · 0–359 จากทิศเหนือ'),
+    ).toBeVisible();
+    await expect(progress(page)).toContainText('ข้อมูลหลัก 2/9');
+
+    // 4) Saving with most of it missing is fine; only changes are sent.
     const first = nextPatch(page);
     await page.getByRole('button', { name: 'บันทึก Survey' }).click();
-    // Only what was changed is sent.
-    expect(await first).toEqual({ mountHeightM: 4.5, bearingDeg: 90 });
+    expect(await first).toEqual({ mountHeightM: 5, bearingDeg: 90 });
     await expect(page).toHaveURL(new RegExp(`/cameras/${id}$`));
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (3/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (2/9)' }),
     ).toBeVisible();
 
-    // 4) Later: the saved values are still there; fill in the rest.
+    // 5) Later: the saved values are still there; finish the main data.
     await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
     await expect(page.getByLabel('1. ความสูงติดตั้งกล้อง (ม.)')).toHaveValue(
-      '4.5',
+      '5',
     );
     await expect(page.getByLabel('2. ทิศทางกล้อง (°)')).toHaveValue('90');
 
     // A missing item jumps to its field.
-    await progress(page).getByText('รายการที่ยังขาด').click();
+    await progress(page).getByText('ข้อมูลหลักที่ยังขาด').click();
     await progress(page)
-      .getByRole('button', { name: '11. ตำแหน่งตู้ Control / จุดรวมสาย' })
+      .getByRole('button', { name: '4. วัตถุประสงค์การติดตั้ง' })
       .click();
     await expect(
-      page.getByLabel('11. ตำแหน่งตู้ Control / จุดรวมสาย'),
+      group(page, '4. วัตถุประสงค์การติดตั้ง').getByRole('radio').first(),
     ).toBeFocused();
 
-    await page.getByLabel('3. ระยะมองโดยประมาณ (ม.)').fill('30');
-    await page
-      .getByLabel('4. วัตถุประสงค์การติดตั้ง')
-      .selectOption({ label: 'ทางเข้า' });
+    await group(page, 'ระยะมอง: ค่าที่ใช้บ่อย')
+      .getByRole('button', { name: '30 ม.' })
+      .click();
+    await group(page, '4. วัตถุประสงค์การติดตั้ง').getByText('ทางเข้า').click();
     // On a building there is no pole: item 6 needs no input.
     await group(page, '5. โครงสร้างติดตั้ง').getByText('อาคาร').click();
     await expect(page.getByLabel('6. ความสูงเสา (ม.)')).toHaveCount(0);
     await expect(page.getByText('6. ความสูงเสา — ไม่ต้องกรอก')).toBeVisible();
+
+    // Cable length: a suggestion from the cabinet distance, never filled in
+    // by itself; taken with a tap, then still editable.
+    const cable = page.getByLabel('8. ความยาวสายโดยประมาณ (ม.)');
     await page.getByLabel('7. ระยะถึงตู้ Control (ม.)').fill('25');
-    await page.getByLabel('8. ความยาวสายโดยประมาณ (ม.)').fill('40');
+    await expect(cable).toHaveValue('');
+    await page.getByRole('button', { name: 'ใช้ค่าประมาณ 35 ม.' }).click();
+    await expect(cable).toHaveValue('35');
+    await expect(page.getByTestId('cable-suggestion')).toContainText(
+      'ใช้ค่าประมาณจากระยะถึงตู้ — แก้ได้ตามหน้างานจริง',
+    );
+    await cable.fill('40');
+    await expect(
+      page.getByRole('button', { name: 'ใช้ค่าประมาณ 35 ม.' }),
+    ).toBeVisible();
+
     await group(page, '9. ระบบไฟเลี้ยง')
       .getByText('มี', { exact: true })
       .click();
     await group(page, 'PoE').getByText('ใช้', { exact: true }).click();
     await group(page, 'Network').getByText('มี', { exact: true }).click();
     // Network alone is not item 10 yet: Fiber still to answer.
-    await expect(progress(page)).toContainText('กรอกแล้ว 10/15');
+    await expect(progress(page)).toContainText('ข้อมูลหลัก 8/9');
     await group(page, 'Fiber').getByText('ไม่มี', { exact: true }).click();
-    await page
-      .getByLabel('11. ตำแหน่งตู้ Control / จุดรวมสาย')
-      .fill('ใต้บันไดอาคาร B');
-    await page
-      .getByLabel('12. สภาพพื้นที่ติดตั้ง / อุปสรรค')
-      .fill('ต้นไม้บังบางส่วน');
-    await page.getByLabel('13. หมายเหตุหน้างาน').fill('ติดใต้ชายคา');
-    await page
-      .getByLabel('14. ความต้องการเพิ่มเติม / ปัญหาที่พบ')
-      .fill('ขอเพิ่มไฟส่องสว่าง');
-    await expect(progress(page)).toContainText('กรอกครบแล้ว 15/15');
+    await expect(progress(page)).toContainText('ข้อมูลหลักครบแล้ว 9/9');
     await expect(
-      page.getByRole('progressbar', { name: 'ความครบถ้วนของ Survey' }),
-    ).toHaveAttribute('aria-valuenow', '15');
+      page.getByRole('progressbar', { name: 'ข้อมูลหลักของ Survey' }),
+    ).toHaveAttribute('aria-valuenow', '9');
 
+    // 6) Main data complete with nothing optional: saved, 9/9.
     const second = nextPatch(page);
     await page.getByRole('button', { name: 'บันทึก Survey' }).click();
     expect(await second).toEqual({
@@ -144,20 +170,41 @@ test.describe('survey detail (surveyor)', () => {
       poe: true,
       networkAvailable: true,
       fiberAvailable: false,
+    });
+    await expect(
+      detail.getByRole('link', { name: 'รายละเอียด Survey (9/9)' }),
+    ).toBeVisible();
+    await expect(detail.getByTestId('survey-missing')).toHaveCount(0);
+
+    // 7) The optional part (11–14): unfold, fill, save.
+    await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
+    await page.getByText('ข้อมูลเพิ่มเติม (ไม่บังคับ)').click();
+    await page
+      .getByLabel('11. ตำแหน่งตู้ Control / จุดรวมสาย')
+      .fill('ใต้บันไดอาคาร B');
+    await page
+      .getByLabel('12. สภาพพื้นที่ติดตั้ง / อุปสรรค')
+      .fill('ต้นไม้บังบางส่วน');
+    await page.getByLabel('13. หมายเหตุหน้างาน').fill('ติดใต้ชายคา');
+    await page
+      .getByLabel('14. ความต้องการเพิ่มเติม / ปัญหาที่พบ')
+      .fill('ขอเพิ่มไฟส่องสว่าง');
+    await expect(progress(page)).toContainText('ข้อมูลเพิ่มเติม 4/4');
+    await expect(progress(page)).toContainText('ข้อมูลหลักครบแล้ว 9/9');
+    const third = nextPatch(page);
+    await page.getByRole('button', { name: 'บันทึก Survey' }).click();
+    expect(await third).toEqual({
       cabinetLocation: 'ใต้บันไดอาคาร B',
       siteConditions: 'ต้นไม้บังบางส่วน',
       notes: 'ติดใต้ชายคา',
       siteIssues: 'ขอเพิ่มไฟส่องสว่าง',
     });
-    await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (15/15)' }),
-    ).toBeVisible();
-    await expect(detail.getByTestId('survey-missing')).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/cameras/${id}$`));
 
-    // 5) Stored: after a reload, in the list on the camera and in the API.
+    // 8) Stored: after a reload, in the list on the camera and in the API.
     await page.reload();
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (15/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (9/9)' }),
     ).toBeVisible();
     await detail.getByRole('button', { name: 'ดูข้อมูลสำรวจ' }).click();
     await expect(detail).toContainText('ใต้บันไดอาคาร B');
@@ -166,8 +213,9 @@ test.describe('survey detail (surveyor)', () => {
     await expect(detail).toContainText('ไม่ใช้เสา');
     const stored = await (await api.get(`/api/cameras/${id}`)).json();
     expect(stored).toMatchObject({
-      mountHeightM: 4.5,
+      mountHeightM: 5,
       bearingDeg: 90,
+      cableLengthM: 40,
       structureType: 'building',
       siteIssues: 'ขอเพิ่มไฟส่องสว่าง',
       status: 'surveyed',
@@ -177,7 +225,8 @@ test.describe('survey detail (surveyor)', () => {
       photoCount: 0,
     });
 
-    // 6) Reopen: every answer is selected again; clear one → 14/15.
+    // 9) Reopen: answers selected again, the optional part open (it has
+    // data); clear one main item → 8/9.
     await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
     await expect(
       group(page, 'Fiber').getByLabel('ไม่มี', { exact: true }),
@@ -189,18 +238,18 @@ test.describe('survey detail (surveyor)', () => {
       'ติดใต้ชายคา',
     );
     await page.getByRole('button', { name: 'ล้างค่า 9. ระบบไฟเลี้ยง' }).click();
-    await expect(progress(page)).toContainText('กรอกแล้ว 14/15');
-    const third = nextPatch(page);
+    await expect(progress(page)).toContainText('ข้อมูลหลัก 8/9');
+    const fourth = nextPatch(page);
     await page.getByRole('button', { name: 'บันทึก Survey' }).click();
-    expect(await third).toEqual({ powerAvailable: null });
+    expect(await fourth).toEqual({ powerAvailable: null });
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (14/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (8/9)' }),
     ).toBeVisible();
     await expect(detail.getByTestId('survey-missing')).toContainText(
-      'Survey ยังขาด 1 รายการ: ระบบไฟเลี้ยง',
+      'ข้อมูลหลักยังขาด 1 รายการ: ระบบไฟเลี้ยง',
     );
 
-    // 7) Nothing changed: no request, straight back.
+    // 10) Nothing changed: no request, straight back.
     await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
     let patched = false;
     page.on('request', (r) => {
@@ -210,13 +259,19 @@ test.describe('survey detail (surveyor)', () => {
     await expect(page).toHaveURL(new RegExp(`/cameras/${id}$`));
     expect(patched).toBe(false);
 
-    // 8) "รอสำรวจ" is not a finished survey.
+    // 11) Status: preset, changeable (not cleared), not part of the count.
     await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
-    await page.getByLabel('15. สถานะ Survey').selectOption('pending_survey');
-    await expect(progress(page)).toContainText('กรอกแล้ว 13/15');
+    const status = group(page, '15. สถานะ Survey');
+    await expect(status.getByLabel('สำรวจแล้ว')).toBeChecked();
+    await expect(
+      page.getByRole('button', { name: 'ล้างค่า 15. สถานะ Survey' }),
+    ).toHaveCount(0);
+    await status.getByText('มีปัญหา').click();
+    await expect(status.getByLabel('มีปัญหา')).toBeChecked();
+    await expect(progress(page)).toContainText('ข้อมูลหลัก 8/9');
     await page.getByRole('link', { name: 'ยกเลิก' }).click();
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (14/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (8/9)' }),
     ).toBeVisible();
   });
 });

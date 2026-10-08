@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  compassName,
   nextPointCode,
+  suggestCableLength,
   surveyItems,
   surveyProgress,
   type SurveyValues,
@@ -65,14 +67,53 @@ describe('surveyItems / surveyProgress', () => {
     ]);
   });
 
-  it('nothing filled: 0/15, every item missing', () => {
-    const p = surveyProgress({});
-    expect([p.done, p.total, p.missing.length]).toEqual([0, 15, 15]);
+  it('groups: 9 main, 4 extra (11–14), cable length auto, status', () => {
+    const by = (g: string) =>
+      surveyItems({})
+        .filter((i) => i.group === g)
+        .map((i) => i.no);
+    expect(by('main')).toEqual([1, 2, 3, 4, 5, 6, 7, 9, 10]);
+    expect(by('extra')).toEqual([11, 12, 13, 14]);
+    expect(by('auto')).toEqual([8]);
+    expect(by('status')).toEqual([15]);
   });
 
-  it('everything filled: 15/15, values as shown on the camera', () => {
+  it('nothing filled: main 0/9, all 9 missing; extra 0/4', () => {
+    const p = surveyProgress({});
+    expect([p.done, p.total, p.missing.length]).toEqual([0, 9, 9]);
+    expect([p.extraDone, p.extraTotal]).toEqual([0, 4]);
+  });
+
+  it('the progress counts only main items', () => {
+    // Status, cable length and the optional texts do not move it.
+    const p = surveyProgress({
+      status: 'surveyed',
+      cableLengthM: 40,
+      notes: 'x',
+      siteIssues: 'y',
+    });
+    expect([p.done, p.total]).toEqual([0, 9]);
+    expect(p.extraDone).toBe(2);
+    expect(p.missing.every((i) => i.group === 'main')).toBe(true);
+  });
+
+  it('main complete without any optional item: 9/9, nothing missing', () => {
+    const p = surveyProgress({
+      ...full,
+      cableLengthM: undefined,
+      cabinetLocation: undefined,
+      siteConditions: undefined,
+      notes: undefined,
+      siteIssues: undefined,
+    });
+    expect([p.done, p.total, p.missing]).toEqual([9, 9, []]);
+    expect(p.extraDone).toBe(0);
+  });
+
+  it('everything filled: 9/9 and 4/4, values as shown on the camera', () => {
     const p = surveyProgress(full);
-    expect([p.done, p.total, p.missing]).toEqual([15, 15, []]);
+    expect([p.done, p.total, p.missing]).toEqual([9, 9, []]);
+    expect([p.extraDone, p.extraTotal]).toEqual([4, 4]);
     const v = Object.fromEntries(p.items.map((i) => [i.no, i.value]));
     expect(v).toMatchObject({
       1: '4.5 ม.',
@@ -110,19 +151,41 @@ describe('surveyItems / surveyProgress', () => {
   });
 
   it('blank text is not filled; "รอสำรวจ" is not a finished survey', () => {
-    const p = surveyProgress({
-      notes: '   ',
-      cabinetLocation: '',
-      status: 'pending_survey',
-    });
-    expect(p.done).toBe(0);
+    const p = surveyProgress({ notes: '   ', cabinetLocation: '' });
+    expect(p.extraDone).toBe(0);
+    expect(surveyItems({ status: 'pending_survey' })[14].done).toBe(false);
     expect(surveyItems({ status: 'issue' })[14].value).toBe('มีปัญหา');
   });
 
-  it('missing items point at their form fields', () => {
-    const { missing } = surveyProgress({ ...full, siteIssues: undefined });
+  it('missing main items point at their form fields', () => {
+    const { missing } = surveyProgress({ ...full, purpose: undefined });
     expect(missing).toEqual([
-      expect.objectContaining({ no: 14, field: 'siteIssues' }),
+      expect.objectContaining({ no: 4, field: 'purpose' }),
     ]);
+  });
+});
+
+describe('suggestCableLength', () => {
+  it('cabinet distance × 1.2 + 5 m, rounded up', () => {
+    expect(suggestCableLength(25)).toBe(35);
+    expect(suggestCableLength(12.3)).toBe(20);
+    expect(suggestCableLength(0.5)).toBe(6);
+  });
+
+  it('no distance, no suggestion; never above the API limit', () => {
+    expect(suggestCableLength(undefined)).toBeUndefined();
+    expect(suggestCableLength(0)).toBeUndefined();
+    expect(suggestCableLength(Number.NaN)).toBeUndefined();
+    expect(suggestCableLength(5000)).toBe(1000);
+  });
+});
+
+describe('compassName', () => {
+  it('nearest of the 8 directions', () => {
+    expect(compassName(0)).toBe('ทิศเหนือ');
+    expect(compassName(100)).toBe('ทิศตะวันออก');
+    expect(compassName(337)).toBe('ทิศตะวันตกเฉียงเหนือ');
+    expect(compassName(359)).toBe('ทิศเหนือ');
+    expect(compassName(undefined)).toBeUndefined();
   });
 });

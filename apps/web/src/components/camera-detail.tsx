@@ -133,7 +133,7 @@ export function CameraDetail({
           data-testid="survey-missing"
           className="text-xs text-amber-800 dark:text-amber-300"
         >
-          Survey ยังขาด {survey.missing.length} รายการ:{' '}
+          ข้อมูลหลักยังขาด {survey.missing.length} รายการ:{' '}
           {survey.missing
             .slice(0, 3)
             .map((i) => i.label)
@@ -158,7 +158,7 @@ export function CameraDetail({
           items={[
             ...survey.items.map((i) => ({
               label: `${i.no}. ${i.label}`,
-              value: i.value ?? 'ยังไม่กรอก',
+              value: i.value ?? (i.group === 'extra' ? '—' : 'ยังไม่กรอก'),
             })),
             { label: 'ที่อยู่ / จุดสังเกต', value: c.address },
           ]}

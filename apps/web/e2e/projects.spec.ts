@@ -119,9 +119,9 @@ test.describe('admin: full create / edit / delete flow', () => {
     const detail = page.getByTestId('camera-detail');
     await expect(detail).toContainText('Sony');
     await expect(detail).toContainText('Bullet');
-    // Only the survey status (สำรวจแล้ว) counts so far.
+    // No main survey item yet.
     await expect(
-      detail.getByRole('link', { name: /รายละเอียด Survey \(1\/15\)/ }),
+      detail.getByRole('link', { name: /รายละเอียด Survey \(0\/9\)/ }),
     ).toBeVisible();
     await detail.getByRole('link', { name: 'แก้ไขข้อมูลกล้อง' }).click();
     await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CAM-01');
@@ -136,7 +136,7 @@ test.describe('admin: full create / edit / delete flow', () => {
     await page.getByLabel('ไฟฟ้า').selectOption('true');
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(
-      detail.getByRole('link', { name: /รายละเอียด Survey \(5\/15\)/ }),
+      detail.getByRole('link', { name: /รายละเอียด Survey \(4\/9\)/ }),
     ).toBeVisible();
     await page.getByRole('link', { name: 'กลับไปที่โครงการ' }).click();
 

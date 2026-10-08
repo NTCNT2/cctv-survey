@@ -297,7 +297,7 @@ test.describe('camera form (surveyor)', () => {
       detail.getByRole('button', { name: /ดูรูปที่ 2: เสา\/โครงสร้าง/ }),
     ).toBeVisible();
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (1/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (0/9)' }),
     ).toBeVisible();
 
     const id = /\/cameras\/([^/?]+)/.exec(page.url())![1];
@@ -392,9 +392,10 @@ test.describe('camera form (surveyor)', () => {
       networkAvailable: true,
       notes: 'ติดใต้ชายคา',
     });
-    // Height, notes and status count; Network alone (no Fiber answer) not yet.
+    // Of the main items only the height; Network alone (no Fiber) not yet,
+    // notes are optional.
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (3/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (1/9)' }),
     ).toBeVisible();
     await expect(detail).toContainText('Bullet · 8 MP');
   });

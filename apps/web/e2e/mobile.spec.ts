@@ -864,10 +864,18 @@ test.describe('survey detail on a phone', () => {
     await expect(page).toHaveURL(/\/survey$/);
     await expectNoHorizontalScroll(page);
 
-    // Numbers open the numeric keyboard.
+    // Numbers open the numeric keyboard; common values are one tap.
     const height = page.getByLabel('1. ความสูงติดตั้งกล้อง (ม.)');
     await expect(height).toHaveAttribute('inputmode', 'decimal');
-    await height.fill('5');
+    await page
+      .getByRole('group', { name: 'ความสูงติดตั้ง: ค่าที่ใช้บ่อย' })
+      .getByRole('button', { name: '5 ม.' })
+      .tap();
+    await expect(height).toHaveValue('5');
+    await page
+      .getByRole('group', { name: 'ทิศทางกล้อง: ค่าที่ใช้บ่อย' })
+      .getByRole('button', { name: 'ทิศเหนือ (0°)' })
+      .tap();
     await page
       .getByRole('group', { name: '5. โครงสร้างติดตั้ง' })
       .getByText('เสาไฟเดิม')
@@ -892,19 +900,22 @@ test.describe('survey detail on a phone', () => {
       expect(box!.height, await el.innerText()).toBeGreaterThanOrEqual(44);
     }
 
-    // The save bar stays on screen at the bottom of a long form.
+    // The optional part unfolds; the save bar stays on screen at the bottom.
     const save = page.getByRole('button', { name: 'บันทึก Survey' });
+    await page.getByText('ข้อมูลเพิ่มเติม (ไม่บังคับ)').tap();
     await page.getByLabel('14. ความต้องการเพิ่มเติม / ปัญหาที่พบ').fill('—');
     await expect(save).toBeInViewport();
+    await expectNoHorizontalScroll(page);
     await info.attach('survey-form', {
       body: await page.screenshot({ fullPage: true }),
       contentType: 'image/png',
     });
     await save.tap();
     await expect(page).toHaveURL(new RegExp(`/cameras/${id}$`));
-    // Status + height + structure + pole + network/fiber + item 14.
+    // Height, direction, structure, pole height, network/fiber (item 14 is
+    // optional and not counted).
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (6/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (5/9)' }),
     ).toBeVisible();
     await expectNoHorizontalScroll(page);
   });

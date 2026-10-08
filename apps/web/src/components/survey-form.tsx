@@ -23,20 +23,16 @@ import {
   STRUCTURE_TYPE_LABELS,
 } from '@/lib/labels';
 import {
+  COMPASS,
+  compassName,
   POLE_STRUCTURES,
+  suggestCableLength,
   surveyProgress,
   type SurveyItem,
   type SurveyValues,
 } from '@/lib/survey';
 import { keepClear, Section, Wide } from './camera-form';
-import {
-  Alert,
-  Button,
-  LinkButton,
-  SelectField,
-  TextAreaField,
-  TextField,
-} from './ui';
+import { Alert, Button, LinkButton, TextAreaField, TextField } from './ui';
 
 const str = (v: number | undefined) => (v === undefined ? '' : String(v));
 const yesNo = (v: boolean | undefined) => (v === undefined ? '' : String(v));
@@ -47,18 +43,68 @@ const count = (v: string) => {
 };
 const flag = (v: string) => (v === '' ? undefined : v === 'true');
 
-/** Anchors of the five sections, e.g. /cameras/[id]/survey#survey-system. */
+/** Anchors of the parts of the form, e.g. /cameras/[id]/survey#survey-extra. */
 export const SURVEY_SECTION_IDS = {
   view: 'survey-view',
   structure: 'survey-structure',
   system: 'survey-system',
-  site: 'survey-site',
+  extra: 'survey-extra',
   status: 'survey-status',
 } as const;
 
+/** Common values as one-tap buttons under a number field. */
+const HEIGHTS = [3, 4, 5, 6];
+const DISTANCES = [10, 20, 30, 50];
+
+const chip =
+  'inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-indigo-600';
+const chipOff =
+  'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200';
+const chipOn =
+  'border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/15 dark:text-indigo-300';
+
+/**
+ * Quick picks for a number field: tapping one fills the field (which can
+ * still be typed in). The chosen one is shown pressed.
+ */
+function QuickPicks({
+  label,
+  value,
+  onPick,
+  options,
+}: {
+  label: string;
+  value: string;
+  onPick: (v: string) => void;
+  options: { value: number; label: string; title?: string }[];
+}) {
+  const current = count(value);
+  return (
+    <div
+      role="group"
+      aria-label={`${label}: ค่าที่ใช้บ่อย`}
+      className="mt-2 grid grid-cols-4 gap-2"
+    >
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={current === o.value}
+          aria-label={o.title}
+          title={o.title}
+          onClick={() => onPick(String(o.value))}
+          className={`${chip} ${current === o.value ? chipOn : chipOff}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Options as large radio buttons (a tap, no picker wheel). A chosen value
- * can be cleared again with "ล้างค่า".
+ * can be cleared again with "ล้างค่า" (unless `clearable` is false).
  */
 function ChoiceField({
   id,
@@ -67,6 +113,7 @@ function ChoiceField({
   onChange,
   options,
   error,
+  clearable = true,
 }: {
   id: string;
   label: string;
@@ -74,6 +121,7 @@ function ChoiceField({
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   error?: string;
+  clearable?: boolean;
 }) {
   return (
     <fieldset
@@ -87,7 +135,7 @@ function ChoiceField({
         <span id={`${id}-label`} className="block text-sm font-medium">
           {label}
         </span>
-        {value !== '' && (
+        {clearable && value !== '' && (
           <button
             type="button"
             onClick={() => onChange('')}
@@ -134,10 +182,15 @@ const YES_NO = [
   { value: 'false', label: 'ไม่มี' },
 ];
 
-/** Brings a field into view and puts the cursor (or focus) on it. */
+/**
+ * Brings a field into view and puts the cursor (or focus) on it; opens the
+ * folded "ข้อมูลเพิ่มเติม" first when the field is inside it.
+ */
 function goTo(field: string) {
   const el = document.getElementById(field);
   if (!el) return;
+  const folded = el.closest('details');
+  if (folded) folded.open = true;
   el.scrollIntoView({ block: 'center', behavior: 'smooth' });
   const target =
     el.tagName === 'FIELDSET'
@@ -146,16 +199,23 @@ function goTo(field: string) {
   target.focus({ preventScroll: true });
 }
 
-/** "กรอกแล้ว 8/15" with the items still missing, each a jump to its field. */
+/**
+ * "ข้อมูลหลัก 7/9" with the main items still missing (each a jump to its
+ * field), and the optional ones counted on their own.
+ */
 export function SurveyProgress({
   done,
   total,
   missing,
+  extraDone,
+  extraTotal,
   onJump,
 }: {
   done: number;
   total: number;
   missing: SurveyItem[];
+  extraDone: number;
+  extraTotal: number;
   onJump?: (field: string) => void;
 }) {
   const complete = missing.length === 0;
@@ -172,12 +232,12 @@ export function SurveyProgress({
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold">
           {complete
-            ? `กรอกครบแล้ว ${done}/${total}`
-            : `กรอกแล้ว ${done}/${total} · ยังขาด ${missing.length} รายการ`}
+            ? `ข้อมูลหลักครบแล้ว ${done}/${total}`
+            : `ข้อมูลหลัก ${done}/${total} · ยังขาด ${missing.length} รายการ`}
         </p>
         <div
           role="progressbar"
-          aria-label="ความครบถ้วนของ Survey"
+          aria-label="ข้อมูลหลักของ Survey"
           aria-valuemin={0}
           aria-valuemax={total}
           aria-valuenow={done}
@@ -193,13 +253,17 @@ export function SurveyProgress({
           />
         </div>
       </div>
+      <p className="mt-1 text-xs opacity-80">
+        ข้อมูลเพิ่มเติม {extraDone}/{extraTotal} (ไม่บังคับ) ·
+        บันทึกได้แม้ยังไม่ครบ
+      </p>
       {!complete && (
         // A long list (a new point) starts folded, a short one open.
         <details open={openList} className="mt-1">
           <summary className="flex min-h-11 cursor-pointer items-center text-xs font-medium underline-offset-2 hover:underline">
-            รายการที่ยังขาด (แตะเพื่อไปที่ช่องนั้น)
+            ข้อมูลหลักที่ยังขาด (แตะเพื่อไปที่ช่องนั้น)
           </summary>
-          <ul aria-label="รายการที่ยังขาด" className="flex flex-wrap gap-2">
+          <ul aria-label="ข้อมูลหลักที่ยังขาด" className="flex flex-wrap gap-2">
             {missing.map((i) => (
               <li key={i.no}>
                 {onJump ? (
@@ -225,10 +289,10 @@ export function SurveyProgress({
 }
 
 /**
- * Survey detail of a saved camera point: the 15 items in five short
- * sections, with a live "กรอกแล้ว n/15" and the missing items. Saving with
- * items still missing is allowed (the rest can be filled in later); only
- * changed fields are sent.
+ * Survey detail of a saved camera point, for a phone on site:
+ * ข้อมูลหลัก (items 1–10, common values as buttons) · ข้อมูลเพิ่มเติม (11–14,
+ * folded, optional) · สถานะ Survey (15). Saving is always allowed (the rest
+ * can be filled in later); only changed fields are sent.
  */
 export function SurveyForm({
   camera: c,
@@ -291,6 +355,16 @@ export function SurveyForm({
   const [busy, setBusy] = useState(false);
   const saveBar = useRef<HTMLDivElement>(null);
 
+  /** A setter that also drops the field's error once its value changes. */
+  const edited = (id: string, set: (v: string) => void) => (v: string) => {
+    set(v);
+    setErrors((e) =>
+      id in e
+        ? Object.fromEntries(Object.entries(e).filter(([k]) => k !== id))
+        : e,
+    );
+  };
+
   const values: SurveyValues = {
     mountHeightM: count(mountHeightM),
     bearingDeg: count(bearingDeg),
@@ -314,11 +388,15 @@ export function SurveyForm({
   const progress = surveyProgress(values);
   const noPole =
     structureType !== '' && !POLE_STRUCTURES.includes(structureType as never);
-  /** Section header: "2/4" of its items. */
+  /** Section header: "กรอกแล้ว 2/4" of its items. */
   const of = (nos: number[]) => {
     const items = progress.items.filter((i) => nos.includes(i.no));
     return `กรอกแล้ว ${items.filter((i) => i.done).length}/${items.length}`;
   };
+  const cableSuggestion = suggestCableLength(values.cabinetDistanceM);
+  const direction = compassName(values.bearingDeg);
+  // Folded unless something is in it already.
+  const [extraOpen] = useState(progress.extraDone > 0);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -390,7 +468,7 @@ export function SurveyForm({
       autoComplete="off"
       enterKeyHint="next"
       value={value}
-      onChange={(e) => set(e.target.value)}
+      onChange={(e) => edited(id, set)(e.target.value)}
       error={errors[id]}
       hint={hint}
     />
@@ -404,17 +482,15 @@ export function SurveyForm({
     maxLength: number,
     placeholder?: string,
   ): ReactNode => (
-    <Wide>
-      <TextAreaField
-        id={id}
-        label={label}
-        maxLength={maxLength}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => set(e.target.value)}
-        error={errors[id]}
-      />
-    </Wide>
+    <TextAreaField
+      id={id}
+      label={label}
+      maxLength={maxLength}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => edited(id, set)(e.target.value)}
+      error={errors[id]}
+    />
   );
 
   return (
@@ -428,45 +504,78 @@ export function SurveyForm({
       <SurveyProgress {...progress} onJump={goTo} />
       {formError && <Alert>{formError}</Alert>}
 
+      <h2 className="px-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        ข้อมูลหลัก
+      </h2>
+
       <Section
         id={SURVEY_SECTION_IDS.view}
         step={1}
-        title="การติดตั้งและมุมมอง"
+        title="กล้องและมุมมอง"
         detail={of([1, 2, 3, 4])}
       >
-        {numberField(
-          'mountHeightM',
-          '1. ความสูงติดตั้งกล้อง (ม.)',
-          mountHeightM,
-          setMountHeightM,
-        )}
-        {numberField(
-          'bearingDeg',
-          '2. ทิศทางกล้อง (°)',
-          bearingDeg,
-          setBearingDeg,
-          '0–359 จากทิศเหนือ',
-        )}
-        {numberField(
-          'viewDistanceM',
-          '3. ระยะมองโดยประมาณ (ม.)',
-          viewDistanceM,
-          setViewDistanceM,
-        )}
-        <SelectField
-          id="purpose"
-          label="4. วัตถุประสงค์การติดตั้ง"
-          value={purpose}
-          onChange={(e) => setPurpose(e.target.value)}
-          error={errors.purpose}
-          options={[
-            { value: '', label: '— เลือก —' },
-            ...CAMERA_PURPOSES.map((p) => ({
+        <Wide>
+          {numberField(
+            'mountHeightM',
+            '1. ความสูงติดตั้งกล้อง (ม.)',
+            mountHeightM,
+            setMountHeightM,
+          )}
+          <QuickPicks
+            label="ความสูงติดตั้ง"
+            value={mountHeightM}
+            onPick={edited('mountHeightM', setMountHeightM)}
+            options={HEIGHTS.map((h) => ({ value: h, label: `${h} ม.` }))}
+          />
+        </Wide>
+        <Wide>
+          {numberField(
+            'bearingDeg',
+            '2. ทิศทางกล้อง (°)',
+            bearingDeg,
+            setBearingDeg,
+            direction
+              ? `${direction} · 0–359 จากทิศเหนือ`
+              : '0–359 จากทิศเหนือ',
+          )}
+          <QuickPicks
+            label="ทิศทางกล้อง"
+            value={bearingDeg}
+            onPick={edited('bearingDeg', setBearingDeg)}
+            options={COMPASS.map((d) => ({
+              value: d.deg,
+              label: d.short,
+              title: `${d.name} (${d.deg}°)`,
+            }))}
+          />
+        </Wide>
+        <Wide>
+          {numberField(
+            'viewDistanceM',
+            '3. ระยะมองโดยประมาณ (ม.)',
+            viewDistanceM,
+            setViewDistanceM,
+          )}
+          <QuickPicks
+            label="ระยะมอง"
+            value={viewDistanceM}
+            onPick={edited('viewDistanceM', setViewDistanceM)}
+            options={DISTANCES.map((d) => ({ value: d, label: `${d} ม.` }))}
+          />
+        </Wide>
+        <Wide>
+          <ChoiceField
+            id="purpose"
+            label="4. วัตถุประสงค์การติดตั้ง"
+            value={purpose}
+            onChange={edited('purpose', setPurpose)}
+            error={errors.purpose}
+            options={CAMERA_PURPOSES.map((p) => ({
               value: p,
               label: CAMERA_PURPOSE_LABELS[p],
-            })),
-          ]}
-        />
+            }))}
+          />
+        </Wide>
       </Section>
 
       <Section
@@ -480,7 +589,7 @@ export function SurveyForm({
             id="structureType"
             label="5. โครงสร้างติดตั้ง"
             value={structureType}
-            onChange={setStructureType}
+            onChange={edited('structureType', setStructureType)}
             error={errors.structureType}
             options={STRUCTURE_TYPES.map((s) => ({
               value: s,
@@ -512,7 +621,7 @@ export function SurveyForm({
         id={SURVEY_SECTION_IDS.system}
         step={3}
         title="สายและระบบ"
-        detail={of([7, 8, 9, 10, 11])}
+        detail={of([7, 9, 10])}
       >
         {numberField(
           'cabinetDistanceM',
@@ -526,13 +635,42 @@ export function SurveyForm({
           cableLengthM,
           setCableLengthM,
         )}
+        {cableSuggestion !== undefined && (
+          <Wide>
+            {/* A suggestion only: never filled in without a tap. */}
+            <div
+              data-testid="cable-suggestion"
+              className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400"
+            >
+              {count(cableLengthM) === cableSuggestion ? (
+                <span>ใช้ค่าประมาณจากระยะถึงตู้ — แก้ได้ตามหน้างานจริง</span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      edited(
+                        'cableLengthM',
+                        setCableLengthM,
+                      )(String(cableSuggestion))
+                    }
+                    className={`${chip} ${chipOff}`}
+                  >
+                    ใช้ค่าประมาณ {cableSuggestion} ม.
+                  </button>
+                  <span>ระยะถึงตู้ × 1.2 + 5 ม. — ตรวจและแก้ได้</span>
+                </>
+              )}
+            </div>
+          </Wide>
+        )}
         <Wide>
           <div className="grid grid-cols-2 gap-3">
             <ChoiceField
               id="powerAvailable"
               label="9. ระบบไฟเลี้ยง"
               value={powerAvailable}
-              onChange={setPowerAvailable}
+              onChange={edited('powerAvailable', setPowerAvailable)}
               error={errors.powerAvailable}
               options={YES_NO}
             />
@@ -540,7 +678,7 @@ export function SurveyForm({
               id="poe"
               label="PoE"
               value={poe}
-              onChange={setPoe}
+              onChange={edited('poe', setPoe)}
               error={errors.poe}
               options={[
                 { value: 'true', label: 'ใช้' },
@@ -558,7 +696,7 @@ export function SurveyForm({
               id="networkAvailable"
               label="Network"
               value={networkAvailable}
-              onChange={setNetworkAvailable}
+              onChange={edited('networkAvailable', setNetworkAvailable)}
               error={errors.networkAvailable}
               options={YES_NO}
             />
@@ -566,13 +704,42 @@ export function SurveyForm({
               id="fiberAvailable"
               label="Fiber"
               value={fiberAvailable}
-              onChange={setFiberAvailable}
+              onChange={edited('fiberAvailable', setFiberAvailable)}
               error={errors.fiberAvailable}
               options={YES_NO}
             />
           </div>
         </Wide>
-        <Wide>
+      </Section>
+
+      <details
+        id={SURVEY_SECTION_IDS.extra}
+        open={extraOpen}
+        className="group scroll-mt-4 rounded-2xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      >
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 p-4 sm:px-5 [&::-webkit-details-marker]:hidden">
+          <span
+            aria-hidden
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-zinc-400 text-xs font-semibold text-white dark:bg-zinc-600"
+          >
+            4
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">
+              ข้อมูลเพิ่มเติม (ไม่บังคับ)
+            </span>
+            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+              ข้อ 11–14 · กรอกแล้ว {progress.extraDone}/{progress.extraTotal}
+            </span>
+          </span>
+          <span
+            aria-hidden
+            className="text-zinc-400 transition-transform group-open:rotate-180"
+          >
+            ▾
+          </span>
+        </summary>
+        <div className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
           <TextField
             id="cabinetLocation"
             label="11. ตำแหน่งตู้ Control / จุดรวมสาย"
@@ -580,55 +747,44 @@ export function SurveyForm({
             autoComplete="off"
             placeholder="ใต้บันไดอาคาร B"
             value={cabinetLocation}
-            onChange={(e) => setCabinetLocation(e.target.value)}
+            onChange={(e) =>
+              edited('cabinetLocation', setCabinetLocation)(e.target.value)
+            }
             error={errors.cabinetLocation}
           />
-        </Wide>
-      </Section>
-
-      <Section
-        id={SURVEY_SECTION_IDS.site}
-        step={4}
-        title="สภาพหน้างาน"
-        detail={of([12, 13, 14])}
-      >
-        {textArea(
-          'siteConditions',
-          '12. สภาพพื้นที่ติดตั้ง / อุปสรรค',
-          siteConditions,
-          setSiteConditions,
-          2000,
-          'ต้นไม้บัง, ต้องใช้รถกระเช้า',
-        )}
-        {textArea('notes', '13. หมายเหตุหน้างาน', notes, setNotes, 5000)}
-        {textArea(
-          'siteIssues',
-          '14. ความต้องการเพิ่มเติม / ปัญหาที่พบ',
-          siteIssues,
-          setSiteIssues,
-          2000,
-        )}
-      </Section>
+          {textArea(
+            'siteConditions',
+            '12. สภาพพื้นที่ติดตั้ง / อุปสรรค',
+            siteConditions,
+            setSiteConditions,
+            2000,
+            'ต้นไม้บัง, ต้องใช้รถกระเช้า',
+          )}
+          {textArea('notes', '13. หมายเหตุหน้างาน', notes, setNotes, 5000)}
+          {textArea(
+            'siteIssues',
+            '14. ความต้องการเพิ่มเติม / ปัญหาที่พบ',
+            siteIssues,
+            setSiteIssues,
+            2000,
+          )}
+        </div>
+      </details>
 
       <Section
         id={SURVEY_SECTION_IDS.status}
         step={5}
         title="สถานะ Survey"
-        detail={of([15])}
+        detail="ตั้งเป็น “สำรวจแล้ว” ตั้งแต่บันทึกจุด — เปลี่ยนได้"
       >
         <Wide>
-          <SelectField
+          <ChoiceField
             id="status"
             label="15. สถานะ Survey"
-            required
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={edited('status', setStatus)}
             error={errors.status}
-            hint={
-              status === 'pending_survey'
-                ? 'เปลี่ยนเป็น “สำรวจแล้ว” เมื่อสำรวจเสร็จ'
-                : undefined
-            }
+            clearable={false}
             options={CAMERA_STATUSES.map((s) => ({
               value: s,
               label: CAMERA_STATUS_LABELS[s],
