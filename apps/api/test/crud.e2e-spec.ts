@@ -133,6 +133,71 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
     });
   });
 
+  describe('survey detail fields (0007)', () => {
+    it('stores, updates and clears cabinet location, site conditions and issues', async () => {
+      const p = await createProject();
+      const res = await http
+        .post('/api/cameras')
+        .send({
+          projectId: p.id,
+          label: 'CCTV-007',
+          type: 'dome',
+          location: { lat: 13.75, lng: 100.5 },
+          cabinetLocation: '  ใต้บันไดอาคาร B  ',
+          siteConditions: 'ต้นไม้บัง',
+        })
+        .expect(201);
+      created.cameras.push(res.body.id);
+      expect(res.body).toMatchObject({
+        cabinetLocation: 'ใต้บันไดอาคาร B',
+        siteConditions: 'ต้นไม้บัง',
+      });
+      expect(res.body.siteIssues).toBeUndefined();
+
+      // PATCH only the issues: the other two keep their values.
+      const upd = await http
+        .patch(`/api/cameras/${res.body.id}`)
+        .send({ siteIssues: 'ขอเพิ่มไฟส่องสว่าง' })
+        .expect(200);
+      expect(upd.body).toMatchObject({
+        cabinetLocation: 'ใต้บันไดอาคาร B',
+        siteConditions: 'ต้นไม้บัง',
+        siteIssues: 'ขอเพิ่มไฟส่องสว่าง',
+      });
+
+      // null clears; the list carries the fields as well.
+      await http
+        .patch(`/api/cameras/${res.body.id}`)
+        .send({ siteConditions: null })
+        .expect(200);
+      const got = await http.get(`/api/cameras/${res.body.id}`).expect(200);
+      expect(got.body.siteConditions).toBeUndefined();
+      expect(got.body.siteIssues).toBe('ขอเพิ่มไฟส่องสว่าง');
+      const list = await http.get(`/api/projects/${p.id}/cameras`).expect(200);
+      expect(list.body[0].cabinetLocation).toBe('ใต้บันไดอาคาร B');
+    });
+
+    it('rejects text that is too long', async () => {
+      const p = await createProject();
+      const base = {
+        projectId: p.id,
+        label: 'LONG',
+        type: 'dome',
+        location: { lat: 13.75, lng: 100.5 },
+      };
+      for (const bad of [
+        { cabinetLocation: 'x'.repeat(501) },
+        { siteConditions: 'x'.repeat(2001) },
+        { siteIssues: 'x'.repeat(2001) },
+      ]) {
+        await http
+          .post('/api/cameras')
+          .send({ ...base, ...bad })
+          .expect(400);
+      }
+    });
+  });
+
   describe('projects', () => {
     it('counts camera points per status in list and detail', async () => {
       const p = await createProject();

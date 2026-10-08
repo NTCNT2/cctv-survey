@@ -113,7 +113,7 @@ export const SECTION_IDS = {
  * One numbered card per topic, always open (no accordion: every field stays
  * where the eye expects it). Two columns on phones for short inputs.
  */
-function Section({
+export function Section({
   id,
   step,
   title,
@@ -154,9 +154,38 @@ function Section({
 }
 
 /** Spans both columns of a section. */
-const Wide = ({ children }: { children: ReactNode }) => (
+export const Wide = ({ children }: { children: ReactNode }) => (
   <div className="col-span-2">{children}</div>
 );
+
+/**
+ * A focused field must not end up under the sticky save bar or the
+ * on-screen keyboard (visualViewport shrinks when it opens). Browsers
+ * scroll a focused field into view, but WebKit ignores scroll-padding on
+ * the page, so check the real positions once things have settled.
+ */
+export function keepClear(
+  e: FocusEvent<HTMLFormElement>,
+  saveBar: HTMLElement | null,
+) {
+  const el = e.target;
+  if (!(el instanceof HTMLElement) || !el.matches('input, select, textarea')) {
+    return;
+  }
+  const check = () => {
+    const box = el.getBoundingClientRect();
+    const vv = window.visualViewport;
+    const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    const bar = saveBar?.getBoundingClientRect();
+    const limit = Math.min(visibleBottom, bar ? bar.top : Infinity) - 8;
+    if (box.bottom > limit || box.top < 0) {
+      el.scrollIntoView({ block: 'center' });
+    }
+  };
+  requestAnimationFrame(check);
+  // iOS: again once the keyboard has opened.
+  window.setTimeout(check, 350);
+}
 
 /** ISO instant <-> value of an <input type="datetime-local"> (local time). */
 export function toLocalInput(iso: string | undefined | Date): string {
@@ -419,35 +448,6 @@ export function CameraForm(props: Props) {
 
   const saveBar = useRef<HTMLDivElement>(null);
 
-  /**
-   * A focused field must not end up under the sticky save bar or the
-   * on-screen keyboard (visualViewport shrinks when it opens). Browsers
-   * scroll a focused field into view, but WebKit ignores scroll-padding on
-   * the page, so check the real positions once things have settled.
-   */
-  function keepClear(e: FocusEvent<HTMLFormElement>) {
-    const el = e.target;
-    if (
-      !(el instanceof HTMLElement) ||
-      !el.matches('input, select, textarea')
-    ) {
-      return;
-    }
-    const check = () => {
-      const box = el.getBoundingClientRect();
-      const vv = window.visualViewport;
-      const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
-      const bar = saveBar.current?.getBoundingClientRect();
-      const limit = Math.min(visibleBottom, bar ? bar.top : Infinity) - 8;
-      if (box.bottom > limit || box.top < 0) {
-        el.scrollIntoView({ block: 'center' });
-      }
-    };
-    requestAnimationFrame(check);
-    // iOS: again once the keyboard has opened.
-    window.setTimeout(check, 350);
-  }
-
   /** Bring the first invalid field into view (the form is long on a phone). */
   function firstError(fields: FieldErrors) {
     requestAnimationFrame(() => {
@@ -539,7 +539,7 @@ export function CameraForm(props: Props) {
   return (
     <form
       onSubmit={submit}
-      onFocus={keepClear}
+      onFocus={(e) => keepClear(e, saveBar.current)}
       noValidate
       // Focused fields scroll clear of the sticky save bar (and keyboard).
       className="space-y-4 [&_input]:scroll-mb-40 [&_select]:scroll-mb-40 [&_textarea]:scroll-mb-40"

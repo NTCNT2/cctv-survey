@@ -83,6 +83,10 @@ export interface CameraPointsTable {
   network_available: boolean | null;
   // 0005_camera_models_photos
   camera_model_id: string | null;
+  // 0007_survey_detail
+  cabinet_location: string | null;
+  site_conditions: string | null;
+  site_issues: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

@@ -246,7 +246,7 @@ test.describe('survey map — Google Maps (stubbed), GPS ±5 m', () => {
     ).toHaveAttribute('href', /\/cameras\/.+\/edit$/);
     await expect(
       detail.getByRole('link', { name: /รายละเอียด Survey/ }),
-    ).toHaveAttribute('href', /\/cameras\/.+\/edit#section-camera$/);
+    ).toHaveAttribute('href', /\/cameras\/.+\/survey$/);
     await expect(detail.getByRole('link', { name: 'นำทาง' })).toHaveAttribute(
       'href',
       'https://www.google.com/maps/dir/?api=1&destination=13.7401,100.5602',
@@ -848,5 +848,64 @@ test.describe('Add Point Bottom Sheet — iPhone 13 Pro Max', () => {
       sheet.getByRole('button', { name: 'ยกเลิก' }),
     ).toBeInViewport();
     await expect(sheet.getByRole('heading')).toBeInViewport();
+  });
+});
+
+test.describe('survey detail on a phone', () => {
+  test.use({ storageState: storage.surveyor });
+
+  test('camera → survey → fill in with the keyboard and taps → save → back', async ({
+    page,
+  }, info) => {
+    const id = seeded.camera!.id;
+    await page.goto(`/cameras/${id}`);
+    const detail = page.getByTestId('camera-detail');
+    await detail.getByRole('link', { name: /รายละเอียด Survey/ }).tap();
+    await expect(page).toHaveURL(/\/survey$/);
+    await expectNoHorizontalScroll(page);
+
+    // Numbers open the numeric keyboard.
+    const height = page.getByLabel('1. ความสูงติดตั้งกล้อง (ม.)');
+    await expect(height).toHaveAttribute('inputmode', 'decimal');
+    await height.fill('5');
+    await page
+      .getByRole('group', { name: '5. โครงสร้างติดตั้ง' })
+      .getByText('เสาไฟเดิม')
+      .tap();
+    await page.getByLabel('6. ความสูงเสา (ม.)').fill('8');
+    await page
+      .getByRole('group', { name: 'Network' })
+      .getByText('มี', { exact: true })
+      .tap();
+    await page
+      .getByRole('group', { name: 'Fiber' })
+      .getByText('มี', { exact: true })
+      .tap();
+    await expectNoHorizontalScroll(page);
+
+    // Every button and choice is large enough to tap.
+    for (const el of await page
+      .locator('form button, form label:has(input[type=radio]) > span')
+      .all()) {
+      if (!(await el.isVisible())) continue;
+      const box = await el.boundingBox();
+      expect(box!.height, await el.innerText()).toBeGreaterThanOrEqual(44);
+    }
+
+    // The save bar stays on screen at the bottom of a long form.
+    const save = page.getByRole('button', { name: 'บันทึก Survey' });
+    await page.getByLabel('14. ความต้องการเพิ่มเติม / ปัญหาที่พบ').fill('—');
+    await expect(save).toBeInViewport();
+    await info.attach('survey-form', {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+    await save.tap();
+    await expect(page).toHaveURL(new RegExp(`/cameras/${id}$`));
+    // Status + height + structure + pole + network/fiber + item 14.
+    await expect(
+      detail.getByRole('link', { name: 'รายละเอียด Survey (6/15)' }),
+    ).toBeVisible();
+    await expectNoHorizontalScroll(page);
   });
 });

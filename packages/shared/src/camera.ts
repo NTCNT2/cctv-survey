@@ -61,6 +61,14 @@ const cameraPointFields = z.object({
   powerAvailable: z.boolean().optional(),
   fiberAvailable: z.boolean().optional(),
   networkAvailable: z.boolean().optional(),
+  /** Where the control cabinet / cable gathering point is (0007). */
+  cabinetLocation: z.string().trim().max(500).optional(),
+
+  // --- Site (0007) ---------------------------------------------------------
+  /** Site conditions and obstacles at the installation point. */
+  siteConditions: z.string().trim().max(2000).optional(),
+  /** Additional requirements or problems found on site. */
+  siteIssues: z.string().trim().max(2000).optional(),
 
   notes: z.string().max(5000).optional(),
 });
@@ -109,6 +117,9 @@ export const updateCameraPointSchema = z
     powerAvailable: cam.powerAvailable.unwrap().nullable(),
     fiberAvailable: cam.fiberAvailable.unwrap().nullable(),
     networkAvailable: cam.networkAvailable.unwrap().nullable(),
+    cabinetLocation: cam.cabinetLocation.unwrap().nullable(),
+    siteConditions: cam.siteConditions.unwrap().nullable(),
+    siteIssues: cam.siteIssues.unwrap().nullable(),
     notes: cam.notes.unwrap().nullable(),
   })
   .partial()

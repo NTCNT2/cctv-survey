@@ -43,6 +43,9 @@ const columns = [
   'fiber_available',
   'network_available',
   'camera_model_id',
+  'cabinet_location',
+  'site_conditions',
+  'site_issues',
   'created_at',
   'updated_at',
   sql<number>`ST_Y(location)`.as('lat'),
@@ -128,6 +131,9 @@ function toCamera(r: Row): CameraPoint {
     powerAvailable: r.power_available ?? undefined,
     fiberAvailable: r.fiber_available ?? undefined,
     networkAvailable: r.network_available ?? undefined,
+    cabinetLocation: r.cabinet_location ?? undefined,
+    siteConditions: r.site_conditions ?? undefined,
+    siteIssues: r.site_issues ?? undefined,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
   };
@@ -213,6 +219,9 @@ export class CamerasService {
         power_available: input.powerAvailable,
         fiber_available: input.fiberAvailable,
         network_available: input.networkAvailable,
+        cabinet_location: input.cabinetLocation,
+        site_conditions: input.siteConditions,
+        site_issues: input.siteIssues,
         ...(snap && {
           camera_model_id: snap.camera_model_id,
           brand: snap.brand,
@@ -258,6 +267,9 @@ export class CamerasService {
       power_available: input.powerAvailable,
       fiber_available: input.fiberAvailable,
       network_available: input.networkAvailable,
+      cabinet_location: input.cabinetLocation,
+      site_conditions: input.siteConditions,
+      site_issues: input.siteIssues,
       camera_model_id: input.cameraModelId,
     };
     // A (new) model overrides brand / model / type / resolution. A point may

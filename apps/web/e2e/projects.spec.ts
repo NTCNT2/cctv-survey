@@ -119,9 +119,11 @@ test.describe('admin: full create / edit / delete flow', () => {
     const detail = page.getByTestId('camera-detail');
     await expect(detail).toContainText('Sony');
     await expect(detail).toContainText('Bullet');
-    await detail
-      .getByRole('link', { name: /รายละเอียด Survey \(0\/15\)/ })
-      .click();
+    // Only the survey status (สำรวจแล้ว) counts so far.
+    await expect(
+      detail.getByRole('link', { name: /รายละเอียด Survey \(1\/15\)/ }),
+    ).toBeVisible();
+    await detail.getByRole('link', { name: 'แก้ไขข้อมูลกล้อง' }).click();
     await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CAM-01');
     await page.getByLabel('Site').selectOption({ label: 'อาคาร A' });
     await page.getByLabel('ทิศทาง (°)').fill('360');
@@ -175,8 +177,8 @@ test.describe('admin: full create / edit / delete flow', () => {
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(page.getByRole('heading', { name: 'CAM-01A' })).toBeVisible();
     await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
-    await page.getByLabel('ทิศทาง (°)').fill('');
-    await page.getByRole('button', { name: 'บันทึก' }).click();
+    await page.getByLabel('2. ทิศทางกล้อง (°)').fill('');
+    await page.getByRole('button', { name: 'บันทึก Survey' }).click();
     await expect(page.getByRole('heading', { name: 'CAM-01A' })).toBeVisible();
     await page.getByRole('link', { name: 'กลับไปที่โครงการ' }).click();
     await expect(cameras).toContainText('CAM-01A');

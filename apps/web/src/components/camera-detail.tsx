@@ -3,54 +3,16 @@
 import type { CameraPoint } from '@cctv/shared';
 import { useState, type ReactNode } from 'react';
 import {
-  CAMERA_PURPOSE_LABELS,
   CAMERA_STATUS_LABELS,
   CAMERA_STATUS_TONES,
   formatDateTime,
-  MOUNT_TYPE_LABELS,
-  STRUCTURE_TYPE_LABELS,
 } from '@/lib/labels';
+import { surveyProgress } from '@/lib/survey';
 import { specLine } from './camera-model-picker';
-import { SECTION_IDS } from './camera-form';
 import { AddPhotoButton, SavedPhotos, usePhotoUpload } from './photos';
 import { Badge, Button, DefinitionList, LinkButton } from './ui';
 
 const fmt = (n: number) => n.toFixed(6);
-const yes = (v?: boolean) => (v === undefined ? undefined : v ? 'มี' : 'ไม่มี');
-const unit = (v: number | undefined, u: string) =>
-  v === undefined ? undefined : `${v} ${u}`;
-
-/** The survey-detail fields, for the "กรอกแล้ว n/15" count and the list. */
-function surveyItems(
-  c: CameraPoint,
-): { label: string; value: string | undefined }[] {
-  return [
-    { label: 'ความสูงติดตั้ง', value: unit(c.mountHeightM, 'ม.') },
-    { label: 'Lens', value: unit(c.lensMm, 'มม.') },
-    { label: 'ทิศทาง', value: unit(c.bearingDeg, '°') },
-    { label: 'FOV', value: unit(c.fovDeg, '°') },
-    { label: 'ระยะมองเห็น', value: unit(c.viewDistanceM, 'ม.') },
-    {
-      label: 'การยึดติด',
-      value: c.mountType && MOUNT_TYPE_LABELS[c.mountType],
-    },
-    {
-      label: 'โครงสร้าง',
-      value: c.structureType && STRUCTURE_TYPE_LABELS[c.structureType],
-    },
-    { label: 'ความสูงเสา', value: unit(c.poleHeightM, 'ม.') },
-    { label: 'ระยะถึงตู้', value: unit(c.cabinetDistanceM, 'ม.') },
-    { label: 'ความยาวสาย', value: unit(c.cableLengthM, 'ม.') },
-    { label: 'ไฟฟ้า', value: yes(c.powerAvailable) },
-    { label: 'Network', value: yes(c.networkAvailable) },
-    { label: 'Fiber', value: yes(c.fiberAvailable) },
-    {
-      label: 'PoE',
-      value: c.poe === undefined ? undefined : c.poe ? 'ใช่' : 'ไม่ใช่',
-    },
-    { label: 'หมายเหตุ', value: c.notes },
-  ];
-}
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -85,8 +47,8 @@ export function CameraDetail({
 }) {
   const [more, setMore] = useState(false);
   const uploader = usePhotoUpload(c.id, c.projectId, onPhotosDone);
-  const survey = surveyItems(c);
-  const filled = survey.filter((i) => i.value !== undefined).length;
+  const survey = surveyProgress(c);
+  const progress = `รายละเอียด Survey (${survey.done}/${survey.total})`;
   const cameraName = [c.brand, c.model].filter(Boolean);
 
   return (
@@ -152,11 +114,8 @@ export function CameraDetail({
           </>
         )}
         {canWrite ? (
-          <LinkButton
-            href={`/cameras/${c.id}/edit#${SECTION_IDS.camera}`}
-            variant="secondary"
-          >
-            รายละเอียด Survey ({filled}/{survey.length})
+          <LinkButton href={`/cameras/${c.id}/survey`} variant="secondary">
+            {progress}
           </LinkButton>
         ) : (
           <Button
@@ -164,12 +123,27 @@ export function CameraDetail({
             aria-expanded={more}
             onClick={() => setMore((v) => !v)}
           >
-            รายละเอียด Survey ({filled}/{survey.length})
+            {progress}
           </Button>
         )}
       </div>
 
-      {canWrite && filled > 0 && (
+      {survey.missing.length > 0 && (
+        <p
+          data-testid="survey-missing"
+          className="text-xs text-amber-800 dark:text-amber-300"
+        >
+          Survey ยังขาด {survey.missing.length} รายการ:{' '}
+          {survey.missing
+            .slice(0, 3)
+            .map((i) => i.label)
+            .join(', ')}
+          {survey.missing.length > 3 &&
+            ` และอีก ${survey.missing.length - 3} รายการ`}
+        </p>
+      )}
+
+      {canWrite && survey.done > 0 && (
         <Button
           variant="secondary"
           className="w-full"
@@ -182,11 +156,10 @@ export function CameraDetail({
       {more && (
         <DefinitionList
           items={[
-            ...survey,
-            {
-              label: 'วัตถุประสงค์',
-              value: c.purpose && CAMERA_PURPOSE_LABELS[c.purpose],
-            },
+            ...survey.items.map((i) => ({
+              label: `${i.no}. ${i.label}`,
+              value: i.value ?? 'ยังไม่กรอก',
+            })),
             { label: 'ที่อยู่ / จุดสังเกต', value: c.address },
           ]}
         />

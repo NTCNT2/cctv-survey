@@ -18,8 +18,9 @@ const allProjects = { href: '/projects', label: 'โครงการทั้�
 const TITLE = 'แก้ไขข้อมูลกล้อง';
 
 /**
- * The whole camera form for an existing point (/cameras/[id]/edit; the old
- * /survey address opens it at section 2). Saving goes back to the camera.
+ * The whole camera form for an existing point (/cameras/[id]/edit). The
+ * survey detail has its own page (/cameras/[id]/survey). Saving goes back
+ * to the camera.
  */
 export function EditCameraPart() {
   const { id } = useParams<{ id: string }>();

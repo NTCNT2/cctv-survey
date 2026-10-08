@@ -297,7 +297,7 @@ test.describe('camera form (surveyor)', () => {
       detail.getByRole('button', { name: /ดูรูปที่ 2: เสา\/โครงสร้าง/ }),
     ).toBeVisible();
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (0/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (1/15)' }),
     ).toBeVisible();
 
     const id = /\/cameras\/([^/?]+)/.exec(page.url())![1];
@@ -368,9 +368,9 @@ test.describe('camera form (surveyor)', () => {
       .click();
     await expect(detail).toContainText('รูปหน้างาน (1)');
 
-    // 10) Edit the saved camera: the same form, opened at section 2.
-    await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
-    await expect(page).toHaveURL(/\/edit#section-camera$/);
+    // 10) Edit the saved camera: the same form as for a new one.
+    await detail.getByRole('link', { name: 'แก้ไขข้อมูลกล้อง' }).click();
+    await expect(page).toHaveURL(/\/edit$/);
     await expect(page.getByLabel('รหัสกล้อง')).toHaveValue('CCTV-LATER');
     await expect(page.getByTestId('camera-spec')).toHaveText('8 MP · Bullet');
     await expect(
@@ -392,8 +392,9 @@ test.describe('camera form (surveyor)', () => {
       networkAvailable: true,
       notes: 'ติดใต้ชายคา',
     });
+    // Height, notes and status count; Network alone (no Fiber answer) not yet.
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (4/15)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (3/15)' }),
     ).toBeVisible();
     await expect(detail).toContainText('Bullet · 8 MP');
   });
