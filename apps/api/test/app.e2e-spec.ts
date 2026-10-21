@@ -24,6 +24,7 @@ describe('AppController (e2e)', () => {
       .expect(200)
       .expect((res) => {
         expect(res.body.status).toBe('ok');
+        expect(res.body.db).toBe('ok');
       });
   });
 
