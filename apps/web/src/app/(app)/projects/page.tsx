@@ -38,6 +38,7 @@ import {
   SegmentedControl,
   Skeleton,
   StatCard,
+  toneBar,
   type BadgeTone,
 } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
@@ -526,20 +527,9 @@ function StageBar({ status }: { status: ProjectStatus }) {
 }
 
 /**
- * Status colour of a project card: the 4px bar on top and the icon of its
- * numbers, from the status badge's tone (the stat cards' hues).
+ * Status colour of a project card's numbers (its 4px top bar is `toneBar`),
+ * from the status badge's tone (the stat cards' hues).
  */
-const statusBar: Record<BadgeTone, string> = {
-  blue: 'bg-sky-500',
-  green: 'bg-emerald-500',
-  amber: 'bg-amber-500',
-  violet: 'bg-violet-500',
-  cyan: 'bg-teal-500',
-  orange: 'bg-orange-500',
-  red: 'bg-red-500',
-  neutral: 'bg-zinc-300 dark:bg-zinc-600',
-  muted: 'bg-zinc-300 dark:bg-zinc-600',
-};
 const statusIcon: Record<BadgeTone, string> = {
   blue: 'text-sky-600 dark:text-sky-400',
   green: 'text-emerald-600 dark:text-emerald-400',
@@ -562,7 +552,7 @@ function StatusStripe({ status }: { status: ProjectStatus }) {
       aria-hidden
       className={cx(
         'absolute inset-x-0 top-0 h-1',
-        statusBar[PROJECT_STATUS_TONES[status]],
+        toneBar[PROJECT_STATUS_TONES[status]],
       )}
     />
   );

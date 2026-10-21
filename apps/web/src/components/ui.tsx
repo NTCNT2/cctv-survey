@@ -281,7 +281,7 @@ export function Card({
   return (
     <div
       className={cx(
-        'rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5',
+        'rounded-2xl border border-line bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5',
         className,
       )}
     >
@@ -430,6 +430,19 @@ const badgeTones: Record<BadgeTone, string> = {
   green:
     'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-400/25',
   red: 'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-950 dark:text-red-300 dark:ring-red-400/25',
+};
+
+/** Solid colour per tone: 4px status stripes (project cards, report list). */
+export const toneBar: Record<BadgeTone, string> = {
+  blue: 'bg-sky-500',
+  green: 'bg-emerald-500',
+  amber: 'bg-amber-500',
+  violet: 'bg-violet-500',
+  cyan: 'bg-teal-500',
+  orange: 'bg-orange-500',
+  red: 'bg-red-500',
+  neutral: 'bg-zinc-300 dark:bg-zinc-600',
+  muted: 'bg-zinc-300 dark:bg-zinc-600',
 };
 
 export function Badge({

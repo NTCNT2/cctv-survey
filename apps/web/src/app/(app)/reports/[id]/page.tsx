@@ -15,11 +15,18 @@ import {
   Card,
   EmptyState,
   ErrorState,
-  PageHeader,
   SelectField,
   Skeleton,
   StatCard,
 } from '@/components/ui';
+import {
+  IconCable,
+  IconCamera,
+  IconCheck,
+  IconImage,
+  IconPin,
+} from '@/components/icons';
+import { PageHero } from '@/components/page-hero';
 import { errorMessage } from '@/lib/api';
 import {
   CAMERA_STATUS_LABELS,
@@ -107,7 +114,7 @@ export default function ProjectReportPage() {
   return (
     <article aria-label={`รายงานสำรวจ ${p.name}`} className="report">
       <div className="print:hidden">
-        <PageHeader
+        <PageHero
           title={`รายงานสำรวจ: ${p.name}`}
           subtitle={[p.customerName, PROJECT_STATUS_LABELS[p.status]]
             .filter(Boolean)
@@ -116,13 +123,15 @@ export default function ProjectReportPage() {
           actions={
             <>
               <Button
-                variant="secondary"
+                variant="glass"
                 onClick={download}
                 disabled={rows.length === 0}
               >
                 ดาวน์โหลด CSV ({rows.length} จุด)
               </Button>
-              <Button onClick={() => window.print()}>พิมพ์ / บันทึก PDF</Button>
+              <Button variant="light" onClick={() => window.print()}>
+                พิมพ์ / บันทึก PDF
+              </Button>
             </>
           }
         />
@@ -143,96 +152,37 @@ export default function ProjectReportPage() {
         </p>
       </header>
 
-      <Card className="mb-6 print:hidden">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-          <SelectField
-            id="report-status"
-            label="สถานะ"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as CameraStatus | '')}
-            options={[
-              { value: '', label: 'ทุกสถานะ' },
-              ...CAMERA_STATUSES.map((s) => ({
-                value: s,
-                label: CAMERA_STATUS_LABELS[s],
-              })),
-            ]}
-          />
-          <SelectField
-            id="report-site"
-            label="Site"
-            value={siteId}
-            onChange={(e) => setSiteId(e.target.value)}
-            options={[
-              { value: '', label: 'ทุก Site' },
-              ...(sites.data ?? []).map((s) => ({
-                value: s.id,
-                label: s.name,
-              })),
-              { value: 'none', label: 'ไม่ระบุ Site' },
-            ]}
-          />
-          <label className="flex min-h-11 items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              className="size-5"
-              checked={details}
-              onChange={(e) => {
-                setDetails(e.target.checked);
-                if (!e.target.checked) setPhotos(false);
-              }}
-            />
-            รายละเอียดรายจุด (15 รายการ)
-          </label>
-          <label className="flex min-h-11 items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              className="size-5"
-              checked={photos}
-              disabled={!details}
-              onChange={(e) => setPhotos(e.target.checked)}
-            />
-            รวมรูปหน้างาน
-          </label>
-        </div>
-        {filtered && (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-            กรองแล้ว: {rows.length} จาก {all.length} จุด — สรุป ตาราง CSV
-            และการพิมพ์ใช้เฉพาะจุดที่กรอง
-          </p>
-        )}
-      </Card>
-      {filtered && (
-        <p className="mb-4 hidden text-sm print:block">
-          เฉพาะ{status && ` สถานะ ${CAMERA_STATUS_LABELS[status]}`}
-          {siteId &&
-            ` Site ${siteId === 'none' ? 'ไม่ระบุ' : siteNames[siteId]}`}{' '}
-          ({rows.length} จาก {all.length} จุด)
-        </p>
-      )}
-
-      {rows.length === 0 ? (
-        <EmptyState
-          title={
-            all.length === 0
-              ? 'โครงการนี้ยังไม่มีจุดกล้อง'
-              : 'ไม่มีจุดที่ตรงกับตัวกรอง'
-          }
-        />
-      ) : (
-        <div className="space-y-6">
+      {/*
+        Overlaps the header band on screen: the stat cards when there are
+        points, else the filters. Print: the band is hidden, no overlap.
+      */}
+      <div className="relative -mt-8 space-y-6 px-1 sm:px-3 print:mt-0 print:px-0">
+        {rows.length > 0 && (
           <section aria-label="สรุปผลสำรวจ">
-            <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 print:grid-cols-5">
-              <StatCard label="จุดกล้อง" value={num(sum.points)} />
+            <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 print:grid-cols-4">
+              <StatCard
+                label="จุดกล้อง"
+                value={num(sum.points)}
+                hint="จุด"
+                icon={<IconPin />}
+                tone="blue"
+                raised
+              />
               <StatCard
                 label="จำนวนกล้อง"
                 value={num(sum.cameras)}
                 hint="ตัว"
+                icon={<IconCamera />}
+                tone="violet"
+                raised
               />
               <StatCard
                 label="ข้อมูลหลักครบ"
                 value={`${num(sum.complete)}/${num(sum.points)}`}
                 hint="จุด"
+                icon={<IconCheck />}
+                tone="green"
+                raised="lg"
               />
               <StatCard
                 label="สายโดยประมาณ"
@@ -242,11 +192,104 @@ export default function ProjectReportPage() {
                     ? `ม. · ยังไม่ระบุ ${sum.cable.missing} จุด`
                     : 'ม.'
                 }
+                icon={<IconCable />}
+                tone="cyan"
+                raised="lg"
               />
-              <StatCard label="รูปหน้างาน" value={num(sum.photos)} hint="รูป" />
+              <StatCard
+                label="รูปหน้างาน"
+                value={num(sum.photos)}
+                hint="รูป"
+                icon={<IconImage />}
+                tone="amber"
+                wide
+                className="col-span-2 lg:col-span-4 print:col-span-4"
+              />
             </dl>
           </section>
+        )}
+        <Card className="print:hidden">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+            <SelectField
+              id="report-status"
+              label="สถานะ"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as CameraStatus | '')}
+              options={[
+                { value: '', label: 'ทุกสถานะ' },
+                ...CAMERA_STATUSES.map((s) => ({
+                  value: s,
+                  label: CAMERA_STATUS_LABELS[s],
+                })),
+              ]}
+            />
+            <SelectField
+              id="report-site"
+              label="Site"
+              value={siteId}
+              onChange={(e) => setSiteId(e.target.value)}
+              options={[
+                { value: '', label: 'ทุก Site' },
+                ...(sites.data ?? []).map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                })),
+                { value: 'none', label: 'ไม่ระบุ Site' },
+              ]}
+            />
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="size-5"
+                checked={details}
+                onChange={(e) => {
+                  setDetails(e.target.checked);
+                  if (!e.target.checked) setPhotos(false);
+                }}
+              />
+              รายละเอียดรายจุด (15 รายการ)
+            </label>
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="size-5"
+                checked={photos}
+                disabled={!details}
+                onChange={(e) => setPhotos(e.target.checked)}
+              />
+              รวมรูปหน้างาน
+            </label>
+          </div>
+          {filtered && (
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              กรองแล้ว: {rows.length} จาก {all.length} จุด — สรุป ตาราง CSV
+              และการพิมพ์ใช้เฉพาะจุดที่กรอง
+            </p>
+          )}
+        </Card>
+      </div>
+      {filtered && (
+        <p className="mt-4 hidden text-sm print:block">
+          เฉพาะ{status && ` สถานะ ${CAMERA_STATUS_LABELS[status]}`}
+          {siteId &&
+            ` Site ${siteId === 'none' ? 'ไม่ระบุ' : siteNames[siteId]}`}{' '}
+          ({rows.length} จาก {all.length} จุด)
+        </p>
+      )}
 
+      {rows.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            icon={<IconCamera className="size-6" />}
+            title={
+              all.length === 0
+                ? 'โครงการนี้ยังไม่มีจุดกล้อง'
+                : 'ไม่มีจุดที่ตรงกับตัวกรอง'
+            }
+          />
+        </div>
+      ) : (
+        <div className="mt-6 space-y-6">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 print:grid-cols-2">
             <CountTable
               title="ตามสถานะ"

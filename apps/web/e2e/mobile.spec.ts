@@ -249,6 +249,54 @@ test.describe('signed in', () => {
     });
   }
 
+  for (const width of [375, 430]) {
+    test(`${width}px: reports in the header-band theme`, async ({
+      page,
+    }, info) => {
+      await page.setViewportSize({ width, height: 860 });
+      await page.goto('/reports');
+      const band = page.getByRole('main').locator('header').first();
+      await expect(band.getByRole('heading', { name: 'รายงาน' })).toBeVisible();
+      await expect(band.getByTestId('current-user-band')).toBeVisible();
+      await expect(page.getByTestId('current-user')).toBeHidden();
+      await expectNoHorizontalScroll(page);
+      await page
+        .getByRole('list', { name: 'โครงการสำหรับรายงาน' })
+        .getByRole('link', { name: new RegExp(seeded.project.name) })
+        .first()
+        .tap();
+      const hero = page.getByRole('main').locator('header').first();
+      await expect(
+        hero.getByRole('link', { name: '← รายงานทั้งหมด' }),
+      ).toBeVisible();
+      await expect(
+        hero.getByRole('button', { name: /ดาวน์โหลด CSV/ }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('region', { name: 'สรุปผลสำรวจ' }),
+      ).toBeVisible();
+      await expectNoHorizontalScroll(page);
+      for (const b of await page
+        .getByRole('main')
+        .locator('a[href], button')
+        .filter({ visible: true })
+        .all()) {
+        // Table links are text in a row; the rest are real tap targets.
+        if (await b.evaluate((el) => !!el.closest('table, details, li')))
+          continue;
+        const box = await b.boundingBox();
+        expect(
+          box?.height ?? 0,
+          (await b.getAttribute('aria-label')) ?? (await b.innerText()),
+        ).toBeGreaterThanOrEqual(44);
+      }
+      await info.attach(`report-${width}`, {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: 'image/png',
+      });
+    });
+  }
+
   test('users page: from the user menu, fits the screen, form usable', async ({
     page,
   }, info) => {

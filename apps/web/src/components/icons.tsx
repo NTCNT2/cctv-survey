@@ -105,6 +105,14 @@ export const IconUsers = (p: P) => (
   </Icon>
 );
 
+/** A cable with its plug (cable length). */
+export const IconCable = (p: P) => (
+  <Icon {...p}>
+    <path d="M8 3v4M16 3v4M6 7h12v3a6 6 0 0 1-12 0z" />
+    <path d="M12 16v2a3 3 0 0 0 3 3h3" />
+  </Icon>
+);
+
 /** A picture (field photos). */
 export const IconImage = (p: P) => (
   <Icon {...p}>
