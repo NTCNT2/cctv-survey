@@ -33,8 +33,16 @@ export const PROJECT_STATUSES = [
 ] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
+/**
+ * Values of camera_points.mount_type. No longer asked or returned (0008);
+ * kept because the column and its data stay.
+ */
 export const MOUNT_TYPES = ['wall', 'ceiling', 'pole', 'corner'] as const;
 export type MountType = (typeof MOUNT_TYPES)[number];
+
+/** How the point reaches the network (0008): fibre or a mobile SIM. */
+export const NETWORK_TYPES = ['fiber', 'sim'] as const;
+export type NetworkType = (typeof NETWORK_TYPES)[number];
 
 export const USER_ROLES = ['admin', 'surveyor', 'engineer', 'viewer'] as const;
 export type UserRole = (typeof USER_ROLES)[number];

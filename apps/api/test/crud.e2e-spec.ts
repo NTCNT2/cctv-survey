@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { App } from 'supertest/types.js';
 import { createTestApp, loginAgent, UserFactory } from './helpers.js';
+import { Database } from '../src/db/database.js';
 
 // Runs against cctv_survey_test (see setup-e2e.ts). Every row created here is
 // deleted again in afterAll, children first.
@@ -66,10 +67,14 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
           cabinetDistanceM: 125,
           cableLengthM: 140,
           powerAvailable: true,
-          fiberAvailable: false,
-          networkAvailable: true,
+          networkType: 'sim',
           // Not accepted from the client: stripped by the schema.
           surveyorId: '00000000-0000-4000-8000-000000000000',
+          // No longer accepted (0008): stripped too, never an error.
+          mountType: 'wall',
+          poe: true,
+          fiberAvailable: true,
+          networkAvailable: true,
         })
         .expect(201);
       created.cameras.push(res.body.id);
@@ -85,22 +90,53 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
         poleHeightM: 6,
         cabinetDistanceM: 125,
         powerAvailable: true,
-        fiberAvailable: false,
-        networkAvailable: true,
+        networkType: 'sim',
         surveyorId: me.body.id,
         surveyorName: me.body.displayName ?? me.body.username,
       });
       expect(Date.now() - Date.parse(res.body.surveyedAt)).toBeLessThan(60_000);
+      for (const k of [
+        'mountType',
+        'poe',
+        'fiberAvailable',
+        'networkAvailable',
+      ]) {
+        expect(res.body[k]).toBeUndefined();
+      }
+      // The retired columns were not written either.
+      const db = app.get(Database);
+      const row = await db
+        .selectFrom('camera_points')
+        .select(['mount_type', 'poe', 'fiber_available', 'network_available'])
+        .where('id', '=', res.body.id)
+        .executeTakeFirstOrThrow();
+      expect(row).toEqual({
+        mount_type: null,
+        poe: null,
+        fiber_available: null,
+        network_available: null,
+      });
 
       // PATCH: null clears, cameraCount keeps its value when absent.
       const upd = await http
         .patch(`/api/cameras/${res.body.id}`)
-        .send({ status: 'pending_design', brand: null, purpose: null })
+        .send({
+          status: 'pending_design',
+          brand: null,
+          purpose: null,
+          networkType: 'fiber',
+        })
         .expect(200);
       expect(upd.body).toMatchObject({
         status: 'pending_design',
         cameraCount: 2,
+        networkType: 'fiber',
       });
+      const cleared = await http
+        .patch(`/api/cameras/${res.body.id}`)
+        .send({ networkType: null })
+        .expect(200);
+      expect(cleared.body.networkType).toBeUndefined();
       expect(upd.body.brand).toBeUndefined();
       expect(upd.body.purpose).toBeUndefined();
       expect(upd.body.surveyorId).toBe(me.body.id);
@@ -124,6 +160,8 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
         { structureType: 'tree' },
         { gpsAccuracyM: -1 },
         { surveyedAt: 'yesterday' },
+        { networkType: 'lte' },
+        { networkType: 'FIBER' },
       ]) {
         await http
           .post('/api/cameras')
@@ -365,7 +403,7 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
           location: { lat: 13.7566, lng: 100.5021 },
           bearingDeg: 90,
           fovDeg: 110,
-          poe: true,
+          powerAvailable: true,
         })
         .expect(201);
       const cam = camRes.body;
@@ -375,7 +413,7 @@ describe('Projects / Sites / Cameras CRUD (e2e)', () => {
         status: 'surveyed',
         location: { lat: 13.7566, lng: 100.5021 },
         bearingDeg: 90,
-        poe: true,
+        powerAvailable: true,
       });
 
       // duplicate label in project -> 409; site from another project -> 400

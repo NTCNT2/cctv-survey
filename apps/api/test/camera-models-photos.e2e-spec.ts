@@ -236,7 +236,7 @@ describe('Camera models and photos (e2e, 0005)', () => {
         'fovDeg',
         'mountHeightM',
         'notes',
-        'poe',
+        'networkType',
       ]) {
         expect(res.body[k]).toBeUndefined();
       }

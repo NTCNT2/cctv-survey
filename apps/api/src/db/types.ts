@@ -3,6 +3,7 @@ import type {
   CameraStatus,
   CameraType,
   MountType,
+  NetworkType,
   PhotoType,
   ProjectStatus,
   StructureType,
@@ -87,6 +88,9 @@ export interface CameraPointsTable {
   cabinet_location: string | null;
   site_conditions: string | null;
   site_issues: string | null;
+  // 0008_network_type (mount_type, poe, fiber_available and
+  // network_available stay in the table but are no longer used)
+  network_type: NetworkType | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

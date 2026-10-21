@@ -4,7 +4,7 @@ import {
   CAMERA_STATUSES,
   CAMERA_TYPES,
   type CameraType,
-  MOUNT_TYPES,
+  NETWORK_TYPES,
   STRUCTURE_TYPES,
 } from './enums.js';
 import { latLngSchema } from './geo.js';
@@ -47,7 +47,6 @@ const cameraPointFields = z.object({
   /** Useful viewing distance in metres (with fovDeg: the FOV on the map). */
   viewDistanceM: z.number().gt(0).max(1000).optional(),
   purpose: z.enum(CAMERA_PURPOSES).optional(),
-  mountType: z.enum(MOUNT_TYPES).optional(),
   /** Installation height of the camera in metres. */
   mountHeightM: z.number().min(0).max(100).optional(),
 
@@ -57,10 +56,13 @@ const cameraPointFields = z.object({
   cabinetDistanceM: z.number().min(0).max(5000).optional(),
   /** Estimated cable length in metres. */
   cableLengthM: z.number().min(0).max(1000).optional(),
-  poe: z.boolean().optional(),
   powerAvailable: z.boolean().optional(),
-  fiberAvailable: z.boolean().optional(),
-  networkAvailable: z.boolean().optional(),
+  /**
+   * Fibre or SIM (0008). Replaces networkAvailable / fiberAvailable; those,
+   * poe and mountType are no longer accepted: zod drops unknown keys, so an
+   * older client that still sends them gets no error.
+   */
+  networkType: z.enum(NETWORK_TYPES).optional(),
   /** Where the control cabinet / cable gathering point is (0007). */
   cabinetLocation: z.string().trim().max(500).optional(),
 
@@ -107,16 +109,13 @@ export const updateCameraPointSchema = z
     fovDeg: cam.fovDeg.unwrap().nullable(),
     viewDistanceM: cam.viewDistanceM.unwrap().nullable(),
     purpose: cam.purpose.unwrap().nullable(),
-    mountType: cam.mountType.unwrap().nullable(),
     mountHeightM: cam.mountHeightM.unwrap().nullable(),
     structureType: cam.structureType.unwrap().nullable(),
     poleHeightM: cam.poleHeightM.unwrap().nullable(),
     cabinetDistanceM: cam.cabinetDistanceM.unwrap().nullable(),
     cableLengthM: cam.cableLengthM.unwrap().nullable(),
-    poe: cam.poe.unwrap().nullable(),
     powerAvailable: cam.powerAvailable.unwrap().nullable(),
-    fiberAvailable: cam.fiberAvailable.unwrap().nullable(),
-    networkAvailable: cam.networkAvailable.unwrap().nullable(),
+    networkType: cam.networkType.unwrap().nullable(),
     cabinetLocation: cam.cabinetLocation.unwrap().nullable(),
     siteConditions: cam.siteConditions.unwrap().nullable(),
     siteIssues: cam.siteIssues.unwrap().nullable(),

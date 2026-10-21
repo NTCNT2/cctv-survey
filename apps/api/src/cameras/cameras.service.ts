@@ -22,12 +22,10 @@ const columns = [
   'status',
   'bearing_deg',
   'fov_deg',
-  'mount_type',
   'mount_height_m',
   'resolution_mp',
   'lens_mm',
   'model',
-  'poe',
   'cable_length_m',
   'notes',
   'gps_accuracy_m',
@@ -42,8 +40,7 @@ const columns = [
   'pole_height_m',
   'cabinet_distance_m',
   'power_available',
-  'fiber_available',
-  'network_available',
+  'network_type',
   'camera_model_id',
   'cabinet_location',
   'site_conditions',
@@ -81,7 +78,10 @@ type ModelJson = Omit<
   resolutionMp: number | null;
 };
 
-type Row = Omit<Selectable<CameraPointsTable>, 'location'> & {
+/** Columns kept in the table but no longer read (0008). */
+type Retired = 'mount_type' | 'poe' | 'fiber_available' | 'network_available';
+
+type Row = Omit<Selectable<CameraPointsTable>, 'location' | Retired> & {
   lat: number;
   lng: number;
   surveyor_name: string | null;
@@ -110,12 +110,10 @@ function toCamera(r: Row): CameraPoint {
     location: { lat: r.lat, lng: r.lng },
     bearingDeg: r.bearing_deg ?? undefined,
     fovDeg: r.fov_deg ?? undefined,
-    mountType: r.mount_type ?? undefined,
     mountHeightM: r.mount_height_m ?? undefined,
     resolutionMp: r.resolution_mp ?? undefined,
     lensMm: r.lens_mm ?? undefined,
     model: r.model ?? undefined,
-    poe: r.poe ?? undefined,
     cableLengthM: r.cable_length_m ?? undefined,
     notes: r.notes ?? undefined,
     gpsAccuracyM: r.gps_accuracy_m ?? undefined,
@@ -131,8 +129,7 @@ function toCamera(r: Row): CameraPoint {
     poleHeightM: r.pole_height_m ?? undefined,
     cabinetDistanceM: r.cabinet_distance_m ?? undefined,
     powerAvailable: r.power_available ?? undefined,
-    fiberAvailable: r.fiber_available ?? undefined,
-    networkAvailable: r.network_available ?? undefined,
+    networkType: r.network_type ?? undefined,
     cabinetLocation: r.cabinet_location ?? undefined,
     siteConditions: r.site_conditions ?? undefined,
     siteIssues: r.site_issues ?? undefined,
@@ -222,12 +219,10 @@ export class CamerasService {
         location: pointSql(input.location),
         bearing_deg: input.bearingDeg,
         fov_deg: input.fovDeg,
-        mount_type: input.mountType,
         mount_height_m: input.mountHeightM,
         resolution_mp: input.resolutionMp,
         lens_mm: input.lensMm,
         model: input.model,
-        poe: input.poe,
         cable_length_m: input.cableLengthM,
         notes: input.notes,
         gps_accuracy_m: input.gpsAccuracyM,
@@ -242,8 +237,7 @@ export class CamerasService {
         pole_height_m: input.poleHeightM,
         cabinet_distance_m: input.cabinetDistanceM,
         power_available: input.powerAvailable,
-        fiber_available: input.fiberAvailable,
-        network_available: input.networkAvailable,
+        network_type: input.networkType,
         cabinet_location: input.cabinetLocation,
         site_conditions: input.siteConditions,
         site_issues: input.siteIssues,
@@ -271,12 +265,10 @@ export class CamerasService {
       location: input.location && pointSql(input.location),
       bearing_deg: input.bearingDeg,
       fov_deg: input.fovDeg,
-      mount_type: input.mountType,
       mount_height_m: input.mountHeightM,
       resolution_mp: input.resolutionMp,
       lens_mm: input.lensMm,
       model: input.model,
-      poe: input.poe,
       cable_length_m: input.cableLengthM,
       notes: input.notes,
       gps_accuracy_m: input.gpsAccuracyM,
@@ -290,8 +282,7 @@ export class CamerasService {
       pole_height_m: input.poleHeightM,
       cabinet_distance_m: input.cabinetDistanceM,
       power_available: input.powerAvailable,
-      fiber_available: input.fiberAvailable,
-      network_available: input.networkAvailable,
+      network_type: input.networkType,
       cabinet_location: input.cabinetLocation,
       site_conditions: input.siteConditions,
       site_issues: input.siteIssues,
