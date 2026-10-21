@@ -151,7 +151,8 @@ libatk-bridge2.0-0t64 libatspi2.0-0t64 libxdamage1 fonts-thai-tlwg` on Ubuntu 24
 ```
 Caddy prod-proxy ──prod-edge──> prod-web ──prod-app (internal)──> prod-api ──backend──> db
 127.0.0.1:9443 (TLS)            :3000      /api/* rewrite         :4000 as cctv_app     existing
-192.168.77.20:80 (HTTP)  ← router NAT <WAN>:5580
+192.168.77.20:443 (TLS)  ← router NAT <WAN>:5443
+192.168.77.20:80 (HTTP)  ← router NAT <WAN>:80, <WAN>:5580  (ACME + redirect only)
 ```
 
 `compose.prod.yaml` adds `prod-api`, `prod-web`, `prod-proxy` (profile `prod`) on top of
@@ -166,25 +167,27 @@ it never runs `down`, never removes containers or volumes, never recreates `db` 
 - **Secrets / settings** in `.env` (see `.env.example`): `APP_DB_PASSWORD`, `PROD_JWT_SECRET`
   (separate from the dev `JWT_SECRET`), `PROD_SITE_HOST`, `PROD_CORS_ORIGIN`. Compose refuses to
   start if any is empty; the API refuses a placeholder JWT secret.
-- **Cookies (TEMPORARY)**: `compose.prod.yaml` sets `COOKIE_SECURE: 'false'` for `prod-api` so
-  login works over plain HTTP; the API logs a warning at startup. The session cookie (and the
-  password at login) then travels **unencrypted**. Set it back to `'true'` as soon as the site is
-  served over HTTPS. Without that explicit `false` the cookie is always `Secure`.
-  `COOKIE_SECURE=false` in `.env` only affects local `http://` development (the prod container
-  does not read `.env`).
+- **Cookies**: `compose.prod.yaml` sets `COOKIE_SECURE: 'true'` for `prod-api` (the site is
+  HTTPS-only), so the session cookie is `Secure; HttpOnly; SameSite=Strict`. An explicit
+  `'false'` there would send it over plain HTTP (the API logs a warning at startup); without a
+  setting the cookie is always `Secure`. `COOKIE_SECURE=false` in `.env` only affects local
+  `http://` development (the prod container does not read `.env`).
 - **Network**: `prod-api` and `prod-web` publish no ports; Caddy reaches only `prod-web`, which
   forwards `/api/*` to `prod-api` on the internal `prod-app` network. `prod-api` shares the
   existing `backend` network with `db` (making it internal would recreate `db`).
 - **Access (current)**:
-  - Internet / LAN, plain HTTP: `http://<WAN>:5580` through the router's NAT to
-    `192.168.77.20:80` (published on the LAN IP only, never `0.0.0.0`), or `http://192.168.77.20`
-    inside the LAN. Caddy's `http://:8080` site accepts any host and sends no HSTS.
+  - Internet / LAN, HTTPS: `https://<WAN>:5443` (`PROD_CORS_ORIGIN`) through the router's NAT to
+    `192.168.77.20:443`, Let's Encrypt certificate for the public IP (`PROD_SITE_HOST`).
+  - Plain HTTP (`http://<WAN>` / `:5580` -> `192.168.77.20:80`, never `0.0.0.0`) serves no app
+    pages: Caddy answers the ACME HTTP-01 challenge there (keep `<WAN>:80` forwarded, the
+    short-lived certificate renews every few days) and sends everything else a **302** to
+    `PROD_CORS_ORIGIN` + path (302, not 301: the WAN IP is dynamic). Only the container's own
+    healthcheck (from `127.0.0.1`) is still proxied to the app over HTTP.
+  - HSTS is sent (`max-age=300`) but browsers ignore it for IP-address hosts; raise it only once
+    there is a domain.
   - HTTPS, loopback only: `127.0.0.1:9443`, Caddy internal CA (`infra/proxy/Caddyfile.prod`).
     From a laptop: `ssh -L 9443:127.0.0.1:9443 surveyadmin@<server>`, then
     `https://127.0.0.1:9443`.
-  - Next step: HTTPS for the public address (domain + ACME, or TLS on the NAT'd port), then
-    `COOKIE_SECURE: 'true'` again. Both are reviewed changes to `compose.prod.yaml` /
-    `Caddyfile.prod`.
 - **Survey map** (`/projects/[id]/map`): Google Maps JavaScript API with Advanced Markers when
   `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (+ `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`) is set in the web
   container's environment (read per request, no rebuild). In production a missing setting or a key

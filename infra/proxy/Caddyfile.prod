@@ -1,8 +1,9 @@
 # CCTV Survey reverse proxy — production (compose.prod.yaml, service prod-proxy).
 # HTTPS: <WAN>:5443 -> 192.168.77.20:443 -> 8443 with a Let's Encrypt
 # certificate for the public IP; 127.0.0.1:9443 -> 8443 (loopback) keeps the
-# internal CA. HTTP: <WAN>:80 / :5580 -> 192.168.77.20:80 -> 8080, which also
-# answers Let's Encrypt's HTTP-01 challenge.
+# internal CA. HTTP: <WAN>:80 / :5580 -> 192.168.77.20:80 -> 8080 answers
+# Let's Encrypt's HTTP-01 challenge and redirects everything else to
+# {$PROD_PUBLIC_ORIGIN} (the public HTTPS address).
 {
 	# No admin API at all (the image exposes :2019 by default).
 	admin off
@@ -13,8 +14,8 @@
 	https_port 8443
 	# Never install Caddy's internal root into a trust store.
 	skip_install_trust
-	# :8080 serves the plain-HTTP site below; no automatic http->https redirects
-	# yet (the API cookie is not Secure until HTTPS is confirmed).
+	# Caddy's automatic redirects would point at :443, but users come in on
+	# the NAT'd :5443; the :8080 site below redirects explicitly instead.
 	auto_https disable_redirects
 	servers {
 		protocols h1 h2
@@ -31,7 +32,9 @@
 		max_size 1MB
 	}
 	header {
-		# Short on purpose until HTTPS is verified (then 1 week, then 1 year).
+		# Browsers ignore HSTS for IP-address hosts (RFC 6797 8.1), so this
+		# protects nothing yet. Once there is a domain: 1 week, then 1 year
+		# (never includeSubDomains/preload while the address is an IP).
 		Strict-Transport-Security "max-age=300"
 		-Server
 		-Via
@@ -65,18 +68,30 @@ https://127.0.0.1:8443 {
 	import app
 }
 
-# Plain HTTP for access from outside: router NAT <WAN>:80 and <WAN>:5580 ->
-# 192.168.77.20:80, published as 192.168.77.20:80 -> 8080. Any Host header.
-# Caddy answers /.well-known/acme-challenge/* here before the app.
+# Plain HTTP: router NAT <WAN>:80 and <WAN>:5580 -> 192.168.77.20:80,
+# published as 192.168.77.20:80 -> 8080. Any Host header.
+# - /.well-known/acme-challenge/*: Caddy's HTTP-01 solver answers known tokens
+#   before any route here; unknown tokens get 404, never a redirect.
+# - 127.0.0.1 (the container healthcheck): proxied to the app as before.
+# - Everything else: 302 to the public HTTPS address. Not 301: the WAN IP is
+#   dynamic and browsers cache permanent redirects.
 http://:8080 {
-	encode zstd gzip
-	request_body {
-		max_size 1MB
-	}
 	header {
 		-Server
 		-Via
 	}
 	log
-	reverse_proxy prod-web:3000
+	handle /.well-known/acme-challenge/* {
+		respond 404
+	}
+	@healthcheck remote_ip 127.0.0.1
+	handle @healthcheck {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy prod-web:3000
+	}
+	handle {
+		redir {$PROD_PUBLIC_ORIGIN}{uri} 302
+	}
 }

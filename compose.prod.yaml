@@ -132,13 +132,17 @@ services:
       # certificates, generous rate limits). Production is set in .env once
       # staging issuance works.
       ACME_CA: ${ACME_CA:-https://acme-staging-v02.api.letsencrypt.org/directory}
+      # Public HTTPS origin that plain HTTP redirects to (Caddyfile.prod :8080).
+      # Same value as the API's allowed CORS origin, so a new WAN IP is set once.
+      PROD_PUBLIC_ORIGIN: ${PROD_CORS_ORIGIN:?PROD_CORS_ORIGIN must be set in .env}
     # Step B: loopback only, reached through `ssh -L 9443:127.0.0.1:9443`.
     # 9443 avoids the stacktest proxy's 8443. Caddy listens on 8443 inside the
     # container, so it needs no capabilities (see infra/docker/proxy.Dockerfile).
     ports:
       - '127.0.0.1:9443:8443'
-      # Plain HTTP on the server's LAN IP only (router NAT <WAN>:5580 -> :80).
-      # Caddy's :8080 site (Caddyfile.prod). Never 0.0.0.0.
+      # Plain HTTP on the server's LAN IP only (router NAT <WAN>:80 and :5580
+      # -> :80): ACME HTTP-01 + redirect to HTTPS (Caddyfile.prod :8080).
+      # Never 0.0.0.0.
       - '192.168.77.20:80:8080'
       # HTTPS on the server's LAN IP only (router NAT <WAN>:5443 -> :443).
       # Caddy's HTTPS listener stays :8443 inside the container (no
