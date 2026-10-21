@@ -17,9 +17,10 @@ import {
   IconSearch,
 } from '@/components/icons';
 import { BottomSheet, Fab, SheetOption, Toast } from '@/components/overlay';
+import { MapUnavailable, PointList } from '@/components/map-parts';
 import { SurveyMap } from '@/components/survey-map';
 import type { SurveyMapHandle } from '@/components/survey-map-types';
-import { Alert, Badge, Button, LinkButton } from '@/components/ui';
+import { Alert, Button, LinkButton } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import {
   FRESH_MS,
@@ -30,7 +31,6 @@ import {
   type GpsStatus,
 } from '@/lib/geolocation';
 import { mapSetup, type MapsConfig } from '@/lib/google-maps';
-import { CAMERA_STATUS_LABELS, CAMERA_STATUS_TONES } from '@/lib/labels';
 import { directionsUrl, type LatLng } from '@/lib/map-geo';
 import { photoFailureMessage, type PhotoUpload } from '@/lib/photo';
 import {
@@ -641,31 +641,6 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
 // ---------------------------------------------------------------------------
 
 /** Shown in place of the map: a clear error, never a silent map switch. */
-function MapUnavailable({
-  title,
-  children,
-  action,
-}: {
-  title: string;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="absolute inset-0 z-[1] grid place-items-center bg-zinc-100 p-6 dark:bg-zinc-800">
-      <div
-        role="alert"
-        data-testid="map-unavailable"
-        className="max-w-sm space-y-3 rounded-3xl bg-white p-5 text-center shadow-xl ring-1 ring-zinc-900/5 dark:bg-zinc-900 dark:ring-white/10"
-      >
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm break-words text-zinc-600 dark:text-zinc-400">
-          {children}
-        </p>
-        {action}
-      </div>
-    </div>
-  );
-}
 
 function GpsBadge({ status, fix }: { status: GpsStatus; fix?: GpsFix }) {
   const tone =
@@ -689,40 +664,6 @@ function GpsBadge({ status, fix }: { status: GpsStatus; fix?: GpsFix }) {
         </span>
       )}
     </div>
-  );
-}
-
-function PointList({
-  label,
-  points,
-  onChoose,
-}: {
-  label: string;
-  points: CameraPoint[];
-  onChoose: (c: CameraPoint) => void;
-}) {
-  return (
-    <ul aria-label={label} className="-mx-2">
-      {points.map((c) => (
-        <li key={c.id}>
-          <button
-            type="button"
-            onClick={() => onChoose(c)}
-            className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl px-2 text-left hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-zinc-800"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">{c.label}</span>
-              <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
-                {c.address ?? `${fmt(c.location.lat)}, ${fmt(c.location.lng)}`}
-              </span>
-            </span>
-            <Badge tone={CAMERA_STATUS_TONES[c.status]} dot>
-              {CAMERA_STATUS_LABELS[c.status]}
-            </Badge>
-          </button>
-        </li>
-      ))}
-    </ul>
   );
 }
 

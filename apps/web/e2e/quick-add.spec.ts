@@ -133,7 +133,7 @@ test.describe('camera model master — not for surveyors', () => {
     await expect(page.getByRole('link', { name: /ข้อมูลกล้อง/ })).toHaveCount(
       0,
     );
-    // The main menu item stays disabled for surveyors.
+    // Surveyors do not get the main menu item at all.
     await expect(
       page
         .getByRole('navigation', { name: 'เมนูหลัก' })

@@ -16,15 +16,15 @@ describe('safeNextPath (open-redirect guard)', () => {
   it.each([
     ['/projects/abc', '/projects/abc'],
     ['/projects?x=1', '/projects?x=1'],
-    [null, '/projects'],
-    ['', '/projects'],
-    ['projects', '/projects'],
-    ['//evil.example/x', '/projects'],
-    ['/\\evil.example', '/projects'],
-    ['https://evil.example', '/projects'],
-    ['javascript:alert(1)', '/projects'],
-    ['/login?next=/x', '/projects'],
-    ['/projects\n', '/projects'],
+    [null, '/dashboard'],
+    ['', '/dashboard'],
+    ['projects', '/dashboard'],
+    ['//evil.example/x', '/dashboard'],
+    ['/\\evil.example', '/dashboard'],
+    ['https://evil.example', '/dashboard'],
+    ['javascript:alert(1)', '/dashboard'],
+    ['/login?next=/x', '/dashboard'],
+    ['/projects\n', '/dashboard'],
   ])('%s -> %s', (input, out) => {
     expect(safeNextPath(input)).toBe(out);
   });

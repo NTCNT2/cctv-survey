@@ -30,7 +30,10 @@ test.describe('survey map — Google Maps (stubbed), viewer', () => {
   }) => {
     await stubGoogleMaps(page);
     await page.goto(`/projects/${seeded.project.id}`);
-    await page.getByRole('link', { name: 'แผนที่สำรวจ' }).click();
+    await page
+      .getByRole('main')
+      .getByRole('link', { name: 'แผนที่สำรวจ' })
+      .click();
     await expect(page).toHaveURL(
       new RegExp(`/projects/${seeded.project.id}/map$`),
     );

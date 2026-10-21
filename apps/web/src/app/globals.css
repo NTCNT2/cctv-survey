@@ -173,3 +173,20 @@ body {
     scroll-padding-bottom: calc(10rem + env(safe-area-inset-bottom));
   }
 }
+
+/*
+ * Printing (reports → "บันทึก PDF"): A4 with margins, light colours whatever
+ * the screen theme, the app chrome is hidden by `print:hidden` in the shell.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #18181b !important;
+    color-scheme: light;
+  }
+}

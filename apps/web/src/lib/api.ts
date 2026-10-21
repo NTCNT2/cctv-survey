@@ -1,5 +1,7 @@
 import type {
   AuthUser,
+  CameraListItem,
+  CameraListQuery,
   CameraModel,
   CameraPhoto,
   CameraPoint,
@@ -9,6 +11,7 @@ import type {
   CreateProjectInput,
   CreateSiteInput,
   CreateUserInput,
+  DashboardSummary,
   LoginInput,
   LoginResponse,
   PhotoType,
@@ -133,6 +136,12 @@ export const api = {
     update: (id: string, body: UpdateCameraPointInput) =>
       request<CameraPoint>('PATCH', `/cameras/${id}`, body),
     remove: (id: string) => request<void>('DELETE', `/cameras/${id}`),
+    /** Across projects, newest change first (dashboard, survey map). */
+    listAll: (query: Partial<CameraListQuery>) =>
+      request<CameraListItem[]>('GET', `/cameras${q(query)}`),
+  },
+  dashboard: {
+    get: () => request<DashboardSummary>('GET', '/dashboard'),
   },
   cameraModels: {
     /** Active models only, unless `all` (admin list). */

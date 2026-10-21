@@ -61,23 +61,34 @@ function useNav(): NavItem[] {
 }
 
 const NAV: NavItem[] = [
-  { label: 'แดชบอร์ด', icon: IconDashboard },
+  {
+    label: 'แดชบอร์ด',
+    icon: IconDashboard,
+    href: '/dashboard',
+    match: ['/dashboard'],
+  },
   {
     label: 'โครงการ',
     icon: IconFolder,
     href: '/projects',
     match: ['/projects', '/sites', '/cameras'],
   },
-  { label: 'แผนที่สำรวจ', icon: IconMap },
-  // Admins: the camera model master (ข้อมูลกล้อง). Others: not built yet.
+  { label: 'แผนที่สำรวจ', icon: IconMap, href: '/map', match: ['/map'] },
+  // Admins only: the camera model master (ข้อมูลกล้อง).
   {
     label: 'กล้อง',
     icon: IconCamera,
     href: '/camera-models',
     match: ['/camera-models'],
     permission: 'camera_model:manage',
+    hideWithout: true,
   },
-  { label: 'รายงาน', icon: IconReport },
+  {
+    label: 'รายงาน',
+    icon: IconReport,
+    href: '/reports',
+    match: ['/reports'],
+  },
   // Admins only; nobody else sees it at all.
   {
     label: 'ผู้ใช้',
@@ -104,6 +115,9 @@ function sectionTitle(pathname: string): string {
   if (pathname.startsWith('/account')) return 'ตั้งค่าบัญชี';
   if (pathname.startsWith('/camera-models')) return 'ข้อมูลกล้อง';
   if (pathname.startsWith('/users')) return 'ผู้ใช้';
+  if (pathname.startsWith('/dashboard')) return 'แดชบอร์ด';
+  if (pathname === '/map') return 'แผนที่สำรวจ';
+  if (pathname.startsWith('/reports')) return 'รายงาน';
   if (pathname.startsWith('/design-system')) return 'Design system';
   if (isImmersive(pathname)) return 'แผนที่สำรวจ';
   return 'โครงการ';
@@ -140,7 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <a
         href="#main"
-        className="sr-only z-50 rounded-lg bg-indigo-600 px-4 py-2 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-50 rounded-lg bg-indigo-600 px-4 py-2 text-white print:hidden focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
         ข้ามไปยังเนื้อหาหลัก
       </a>
@@ -152,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className={
             immersive
               ? 'relative flex-1'
-              : 'mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 md:pb-10 lg:px-8 lg:pt-8'
+              : 'mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 md:pb-10 lg:px-8 lg:pt-8 print:max-w-none print:p-0'
           }
         >
           {children}
@@ -169,7 +183,7 @@ function Sidebar({ pathname }: { pathname: string }) {
   return (
     <aside
       aria-label="เมนูหลัก"
-      className="sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-zinc-200/80 bg-white md:flex md:w-[4.5rem] lg:w-64 dark:border-zinc-800 dark:bg-zinc-900"
+      className="sticky top-0 hidden h-dvh shrink-0 flex-col border-r print:hidden border-zinc-200/80 bg-white md:flex md:w-[4.5rem] lg:w-64 dark:border-zinc-800 dark:bg-zinc-900"
     >
       <Link
         href="/projects"
@@ -271,7 +285,7 @@ function TopBar({
   return (
     <header
       className={cx(
-        'sticky top-0 z-30 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/85',
+        'sticky top-0 z-30 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md print:hidden dark:border-zinc-800 dark:bg-zinc-900/85',
         // Phones: the survey map draws its own top bar.
         immersive && 'hidden md:block',
       )}
@@ -525,17 +539,18 @@ function UserMenu() {
 }
 
 function BottomNav({ pathname }: { pathname: string }) {
+  // Admin pages (กล้อง, ผู้ใช้) are in the user menu on phones.
   const items = useNav().filter((i) =>
-    ['โครงการ', 'แผนที่สำรวจ', 'กล้อง', 'ผู้ใช้', 'ตั้งค่า'].includes(i.label),
+    ['แดชบอร์ด', 'โครงการ', 'แผนที่สำรวจ', 'รายงาน', 'ตั้งค่า'].includes(
+      i.label,
+    ),
   );
   return (
     <nav
       aria-label="เมนูหลัก (มือถือ)"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-900/95"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden print:hidden dark:border-zinc-800 dark:bg-zinc-900/95"
     >
-      <ul
-        className={items.length > 4 ? 'grid grid-cols-5' : 'grid grid-cols-4'}
-      >
+      <ul className="grid grid-cols-5">
         {items.map((item) => {
           const Icon = item.icon;
           const current = isCurrent(item, pathname);

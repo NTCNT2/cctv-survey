@@ -128,16 +128,19 @@ export function num<E extends undefined | null>(
   return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(t) ? Number(t) : Number.NaN;
 }
 
+/** Where the app starts after login. */
+export const HOME_PATH = '/dashboard';
+
 /**
  * Only same-origin, absolute paths are allowed as a post-login destination.
  * Blocks `//evil.example`, `/\evil.example`, `https://…` and the like.
  */
 export function safeNextPath(next: string | null | undefined): string {
   if (!next || !next.startsWith('/') || next.startsWith('//')) {
-    return '/projects';
+    return HOME_PATH;
   }
-  if (next.includes('\\') || /[\u0000-\u001f]/.test(next)) return '/projects';
-  if (next.startsWith('/login')) return '/projects';
+  if (next.includes('\\') || /[\u0000-\u001f]/.test(next)) return HOME_PATH;
+  if (next.startsWith('/login')) return HOME_PATH;
   return next;
 }
 

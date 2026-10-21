@@ -24,6 +24,11 @@ async function expectNoHorizontalScroll(page: Page) {
     viewport: window.innerWidth,
   }));
   expect(scroll, 'page is wider than the screen').toBeLessThanOrEqual(viewport);
+  // A phone widens its layout viewport to fit wide content, so innerWidth
+  // alone can grow with the page: compare with the device width too.
+  expect(viewport, 'layout wider than the device').toBeLessThanOrEqual(
+    page.viewportSize()!.width,
+  );
 }
 
 test('login page fits the screen', async ({ page }, info) => {
@@ -92,13 +97,54 @@ test.describe('signed in', () => {
     ).toBeVisible();
   });
 
-  test('users page: in the bottom nav, fits the screen, form usable', async ({
+  test('dashboard, survey map and reports: bottom nav, fit the screen', async ({
+    page,
+  }, info) => {
+    await stubGoogleMaps(page);
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/dashboard$/);
+    const nav = page.getByRole('navigation', { name: 'เมนูหลัก (มือถือ)' });
+    await expect(nav.getByRole('link')).toHaveText([
+      'แดชบอร์ด',
+      'โครงการ',
+      'แผนที่สำรวจ',
+      'รายงาน',
+      'ตั้งค่า',
+    ]);
+    await expect(page.getByTestId('day-bar')).toHaveCount(30);
+    await expectNoHorizontalScroll(page);
+    await info.attach('dashboard', {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+
+    await nav.getByRole('link', { name: 'แผนที่สำรวจ' }).tap();
+    await expect(page).toHaveURL(/\/map$/);
+    await expect(page.locator('[data-map-engine="google"]')).toBeVisible();
+    await expectNoHorizontalScroll(page);
+
+    await nav.getByRole('link', { name: 'รายงาน' }).tap();
+    await page
+      .getByRole('list', { name: 'โครงการสำหรับรายงาน' })
+      .getByRole('link', { name: new RegExp(seeded.project.name) })
+      .tap();
+    await expect(
+      page.getByRole('table', { name: 'ตารางจุดกล้อง' }),
+    ).toBeVisible();
+    // The wide table scrolls inside its card, never the page.
+    await expectNoHorizontalScroll(page);
+    await info.attach('report', {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+  });
+
+  test('users page: from the user menu, fits the screen, form usable', async ({
     page,
   }, info) => {
     await page.goto('/projects');
-    const nav = page.getByRole('navigation', { name: 'เมนูหลัก (มือถือ)' });
-    await expect(nav.getByRole('listitem')).toHaveCount(5);
-    await nav.getByRole('link', { name: 'ผู้ใช้' }).tap();
+    await page.getByTestId('current-user').tap();
+    await page.getByRole('link', { name: 'จัดการผู้ใช้' }).tap();
     await expect(page).toHaveURL(/\/users$/);
     await expect(
       page.getByRole('list', { name: 'รายการผู้ใช้' }),

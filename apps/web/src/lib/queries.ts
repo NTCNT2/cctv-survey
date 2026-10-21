@@ -1,6 +1,8 @@
 'use client';
 
 import type {
+  CameraListItem,
+  CameraListQuery,
   CameraPoint,
   CreateCameraModelInput,
   CreateCameraPointInput,
@@ -35,6 +37,8 @@ export const keys = {
   photos: (cameraId: string) => ['photos', cameraId] as const,
   cameraModels: (all: boolean) => ['camera-models', all] as const,
   users: ['users'] as const,
+  dashboard: ['dashboard'] as const,
+  allCameras: (filter: object) => ['all-cameras', filter] as const,
 };
 
 /**
@@ -337,5 +341,48 @@ export function useResetPassword() {
   return useMutation({
     mutationFn: (v: { id: string; newPassword: string }) =>
       api.users.resetPassword(v.id, v.newPassword),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Overview: dashboard and survey map (all projects)
+// ---------------------------------------------------------------------------
+
+// Overviews span every project, so no mutation knows to invalidate them:
+// they are always refetched when a page shows them (staleTime 0).
+export const useDashboard = () =>
+  useQuery({
+    queryKey: keys.dashboard,
+    queryFn: api.dashboard.get,
+    staleTime: 0,
+  });
+
+/** Rows per request; the API's maximum. */
+const ALL_PAGE = 500;
+
+/**
+ * Camera points of every project (newest change first), fetched page by page
+ * up to `max`. `truncated` says that more exist than were loaded.
+ */
+export function useAllCameras(
+  filter: Pick<CameraListQuery, 'projectId' | 'status'> = {},
+  max = 5000,
+) {
+  return useQuery({
+    queryKey: keys.allCameras({ ...filter, max }),
+    staleTime: 0,
+    queryFn: async (): Promise<{
+      cameras: CameraListItem[];
+      truncated: boolean;
+    }> => {
+      const cameras: CameraListItem[] = [];
+      for (let offset = 0; offset < max; offset += ALL_PAGE) {
+        const limit = Math.min(ALL_PAGE, max - offset);
+        const page = await api.cameras.listAll({ ...filter, limit, offset });
+        cameras.push(...page);
+        if (page.length < limit) return { cameras, truncated: false };
+      }
+      return { cameras, truncated: true };
+    },
   });
 }

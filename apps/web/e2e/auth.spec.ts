@@ -40,7 +40,7 @@ test.describe('sign-in and session', () => {
     context,
   }) => {
     await login(page, users.login, '/login?next=//evil.example/steal');
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByTestId('current-user')).toHaveText(
       users.login.username,
     );
@@ -77,7 +77,7 @@ test.describe('sign-in and session', () => {
     page,
   }) => {
     await login(page, users.login);
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // Network failure: stay, explain, session still valid.
     await page.route('**/api/auth/logout', (route) => route.abort('failed'));
@@ -86,7 +86,7 @@ test.describe('sign-in and session', () => {
     await expect(page.locator('header').getByRole('alert')).toContainText(
       'ออกจากระบบไม่สำเร็จ',
     );
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     expect((await page.request.get('/api/auth/me')).status()).toBe(200);
 
     // 401 means there is no session any more: treat as signed out.
@@ -115,7 +115,7 @@ test.describe('sign-in and session', () => {
     page,
   }) => {
     await login(page, users.victim);
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     const api = await adminApi();
     const list = await (await api.get('/api/users')).json();
@@ -143,7 +143,7 @@ test.describe('sign-in and session', () => {
   }) => {
     const newPassword = `${users.pwchange.password}-new`;
     await login(page, users.pwchange);
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await page.getByTestId('current-user').click();
     await page.getByRole('link', { name: 'เปลี่ยนรหัสผ่าน' }).click();
 
@@ -166,6 +166,6 @@ test.describe('sign-in and session', () => {
       username: users.pwchange.username,
       password: newPassword,
     });
-    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
   });
 });
