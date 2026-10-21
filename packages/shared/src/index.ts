@@ -6,4 +6,5 @@ export * from './camera.js';
 export * from './camera-model.js';
 export * from './photo.js';
 export * from './health.js';
+export * from './dashboard.js';
 export * from './auth.js';

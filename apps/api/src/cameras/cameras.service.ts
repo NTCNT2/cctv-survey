@@ -1,4 +1,6 @@
 import type {
+  CameraListItem,
+  CameraListQuery,
   CameraPoint,
   CreateCameraPointInput,
   UpdateCameraPointInput,
@@ -158,6 +160,29 @@ export class CamerasService {
     if (siteId) q = q.where('site_id', '=', siteId);
     const rows = await q.orderBy('label').execute();
     return rows.map(toCamera);
+  }
+
+  /**
+   * Points across projects, most recently changed first (id breaks ties so
+   * pages never overlap). Each row carries its project's name.
+   */
+  async list(query: CameraListQuery): Promise<CameraListItem[]> {
+    let q = this.db.selectFrom('camera_points').select([
+      ...columns,
+      sql<string>`(
+          SELECT name FROM projects WHERE projects.id = camera_points.project_id
+        )`.as('project_name'),
+    ]);
+    if (query.projectId) q = q.where('project_id', '=', query.projectId);
+    if (query.status) q = q.where('status', '=', query.status);
+    if (query.surveyorId) q = q.where('surveyor_id', '=', query.surveyorId);
+    const rows = await q
+      .orderBy('updated_at', 'desc')
+      .orderBy('id')
+      .limit(query.limit)
+      .offset(query.offset)
+      .execute();
+    return rows.map((r) => ({ ...toCamera(r), projectName: r.project_name }));
   }
 
   async get(id: string): Promise<CameraPoint> {

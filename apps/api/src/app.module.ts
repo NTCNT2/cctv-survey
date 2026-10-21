@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CameraModelsModule } from './camera-models/camera-models.module.js';
 import { CamerasModule } from './cameras/cameras.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
 import { PgErrorFilter } from './common/pg-error.filter.js';
 import { DatabaseModule } from './db/database.module.js';
 import { PhotosModule } from './photos/photos.module.js';
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module.js';
     CameraModelsModule,
     CamerasModule,
     PhotosModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_FILTER, useClass: PgErrorFilter }],

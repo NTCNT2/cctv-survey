@@ -152,3 +152,18 @@ export interface CameraPoint extends Omit<CreateCameraPointInput, 'type'> {
   createdAt: string;
   updatedAt: string;
 }
+
+/** GET /api/cameras: camera points across projects, newest change first. */
+export const cameraListQuerySchema = z.object({
+  projectId: z.uuid().optional(),
+  status: z.enum(CAMERA_STATUSES).optional(),
+  surveyorId: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+export type CameraListQuery = z.infer<typeof cameraListQuerySchema>;
+
+/** A row of GET /api/cameras: the point plus its project's name. */
+export interface CameraListItem extends CameraPoint {
+  projectName: string;
+}

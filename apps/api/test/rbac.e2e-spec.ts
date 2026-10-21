@@ -82,6 +82,12 @@ const ROUTES: Case[] = [
     path: (s) => `/api/cameras/${s.cameraId}`,
   },
   {
+    name: 'list all cameras',
+    method: 'get',
+    path: (s) => `/api/cameras?projectId=${s.projectId}`,
+  },
+  { name: 'dashboard', method: 'get', path: () => '/api/dashboard' },
+  {
     name: 'create camera',
     method: 'post',
     path: () => '/api/cameras',
@@ -136,6 +142,8 @@ const READS = new Set([
   'get site',
   'list cameras',
   'get camera',
+  'list all cameras',
+  'dashboard',
 ]);
 const SURVEY_WRITES = new Set([
   'create project',

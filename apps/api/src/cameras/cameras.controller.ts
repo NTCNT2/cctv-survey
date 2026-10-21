@@ -1,6 +1,9 @@
 import {
   type AuthUser,
+  cameraListQuerySchema,
   createCameraPointSchema,
+  type CameraListItem,
+  type CameraListQuery,
   updateCameraPointSchema,
   type CameraPoint,
   type CreateCameraPointInput,
@@ -42,6 +45,16 @@ export class CamerasController {
   ): Promise<CameraPoint[]> {
     await this.projects.assertExists(projectId);
     return this.cameras.listByProject(projectId, query.siteId);
+  }
+
+  /** All projects (dashboard, survey map, reports); filters are optional. */
+  @RequirePermission('camera:read')
+  @Get('cameras')
+  list(
+    @Query(new ZodValidationPipe(cameraListQuerySchema))
+    query: CameraListQuery,
+  ): Promise<CameraListItem[]> {
+    return this.cameras.list(query);
   }
 
   @RequirePermission('camera:read')
