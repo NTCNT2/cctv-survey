@@ -64,6 +64,8 @@ rc copyto "$TARGET/sets/$name.sha256" "$out/$name.sha256"
 (cd "$out" && sha256sum -c --quiet "$name.sha256") || die "downloaded $name does not match its sha256"
 echo "downloaded $name ($(stat -c %s "$out/$name") B), sha256 ok"
 
+# The passphrase prompt (pinentry) must find this terminal.
+if [[ -t 0 ]]; then export GPG_TTY; GPG_TTY=$(tty); fi
 gpg_args=(--quiet)
 if [[ -n $key ]]; then
   TMP_HOME=$(mktemp -d)
