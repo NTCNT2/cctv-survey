@@ -8,6 +8,7 @@ import type {
   CreateCameraPointInput,
   CreateProjectInput,
   CreateSiteInput,
+  CreateUserInput,
   LoginInput,
   LoginResponse,
   PhotoType,
@@ -18,6 +19,8 @@ import type {
   UpdatePhotoInput,
   UpdateProjectInput,
   UpdateSiteInput,
+  UpdateUserInput,
+  User,
 } from '@cctv/shared';
 
 export interface ApiIssue {
@@ -140,6 +143,14 @@ export const api = {
     update: (id: string, body: UpdateCameraModelInput) =>
       request<CameraModel>('PATCH', `/camera-models/${id}`, body),
   },
+  users: {
+    list: () => request<User[]>('GET', '/users'),
+    create: (body: CreateUserInput) => request<User>('POST', '/users', body),
+    update: (id: string, body: UpdateUserInput) =>
+      request<User>('PATCH', `/users/${id}`, body),
+    resetPassword: (id: string, newPassword: string) =>
+      request<void>('POST', `/users/${id}/reset-password`, { newPassword }),
+  },
   photos: {
     list: (cameraId: string) =>
       request<CameraPhoto[]>('GET', `/cameras/${cameraId}/photos`),
@@ -182,6 +193,13 @@ const KNOWN_MESSAGES: Record<string, string> = {
   'camera model is inactive': 'รุ่นกล้องนี้ถูกปิดใช้งานแล้ว กรุณาเลือกรุ่นอื่น',
   'cameraModelId does not exist': 'ไม่พบรุ่นกล้องที่เลือก',
   'the file is not a valid image': 'ไฟล์นี้ไม่ใช่รูปภาพที่รองรับ',
+  'username already exists': 'มีชื่อผู้ใช้นี้แล้ว กรุณาใช้ชื่ออื่น',
+  'cannot demote or deactivate the last active admin':
+    'ต้องมีผู้ดูแลระบบที่ใช้งานอยู่อย่างน้อย 1 คน — เปลี่ยนสิทธิ์หรือปิดใช้งานบัญชีนี้ไม่ได้',
+  'you cannot change your own role or deactivate yourself':
+    'เปลี่ยนสิทธิ์หรือปิดใช้งานบัญชีของตัวเองไม่ได้ — ให้ผู้ดูแลระบบคนอื่นทำแทน',
+  'use /auth/change-password to change your own password':
+    'เปลี่ยนรหัสผ่านของตัวเองที่หน้า ตั้งค่า > เปลี่ยนรหัสผ่าน',
 };
 
 /** A user-facing Thai message for any error thrown by `request`. */

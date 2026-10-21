@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { errorMessage } from '@/lib/api';
 import { Alert, Button } from './ui';
 
@@ -14,14 +14,20 @@ export function ConfirmButton({
   title,
   detail,
   confirmLabel = 'ยืนยันการลบ',
+  variant = 'danger',
+  ariaLabel,
   onConfirm,
 }: {
   label: ReactNode;
   title: string;
   detail?: string;
   confirmLabel?: string;
+  /** The opening button; the confirm button stays red. */
+  variant?: 'danger' | 'secondary';
+  ariaLabel?: string;
   onConfirm: () => Promise<unknown>;
 }) {
+  const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -45,15 +51,15 @@ export function ConfirmButton({
 
   return (
     <>
-      <Button variant="danger" onClick={open}>
+      <Button variant={variant} onClick={open} aria-label={ariaLabel}>
         {label}
       </Button>
       <dialog
         ref={dialog}
-        aria-labelledby="confirm-title"
+        aria-labelledby={titleId}
         className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl bg-white p-5 text-zinc-900 shadow-xl backdrop:bg-black/40 dark:bg-zinc-900 dark:text-zinc-100"
       >
-        <h2 id="confirm-title" className="text-lg font-semibold">
+        <h2 id={titleId} className="text-lg font-semibold">
           {title}
         </h2>
         {detail && (

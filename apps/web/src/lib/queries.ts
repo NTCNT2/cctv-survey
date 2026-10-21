@@ -6,11 +6,13 @@ import type {
   CreateCameraPointInput,
   CreateProjectInput,
   CreateSiteInput,
+  CreateUserInput,
   UpdateCameraModelInput,
   UpdateCameraPointInput,
   UpdatePhotoInput,
   UpdateProjectInput,
   UpdateSiteInput,
+  UpdateUserInput,
 } from '@cctv/shared';
 import {
   useInfiniteQuery,
@@ -32,6 +34,7 @@ export const keys = {
   camera: (id: string) => ['camera', id] as const,
   photos: (cameraId: string) => ['photos', cameraId] as const,
   cameraModels: (all: boolean) => ['camera-models', all] as const,
+  users: ['users'] as const,
 };
 
 /**
@@ -305,5 +308,34 @@ export function useDeletePhoto(cameraId: string, projectId: string) {
   return useMutation({
     mutationFn: (photoId: string) => api.photos.remove(cameraId, photoId),
     onSuccess: () => invalidatePhotos(qc, cameraId, projectId),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Users (admin)
+// ---------------------------------------------------------------------------
+
+export const useUsers = () =>
+  useQuery({ queryKey: keys.users, queryFn: api.users.list });
+
+export function useSaveUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      v:
+        | { id?: undefined; body: CreateUserInput }
+        | { id: string; body: UpdateUserInput },
+    ) =>
+      v.id === undefined
+        ? api.users.create(v.body)
+        : api.users.update(v.id, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.users }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (v: { id: string; newPassword: string }) =>
+      api.users.resetPassword(v.id, v.newPassword),
   });
 }

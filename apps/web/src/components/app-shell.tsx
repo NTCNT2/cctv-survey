@@ -27,6 +27,7 @@ import {
   IconReport,
   IconSearch,
   IconSettings,
+  IconUsers,
   LogoMark,
 } from './icons';
 import { Alert, Badge, Button } from './ui';
@@ -43,15 +44,19 @@ interface NavItem {
   match?: string[];
   /** Only users with this permission get the link (others: disabled). */
   permission?: Action;
+  /** Without the permission the item is left out instead of disabled. */
+  hideWithout?: boolean;
 }
 
 /** NAV as this user sees it. */
 function useNav(): NavItem[] {
   const user = useSession();
-  return NAV.map((i) =>
+  return NAV.flatMap((i) =>
     i.permission && !can(user.role, i.permission)
-      ? { ...i, href: undefined, match: undefined }
-      : i,
+      ? i.hideWithout
+        ? []
+        : [{ ...i, href: undefined, match: undefined }]
+      : [i],
   );
 }
 
@@ -73,6 +78,15 @@ const NAV: NavItem[] = [
     permission: 'camera_model:manage',
   },
   { label: 'รายงาน', icon: IconReport },
+  // Admins only; nobody else sees it at all.
+  {
+    label: 'ผู้ใช้',
+    icon: IconUsers,
+    href: '/users',
+    match: ['/users'],
+    permission: 'user:manage',
+    hideWithout: true,
+  },
   {
     label: 'ตั้งค่า',
     icon: IconSettings,
@@ -89,6 +103,7 @@ const isCurrent = (item: NavItem, pathname: string) =>
 function sectionTitle(pathname: string): string {
   if (pathname.startsWith('/account')) return 'ตั้งค่าบัญชี';
   if (pathname.startsWith('/camera-models')) return 'ข้อมูลกล้อง';
+  if (pathname.startsWith('/users')) return 'ผู้ใช้';
   if (pathname.startsWith('/design-system')) return 'Design system';
   if (isImmersive(pathname)) return 'แผนที่สำรวจ';
   return 'โครงการ';
@@ -400,6 +415,7 @@ function Notifications() {
 function UserMenu() {
   const user = useSession();
   const manageModels = useCan('camera_model:manage');
+  const manageUsers = useCan('user:manage');
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string>();
@@ -482,6 +498,16 @@ function UserMenu() {
                 ข้อมูลกล้อง (รุ่นกล้อง)
               </Link>
             )}
+            {manageUsers && (
+              <Link
+                href="/users"
+                onClick={() => setMenuOpen(false)}
+                className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <IconUsers className="size-4 text-zinc-500" />
+                จัดการผู้ใช้
+              </Link>
+            )}
             <Button
               variant="secondary"
               className="mt-1 w-full"
@@ -500,14 +526,16 @@ function UserMenu() {
 
 function BottomNav({ pathname }: { pathname: string }) {
   const items = useNav().filter((i) =>
-    ['โครงการ', 'แผนที่สำรวจ', 'กล้อง', 'ตั้งค่า'].includes(i.label),
+    ['โครงการ', 'แผนที่สำรวจ', 'กล้อง', 'ผู้ใช้', 'ตั้งค่า'].includes(i.label),
   );
   return (
     <nav
       aria-label="เมนูหลัก (มือถือ)"
       className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-900/95"
     >
-      <ul className="grid grid-cols-4">
+      <ul
+        className={items.length > 4 ? 'grid grid-cols-5' : 'grid grid-cols-4'}
+      >
         {items.map((item) => {
           const Icon = item.icon;
           const current = isCurrent(item, pathname);

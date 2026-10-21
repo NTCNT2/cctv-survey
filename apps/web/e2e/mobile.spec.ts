@@ -92,6 +92,41 @@ test.describe('signed in', () => {
     ).toBeVisible();
   });
 
+  test('users page: in the bottom nav, fits the screen, form usable', async ({
+    page,
+  }, info) => {
+    await page.goto('/projects');
+    const nav = page.getByRole('navigation', { name: 'เมนูหลัก (มือถือ)' });
+    await expect(nav.getByRole('listitem')).toHaveCount(5);
+    await nav.getByRole('link', { name: 'ผู้ใช้' }).tap();
+    await expect(page).toHaveURL(/\/users$/);
+    await expect(
+      page.getByRole('list', { name: 'รายการผู้ใช้' }),
+    ).toBeVisible();
+    await expectNoHorizontalScroll(page);
+
+    await page.getByRole('button', { name: '+ เพิ่มผู้ใช้' }).tap();
+    await page.getByRole('radio', { name: 'วิศวกร', exact: true }).tap();
+    await expect(
+      page.getByRole('radio', { name: 'วิศวกร', exact: true }),
+    ).toBeChecked();
+    await page.getByRole('button', { name: 'สุ่มรหัสผ่าน' }).tap();
+    await expect(page.getByLabel('รหัสผ่านเริ่มต้น')).toHaveAttribute(
+      'type',
+      'text',
+    );
+    await expectNoHorizontalScroll(page);
+    for (const b of await page.getByRole('main').getByRole('button').all()) {
+      const box = await b.boundingBox();
+      expect(box?.height ?? 0, await b.innerText()).toBeGreaterThanOrEqual(44);
+    }
+    await info.attach('users-form', {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+    await page.getByRole('button', { name: 'ยกเลิก' }).tap();
+  });
+
   test('FAB sits above the bottom navigation; sheet options are easy to tap', async ({
     page,
   }) => {

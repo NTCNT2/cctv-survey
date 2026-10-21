@@ -14,7 +14,9 @@ import {
   PROJECT_STATUS_TONES,
   formatRelative,
   projectStage,
+  ROLE_DESCRIPTIONS,
   ROLE_LABELS,
+  ROLE_TONES,
 } from './labels';
 
 describe('labels cover every shared enum value', () => {
@@ -24,6 +26,8 @@ describe('labels cover every shared enum value', () => {
     ['camera types', CAMERA_TYPES, CAMERA_TYPE_LABELS],
     ['mount types', MOUNT_TYPES, MOUNT_TYPE_LABELS],
     ['roles', USER_ROLES, ROLE_LABELS],
+    ['role descriptions', USER_ROLES, ROLE_DESCRIPTIONS],
+    ['role tones', USER_ROLES, ROLE_TONES],
   ] as const)('%s', (_, values, labels) => {
     expect(Object.keys(labels).sort()).toEqual([...values].sort());
     for (const v of values) {

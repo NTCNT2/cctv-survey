@@ -132,6 +132,23 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   viewer: 'ผู้ดู',
 };
 
+/** What each role may do (ROLE_PERMISSIONS in @cctv/shared), for admins. */
+export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
+  surveyor:
+    'สร้างและแก้ไขโครงการกับ Site เพิ่ม แก้ไข และลบจุดกล้องพร้อมรูปหน้างาน',
+  engineer:
+    'ดูข้อมูลทั้งหมด เพิ่มและแก้ไขจุดกล้อง (สถานะ ทิศทาง FOV) แต่ลบจุดหรือแก้โครงการไม่ได้',
+  viewer: 'ดูโครงการ Site และกล้องได้อย่างเดียว',
+  admin: 'ทำได้ทุกอย่าง รวมถึงจัดการผู้ใช้และข้อมูลกล้อง',
+};
+
+export const ROLE_TONES: Record<UserRole, BadgeTone> = {
+  admin: 'violet',
+  surveyor: 'blue',
+  engineer: 'cyan',
+  viewer: 'neutral',
+};
+
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat('th-TH', {
     dateStyle: 'medium',
