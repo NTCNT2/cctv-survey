@@ -7,7 +7,11 @@
 #                                  and its checksums still match (cron, after `run`)
 #   scripts/backup.sh test         same as `run`, but into auto/test/ (manual testing):
 #                                  never counted as a production backup, own retention
-#   scripts/backup.sh verify [TS]  restore-test a set again (default: newest daily)
+#   scripts/backup.sh offsite      encrypt the last verified set and upload it off-site
+#                                  (cron, between `run` and `check`; see "Off-site" below)
+#   scripts/backup.sh verify [TS] [DIR]
+#                                  restore-test a set again (default: newest daily;
+#                                  DIR: a set fetched by scripts/offsite-restore.sh)
 #   scripts/backup.sh list         list sets
 #
 # Safety:
@@ -30,6 +34,19 @@
 #   so it may hold a photo uploaded meanwhile (harmless: a file without a row).
 #   No volume yet (photos not deployed): the set has no photo archive and the
 #   log says so; once the volume exists, `check` requires the archive.
+#
+# Off-site (Backblaze B2, configured in $OFFSITE_DIR, see infra/db/README.md):
+# - Only the set named in LAST_OK (restore-tested) is sent, after its checksums
+#   match again. tar of the set -> gpg public-key encryption -> one file
+#   sets/cctv-survey-<TS>.tar.gpg (+ .sha256 of the ciphertext). This server holds
+#   only the PUBLIC key: it can encrypt, never decrypt. The private key is kept
+#   off this server by the owner; without it no off-site copy can be restored.
+# - The B2 key here has no deleteFiles capability, and the bucket has Object Lock
+#   (governance, 90 days): a compromised server cannot remove off-site copies.
+#   Bucket lifecycle (not this script) removes them after 90 days.
+# - After upload the remote SHA-1 must equal the local one; then OFFSITE_LAST_OK.
+# - Not configured ($OFFSITE_DIR/target missing): `offsite` fails, `check` skips
+#   the off-site test. Once configured, `check` requires OFFSITE_LAST_OK == LAST_OK.
 set -Eeuo pipefail
 umask 077
 
@@ -61,6 +78,10 @@ PHOTO_OWNER=${PHOTO_OWNER:-1000:1000 750}
 # (root 755) in the image layer first.
 photo_mount() { printf 'type=volume,src=%s,dst=%s,readonly,volume-nocopy' "$PHOTO_VOLUME" "$1"; }
 PHOTO_SET_FILE='' # name of this set's photo archive, if any
+# Off-site: rclone.conf (B2 key, 600), offsite.pub.asc (public key only) and
+# target (rclone remote:bucket, one line).
+OFFSITE_DIR=${OFFSITE_DIR:-$HOME/.config/cctv-backup}
+RCLONE=${RCLONE:-$HOME/.local/bin/rclone}
 
 # Inside the throwaway containers: one manifest line per entry below the
 # current directory, sorted by path:
@@ -78,6 +99,7 @@ COUNTS_SQL="SELECT t, (xpath('/row/c/text()', x))[1]::text, (xpath('/row/m/text(
 
 # State for the EXIT handler.
 SET_DIR='' SET_TS='' SET_DONE=0 VERIFY_NAME='' FAILED_CMD='' ERR_LOGGED=0 RESTORE_SUMMARY=''
+OFFSITE_TARGET='' OFFSITE_TMP='' # staging directory of `offsite`, removed on exit
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >>"$LOG"; printf '%s\n' "$*"; }
 die() { log "ERROR: $*"; ERR_LOGGED=1; exit 1; }
@@ -97,6 +119,7 @@ on_err() { FAILED_CMD="line $1: $2"; }
 on_exit() {
   local rc=$? f
   if [[ -n $VERIFY_NAME ]]; then docker rm -f "$VERIFY_NAME" >/dev/null 2>&1 || true; fi
+  if [[ -n $OFFSITE_TMP ]]; then rm -rf -- "$OFFSITE_TMP"; fi
   if [[ $rc != 0 ]]; then
     [[ $ERR_LOGGED == 1 ]] || log "ERROR: failed (exit $rc) at ${FAILED_CMD:-unknown}"
     # Never leave an unverified set behind (it would look like a backup).
@@ -316,21 +339,103 @@ cmd_check() {
   fi
   age=$(( ($(date -u +%s) - $(date -u -d "${last:0:4}-${last:4:2}-${last:6:2} ${last:9:2}:${last:11:2}:${last:13:2}" +%s)) / 3600 ))
   (( age < MAX_AGE_HOURS )) || die "check: last verified backup $last is ${age}h old (max ${MAX_AGE_HOURS}h)"
-  log "check ok last=$last age=${age}h"
+  local offsite=''
+  if [[ -f $OFFSITE_DIR/target ]]; then
+    [[ -s $AUTO/OFFSITE_LAST_OK ]] || die "check: off-site is configured but nothing was uploaded yet"
+    [[ $(cat "$AUTO/OFFSITE_LAST_OK") == "$last" ]] \
+      || die "check: last verified set $last is not off-site (last upload $(cat "$AUTO/OFFSITE_LAST_OK"))"
+    offsite=' offsite=ok'
+  fi
+  log "check ok last=$last age=${age}h$offsite"
+}
+
+# Sets OFFSITE_TARGET (not via $(…): die must run in this shell to be logged once).
+offsite_target() {
+  local t
+  [[ -f $OFFSITE_DIR/target ]] || die "offsite: not configured ($OFFSITE_DIR/target missing)"
+  t=$(cat "$OFFSITE_DIR/target")
+  [[ $t =~ ^[A-Za-z0-9_-]+:[a-z0-9][a-z0-9-]{4,48}[a-z0-9]$ ]] || die "offsite: target is malformed"
+  [[ -f $OFFSITE_DIR/rclone.conf && -f $OFFSITE_DIR/offsite.pub.asc ]] \
+    || die "offsite: rclone.conf or offsite.pub.asc missing in $OFFSITE_DIR"
+  [[ $(stat -c %a "$OFFSITE_DIR/rclone.conf") == 600 ]] || die "offsite: rclone.conf must be mode 600"
+  [[ -x $RCLONE ]] || die "offsite: rclone not found at $RCLONE"
+  OFFSITE_TARGET=$t
+}
+
+# Encrypt the last verified set to the off-site public key and upload it.
+cmd_offsite() {
+  local last name sha1 got start files keyid target
+  secure_dirs
+  exec 9>"$AUTO/.lock"
+  flock -n 9 || die "another backup is running"
+  offsite_target
+  target=$OFFSITE_TARGET
+  start=$(date +%s)
+  [[ -s $AUTO/LAST_OK ]] || die "offsite: no verified backup yet (LAST_OK missing)"
+  last=$(cat "$AUTO/LAST_OK")
+  [[ $last =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || die "offsite: LAST_OK is malformed"
+  (cd "$AUTO/daily" && sha256sum -c --quiet "SHA256SUMS_$last") || die "offsite: checksum mismatch for $last"
+  mapfile -t files < <(awk '{print $2}' "$AUTO/daily/SHA256SUMS_$last")
+  files+=("SHA256SUMS_$last")
+  name="cctv-survey-$last.tar.gpg"
+  # Never upload a set twice: every gpg run gives a different ciphertext, and
+  # rclone would replace the remote file (--immutable does not stop it).
+  got=$("$RCLONE" --config "$OFFSITE_DIR/rclone.conf" lsf --files-only --include "/$name" "$target/sets/" 2>/dev/null || true)
+  if [[ -n $got ]]; then
+    [[ -s $AUTO/OFFSITE_LAST_OK && $(cat "$AUTO/OFFSITE_LAST_OK") == "$last" ]] \
+      || die "offsite: $name is already off-site but OFFSITE_LAST_OK does not say so — not replacing it"
+    log "offsite: $last already off-site, nothing to do"
+    return 0
+  fi
+
+  OFFSITE_TMP=$(mktemp -d "$AUTO/.offsite.XXXXXX")
+  mkdir -m 700 "$OFFSITE_TMP/gnupg"
+  # Throwaway keyring: the key comes only from offsite.pub.asc; nothing is trusted
+  # or kept. No compression: dump and photo archive are compressed already.
+  tar -C "$AUTO/daily" -cf - -- "${files[@]}" \
+    | gpg --batch --quiet --no-tty --homedir "$OFFSITE_TMP/gnupg" --trust-model always \
+      --recipient-file "$OFFSITE_DIR/offsite.pub.asc" --compress-algo none \
+      --output "$OFFSITE_TMP/$name" --encrypt \
+    || die "offsite: encryption of $last failed"
+  # The file must be encrypted to the key in offsite.pub.asc and nothing else.
+  keyid=$(gpg --batch --quiet --no-tty --homedir "$OFFSITE_TMP/gnupg" --with-colons --show-keys \
+    "$OFFSITE_DIR/offsite.pub.asc" | awk -F: '$1=="sub" && $12 ~ /e/ {print $5}')
+  [[ -n $keyid ]] || die "offsite: offsite.pub.asc has no encryption subkey"
+  got=$(gpg --batch --no-tty --homedir "$OFFSITE_TMP/gnupg" --list-packets "$OFFSITE_TMP/$name" 2>/dev/null \
+    | sed -nE 's/^:pubkey enc packet: .* keyid ([0-9A-F]+).*/\1/p' | sort -u || true)
+  [[ $got == "$keyid" ]] || die "offsite: $name is not encrypted to exactly the off-site key"
+
+  (cd "$OFFSITE_TMP" && sha256sum "$name" > "$name.sha256")
+  sha1=$(sha1sum "$OFFSITE_TMP/$name" | cut -c1-40)
+  "$RCLONE" --config "$OFFSITE_DIR/rclone.conf" --quiet copyto \
+    "$OFFSITE_TMP/$name.sha256" "$target/sets/$name.sha256" || die "offsite: upload of $name.sha256 failed"
+  "$RCLONE" --config "$OFFSITE_DIR/rclone.conf" --quiet copyto \
+    "$OFFSITE_TMP/$name" "$target/sets/$name" || die "offsite: upload of $name failed"
+  got=$("$RCLONE" --config "$OFFSITE_DIR/rclone.conf" hashsum sha1 "$target/sets/$name" | cut -c1-40) \
+    || die "offsite: cannot read the remote checksum of $name"
+  [[ $got == "$sha1" ]] || die "offsite: remote SHA-1 of $name differs from the local file"
+
+  echo "$last" > "$AUTO/OFFSITE_LAST_OK"
+  log "offsite ok $last $name $(stat -c %s "$OFFSITE_TMP/$name")B sha1=${sha1:0:12} $(( $(date +%s) - start ))s"
 }
 
 cmd_verify() {
-  local ts=${1:-} dir='' d
+  local ts=${1:-} dir=${2:-} d
   secure_dirs
   [[ -n $ts ]] || ts=$(newest "$AUTO/daily")
   [[ $ts =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || die "verify: no backup to verify"
-  for d in daily weekly test; do
-    if [[ -f $AUTO/$d/cctv_survey_$ts.dump ]]; then dir="$AUTO/$d"; break; fi
-  done
+  if [[ -n $dir ]]; then
+    dir=$(cd "$dir" && pwd) || die "verify: directory $2 not found"
+    [[ -f $dir/cctv_survey_$ts.dump ]] || die "verify: set $ts not found in $dir"
+  else
+    for d in daily weekly test; do
+      if [[ -f $AUTO/$d/cctv_survey_$ts.dump ]]; then dir="$AUTO/$d"; break; fi
+    done
+  fi
   [[ -n $dir ]] || die "verify: set $ts not found"
   restore_test "$dir" "$ts"
   [[ ! -f $dir/$(photo_archive "$ts") ]] || photo_restore_test "$dir" "$ts"
-  log "verify ok $(basename "$dir")/$ts $RESTORE_SUMMARY"
+  log "verify ok $dir/$ts $RESTORE_SUMMARY"
 }
 
 cmd_list() {
@@ -342,6 +447,8 @@ cmd_list() {
   done
   if [[ -f $AUTO/LAST_OK ]]; then echo "last verified production backup: $(cat "$AUTO/LAST_OK")"
   else echo "no verified production backup yet"; fi
+  if [[ -f $AUTO/OFFSITE_LAST_OK ]]; then echo "last off-site upload: $(cat "$AUTO/OFFSITE_LAST_OK")"
+  else echo "no off-site upload yet"; fi
 }
 
 mkdir -p "$AUTO"
@@ -349,7 +456,8 @@ case "${1:-}" in
   run) backup daily ;;
   test) backup test ;;
   check) cmd_check ;;
-  verify) cmd_verify "${2:-}" ;;
+  offsite) cmd_offsite ;;
+  verify) cmd_verify "${2:-}" "${3:-}" ;;
   list) cmd_list ;;
-  *) echo "usage: $0 {run|check|test|verify [TS]|list}" >&2; exit 2 ;;
+  *) echo "usage: $0 {run|check|offsite|test|verify [TS] [DIR]|list}" >&2; exit 2 ;;
 esac

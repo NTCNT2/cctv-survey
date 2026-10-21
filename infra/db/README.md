@@ -139,7 +139,7 @@ REVOKE CONNECT ON DATABASE template1 FROM PUBLIC;
 ## Backups
 
 `scripts/backup.sh` backs up the production database `cctv_survey`:
-`run` (cron) · `check` (cron) · `test` (manual) · `verify [TS]` · `list`.
+`run` (cron) · `offsite` (cron) · `check` (cron) · `test` (manual) · `verify [TS] [DIR]` · `list`.
 
 | What         | Where / how                                                                                                               |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------- |
@@ -160,7 +160,7 @@ REVOKE CONNECT ON DATABASE template1 FROM PUBLIC;
   `run` refuses to keep a dump that `pg_restore -l` cannot read or whose globals contain a
   password hash. `counts_<TS>.txt` holds per-table row counts and md5 of the rows.
 - Manual backups directly in `~/backups/cctv-survey/` are never pruned.
-- Off-site copies are not set up yet: the backups live on the same disk as the database.
+- Off-site copies: see [Off-site backups](#off-site-backups) below.
 - Restore into production only after an incident, with the API stopped (`scripts/prod.sh stop`).
   Role passwords are not in the backup: on a new cluster set `\password cctv_app` again, then
   re-apply the cluster-level ACLs above.
@@ -170,3 +170,46 @@ scripts/backup.sh verify <TS>    # prove the set restores cleanly first
 docker exec -i cctv-survey-db-1 pg_restore -U cctv -d cctv_survey --clean --if-exists \
   --exit-on-error < ~/backups/cctv-survey/auto/daily/cctv_survey_<TS>.dump
 ```
+
+### Off-site backups
+
+Every night `scripts/backup.sh offsite` sends the last verified set (`LAST_OK`) to
+Backblaze B2, encrypted, so a lost or compromised server does not take the backups with it.
+
+| What       | Where / how                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| Object     | `sets/cctv-survey-<TS>.tar.gpg` (tar of the whole set, gpg public-key encrypted) + `.sha256` of the ciphertext |
+| Config     | `~/.config/cctv-backup/` (0700): `rclone.conf` (B2 key, 0600), `offsite.pub.asc` (public key), `target`        |
+| Tools      | `~/.local/bin/rclone` (official release, signature + SHA256 checked), system `gpg`                             |
+| Schedule   | user crontab: `offsite` daily 19:37 UTC, between `run` (19:17) and `check` (19:47)                             |
+| Check      | `check` fails unless `auto/OFFSITE_LAST_OK` equals `LAST_OK` (only once `target` exists)                       |
+| Retention  | B2 bucket: Object Lock governance 90 days, lifecycle hides after 90 days and deletes 1 day later               |
+| Server key | bucket-only, `listBuckets listFiles readFiles writeFiles` — **no `deleteFiles`**                               |
+
+- This server has only the **public** key: it can encrypt but never decrypt. The private
+  key and its passphrase are kept by the owner in two places off this server. **If the
+  private key is lost, no off-site backup can be restored.**
+- After the upload the remote SHA-1 must equal the local one. A set is never uploaded twice;
+  if its object exists but `OFFSITE_LAST_OK` does not name it, `offsite` refuses.
+- A compromised server cannot remove or overwrite off-site copies: its key cannot delete, and
+  Object Lock keeps every file version for 90 days.
+
+One-time setup (run by the owner in an SSH terminal; secrets are typed, never stored in the repo):
+
+```bash
+scripts/offsite-keygen.sh                 # key pair; private key -> ~/cctv-offsite-PRIVATE-KEY-<id>.asc
+python3 -I scripts/offsite-setup-b2.py    # bucket + no-delete key (asks for the B2 master key once)
+scripts/backup.sh offsite                 # first upload
+```
+
+Restore from off-site (also on a new server: install rclone, recreate `rclone.conf` with a
+read key and `target`, have the private key file):
+
+```bash
+scripts/offsite-restore.sh list
+scripts/offsite-restore.sh fetch latest /tmp/offsite-restore --key ~/cctv-offsite-PRIVATE-KEY-<id>.asc
+scripts/backup.sh verify <TS> /tmp/offsite-restore/set   # full restore test, then restore as above
+```
+
+Restore drill: run the three commands above from time to time (at least after any change to
+the key or bucket) and compare the `verify` row counts with `backup.log`.
