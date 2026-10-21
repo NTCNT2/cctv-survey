@@ -161,6 +161,32 @@ describe('User management (e2e)', () => {
     await admin.get('/api/auth/me').expect(200); // session untouched
   });
 
+  it('nobody changes their own role or deactivates themselves (U5)', async () => {
+    // Even with another admin around (who could otherwise stay in charge).
+    const other = await users.create('admin');
+    for (const body of [{ role: 'surveyor' }, { isActive: false }]) {
+      const res = await admin
+        .patch(`/api/users/${adminId}`)
+        .send(body)
+        .expect(400);
+      expect(res.body.message).toBe(
+        'you cannot change your own role or deactivate yourself',
+      );
+    }
+    // No-ops and the display name are fine.
+    await admin
+      .patch(`/api/users/${adminId}`)
+      .send({ role: 'admin', isActive: true, displayName: 'Me Myself' })
+      .expect(200);
+    await admin.get('/api/users').expect(200); // still admin, session alive
+
+    // Another admin may change this one.
+    await admin
+      .patch(`/api/users/${other.id}`)
+      .send({ role: 'engineer' })
+      .expect(200);
+  });
+
   it('protects the last active admin', async () => {
     const db = app.get(Database);
     const { rows } = await sql<{ n: number }>`
@@ -169,44 +195,25 @@ describe('User management (e2e)', () => {
     // Other specs clean up their admins, so this spec's admin is the only one.
     expect(rows[0].n).toBe(0);
 
+    // The only admin can only reach themselves: refused before the
+    // last-admin rule (U5), and still never demoted.
     await admin
       .patch(`/api/users/${adminId}`)
       .send({ role: 'surveyor' })
-      .expect(409);
+      .expect(400);
     await admin
       .patch(`/api/users/${adminId}`)
       .send({ isActive: false })
-      .expect(409);
+      .expect(400);
     await admin
       .patch(`/api/users/${adminId}`)
       .send({ displayName: 'Still Admin' })
       .expect(200);
 
-    // With a second admin, the first may step down…
-    const second = await users.create('admin');
-    const secondAgent = await loginAgent(app, second);
-    await admin
-      .patch(`/api/users/${adminId}`)
-      .send({ role: 'surveyor' })
-      .expect(200);
-    await admin.get('/api/users').expect(403); // role change is immediate
-
-    // …but now the second is the last one.
-    await secondAgent
-      .patch(`/api/users/${second.id}`)
-      .send({ isActive: false })
-      .expect(409);
-    await secondAgent
-      .patch(`/api/users/${second.id}`)
-      .send({ role: 'viewer' })
-      .expect(409);
-
     // Concurrent demotions of two admins: exactly one wins. The loser gets 409
     // (last admin) or 403 (it was demoted a moment earlier) — never 200.
-    await secondAgent
-      .patch(`/api/users/${adminId}`)
-      .send({ role: 'admin' })
-      .expect(200);
+    const second = await users.create('admin');
+    const secondAgent = await loginAgent(app, second);
     const [r1, r2] = await Promise.all([
       secondAgent.patch(`/api/users/${adminId}`).send({ role: 'viewer' }),
       admin.patch(`/api/users/${second.id}`).send({ role: 'viewer' }),

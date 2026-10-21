@@ -85,11 +85,26 @@ export class UsersService {
 
   /**
    * Role / active changes. Refuses to demote or deactivate the last active
-   * admin; deactivation also revokes the user's sessions.
+   * admin; deactivation also revokes the user's sessions. Nobody changes
+   * their own role or deactivates themselves (another admin must do it), so
+   * an admin cannot lock themselves out by mistake.
    */
-  async update(id: string, input: UpdateUserInput): Promise<User> {
+  async update(
+    id: string,
+    input: UpdateUserInput,
+    actorId: string,
+  ): Promise<User> {
     return this.db.transaction().execute(async (trx) => {
       const target = await this.lockForAdminChange(trx, id);
+      if (
+        id === actorId &&
+        ((input.role !== undefined && input.role !== target.role) ||
+          input.isActive === false)
+      ) {
+        throw new BadRequestException(
+          'you cannot change your own role or deactivate yourself',
+        );
+      }
       const losesAdmin =
         target.role === 'admin' &&
         target.is_active &&

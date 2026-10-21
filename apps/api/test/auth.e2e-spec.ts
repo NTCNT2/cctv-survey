@@ -101,7 +101,7 @@ describe('Auth (e2e)', () => {
   it('gives the same answer for unknown user, wrong password and inactive user', async () => {
     const u = await newUser();
     const inactive = await newUser();
-    await app.get(UsersService).update(inactive.id, { isActive: false });
+    await app.get(UsersService).update(inactive.id, { isActive: false }, u.id);
 
     const results = await Promise.all([
       login({ username: 'nobody-here', password: 'whatever-password' }),

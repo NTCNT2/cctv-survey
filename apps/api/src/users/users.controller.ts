@@ -49,8 +49,9 @@ export class UsersController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(updateUserSchema)) body: UpdateUserInput,
+    @CurrentUser() actor: AuthUser,
   ): Promise<User> {
-    return this.users.update(id, body);
+    return this.users.update(id, body, actor.id);
   }
 
   @Post(':id/reset-password')
