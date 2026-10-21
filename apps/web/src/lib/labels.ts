@@ -2,7 +2,7 @@ import type {
   CameraPurpose,
   CameraStatus,
   CameraType,
-  MountType,
+  NetworkType,
   PhotoType,
   ProjectStatus,
   StructureType,
@@ -108,11 +108,10 @@ export const STRUCTURE_TYPE_LABELS: Record<StructureType, string> = {
   wall: 'ติดผนัง',
 };
 
-export const MOUNT_TYPE_LABELS: Record<MountType, string> = {
-  wall: 'ผนัง',
-  ceiling: 'เพดาน',
-  pole: 'เสา',
-  corner: 'มุม',
+/** Network of a point (0008). */
+export const NETWORK_TYPE_LABELS: Record<NetworkType, string> = {
+  fiber: 'ไฟเบอร์',
+  sim: 'SIM',
 };
 
 /** Photo types of the API (0006), in the order offered to the user. */

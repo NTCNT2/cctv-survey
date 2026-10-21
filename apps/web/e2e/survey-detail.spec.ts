@@ -147,11 +147,13 @@ test.describe('survey detail (surveyor)', () => {
     await group(page, '9. ระบบไฟเลี้ยง')
       .getByText('มี', { exact: true })
       .click();
-    await group(page, 'PoE').getByText('ใช้', { exact: true }).click();
-    await group(page, 'Network').getByText('มี', { exact: true }).click();
-    // Network alone is not item 10 yet: Fiber still to answer.
+    // 0008: no PoE / Fiber questions; item 10 is one choice.
+    await expect(group(page, 'PoE')).toHaveCount(0);
+    await expect(group(page, 'Fiber')).toHaveCount(0);
     await expect(progress(page)).toContainText('ข้อมูลหลัก 8/9');
-    await group(page, 'Fiber').getByText('ไม่มี', { exact: true }).click();
+    await group(page, '10. ระบบเครือข่าย')
+      .getByText('SIM', { exact: true })
+      .click();
     await expect(progress(page)).toContainText('ข้อมูลหลักครบแล้ว 9/9');
     await expect(
       page.getByRole('progressbar', { name: 'ข้อมูลหลักของ Survey' }),
@@ -167,9 +169,7 @@ test.describe('survey detail (surveyor)', () => {
       cabinetDistanceM: 25,
       cableLengthM: 40,
       powerAvailable: true,
-      poe: true,
-      networkAvailable: true,
-      fiberAvailable: false,
+      networkType: 'sim',
     });
     await expect(
       detail.getByRole('link', { name: 'รายละเอียด Survey (9/9)' }),
@@ -208,8 +208,9 @@ test.describe('survey detail (surveyor)', () => {
     ).toBeVisible();
     await detail.getByRole('button', { name: 'ดูข้อมูลสำรวจ' }).click();
     await expect(detail).toContainText('ใต้บันไดอาคาร B');
-    await expect(detail).toContainText('Network มี · Fiber ไม่มี');
-    await expect(detail).toContainText('มีไฟ · ใช้ PoE');
+    await expect(detail).toContainText('ระบบเครือข่าย');
+    await expect(detail).toContainText('SIM');
+    await expect(detail).not.toContainText('PoE');
     await expect(detail).toContainText('ไม่ใช้เสา');
     const stored = await (await api.get(`/api/cameras/${id}`)).json();
     expect(stored).toMatchObject({
@@ -229,7 +230,7 @@ test.describe('survey detail (surveyor)', () => {
     // data); clear one main item → 8/9.
     await detail.getByRole('link', { name: /รายละเอียด Survey/ }).click();
     await expect(
-      group(page, 'Fiber').getByLabel('ไม่มี', { exact: true }),
+      group(page, '10. ระบบเครือข่าย').getByLabel('SIM', { exact: true }),
     ).toBeChecked();
     await expect(
       group(page, '5. โครงสร้างติดตั้ง').getByLabel('อาคาร'),

@@ -33,9 +33,7 @@ describe('surveyItems / surveyProgress', () => {
     cabinetDistanceM: 25,
     cableLengthM: 40,
     powerAvailable: true,
-    poe: true,
-    networkAvailable: true,
-    fiberAvailable: false,
+    networkType: 'sim',
     cabinetLocation: 'ใต้บันได',
     siteConditions: 'ต้นไม้บัง',
     notes: 'ติดใต้ชายคา',
@@ -58,7 +56,7 @@ describe('surveyItems / surveyProgress', () => {
       'ระยะจากจุดกล้องถึงตู้ Control',
       'ความยาวสายโดยประมาณ',
       'ระบบไฟเลี้ยง',
-      'ระบบ Network / Fiber',
+      'ระบบเครือข่าย',
       'ตำแหน่งตู้ Control / จุดรวมสาย',
       'สภาพพื้นที่ติดตั้ง / อุปสรรค',
       'หมายเหตุหน้างาน',
@@ -121,8 +119,8 @@ describe('surveyItems / surveyProgress', () => {
       4: 'ทางเข้า',
       5: 'เสาใหม่',
       6: '6 ม.',
-      9: 'มีไฟ · ใช้ PoE',
-      10: 'Network มี · Fiber ไม่มี',
+      9: 'มีไฟ',
+      10: 'SIM',
       15: 'สำรวจแล้ว',
     });
   });
@@ -142,12 +140,15 @@ describe('surveyItems / surveyProgress', () => {
     expect(surveyItems({})[5].done).toBe(false);
   });
 
-  it('Network / Fiber needs both answers', () => {
-    expect(surveyItems({ networkAvailable: true })[9]).toMatchObject({
+  it('the network is done once fibre or SIM is chosen (0008)', () => {
+    expect(surveyItems({})[9]).toMatchObject({
       done: false,
-      field: 'fiberAvailable',
+      field: 'networkType',
     });
-    expect(surveyItems({})[9].field).toBe('networkAvailable');
+    expect(surveyItems({ networkType: 'fiber' })[9]).toMatchObject({
+      done: true,
+      value: 'ไฟเบอร์',
+    });
   });
 
   it('blank text is not filled; "รอสำรวจ" is not a finished survey', () => {

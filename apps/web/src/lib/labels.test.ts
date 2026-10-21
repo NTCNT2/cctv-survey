@@ -1,7 +1,7 @@
 import {
   CAMERA_STATUSES,
   CAMERA_TYPES,
-  MOUNT_TYPES,
+  NETWORK_TYPES,
   PROJECT_STATUSES,
   USER_ROLES,
 } from '@cctv/shared';
@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CAMERA_STATUS_LABELS,
   CAMERA_TYPE_LABELS,
-  MOUNT_TYPE_LABELS,
+  NETWORK_TYPE_LABELS,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_TONES,
   formatRelative,
@@ -24,7 +24,7 @@ describe('labels cover every shared enum value', () => {
     ['project statuses', PROJECT_STATUSES, PROJECT_STATUS_LABELS],
     ['camera statuses', CAMERA_STATUSES, CAMERA_STATUS_LABELS],
     ['camera types', CAMERA_TYPES, CAMERA_TYPE_LABELS],
-    ['mount types', MOUNT_TYPES, MOUNT_TYPE_LABELS],
+    ['network types', NETWORK_TYPES, NETWORK_TYPE_LABELS],
     ['roles', USER_ROLES, ROLE_LABELS],
     ['role descriptions', USER_ROLES, ROLE_DESCRIPTIONS],
     ['role tones', USER_ROLES, ROLE_TONES],

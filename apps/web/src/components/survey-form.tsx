@@ -3,6 +3,7 @@
 import {
   CAMERA_PURPOSES,
   CAMERA_STATUSES,
+  NETWORK_TYPES,
   STRUCTURE_TYPES,
   updateCameraPointSchema,
   type CameraPoint,
@@ -20,6 +21,7 @@ import {
 import {
   CAMERA_PURPOSE_LABELS,
   CAMERA_STATUS_LABELS,
+  NETWORK_TYPE_LABELS,
   STRUCTURE_TYPE_LABELS,
 } from '@/lib/labels';
 import {
@@ -316,11 +318,7 @@ export function SurveyForm({
   );
   const [cableLengthM, setCableLengthM] = useState(str(c.cableLengthM));
   const [powerAvailable, setPowerAvailable] = useState(yesNo(c.powerAvailable));
-  const [poe, setPoe] = useState(yesNo(c.poe));
-  const [networkAvailable, setNetworkAvailable] = useState(
-    yesNo(c.networkAvailable),
-  );
-  const [fiberAvailable, setFiberAvailable] = useState(yesNo(c.fiberAvailable));
+  const [networkType, setNetworkType] = useState<string>(c.networkType ?? '');
   const [cabinetLocation, setCabinetLocation] = useState(
     c.cabinetLocation ?? '',
   );
@@ -340,9 +338,7 @@ export function SurveyForm({
     cabinetDistanceM,
     cableLengthM,
     powerAvailable,
-    poe,
-    networkAvailable,
-    fiberAvailable,
+    networkType,
     cabinetLocation,
     siteConditions,
     notes,
@@ -376,9 +372,7 @@ export function SurveyForm({
     cabinetDistanceM: count(cabinetDistanceM),
     cableLengthM: count(cableLengthM),
     powerAvailable: flag(powerAvailable),
-    poe: flag(poe),
-    networkAvailable: flag(networkAvailable),
-    fiberAvailable: flag(fiberAvailable),
+    networkType: (networkType || undefined) as SurveyValues['networkType'],
     cabinetLocation,
     siteConditions,
     notes,
@@ -413,9 +407,7 @@ export function SurveyForm({
       cabinetDistanceM: num(cabinetDistanceM, null),
       cableLengthM: num(cableLengthM, null),
       powerAvailable: bool(powerAvailable),
-      poe: bool(poe),
-      networkAvailable: bool(networkAvailable),
-      fiberAvailable: bool(fiberAvailable),
+      networkType: choice(networkType),
       cabinetLocation: text(cabinetLocation, null),
       siteConditions: text(siteConditions, null),
       notes: text(notes, null),
@@ -499,7 +491,8 @@ export function SurveyForm({
       onFocus={(e) => keepClear(e, saveBar.current)}
       noValidate
       aria-label="รายละเอียด Survey"
-      className="space-y-4 [&_input]:scroll-mb-40 [&_select]:scroll-mb-40 [&_textarea]:scroll-mb-40"
+      // pb-24: room for the save bar, fixed above the phone's bottom nav.
+      className="space-y-4 pb-24 md:pb-0 [&_input]:scroll-mb-40 [&_select]:scroll-mb-40 [&_textarea]:scroll-mb-40"
     >
       <SurveyProgress {...progress} onJump={goTo} />
       {formError && <Alert>{formError}</Alert>}
@@ -675,38 +668,15 @@ export function SurveyForm({
               options={YES_NO}
             />
             <ChoiceField
-              id="poe"
-              label="PoE"
-              value={poe}
-              onChange={edited('poe', setPoe)}
-              error={errors.poe}
-              options={[
-                { value: 'true', label: 'ใช้' },
-                { value: 'false', label: 'ไม่ใช้' },
-              ]}
-            />
-          </div>
-        </Wide>
-        <Wide>
-          <p className="-mb-2 text-sm font-medium">10. ระบบ Network / Fiber</p>
-        </Wide>
-        <Wide>
-          <div className="grid grid-cols-2 gap-3">
-            <ChoiceField
-              id="networkAvailable"
-              label="Network"
-              value={networkAvailable}
-              onChange={edited('networkAvailable', setNetworkAvailable)}
-              error={errors.networkAvailable}
-              options={YES_NO}
-            />
-            <ChoiceField
-              id="fiberAvailable"
-              label="Fiber"
-              value={fiberAvailable}
-              onChange={edited('fiberAvailable', setFiberAvailable)}
-              error={errors.fiberAvailable}
-              options={YES_NO}
+              id="networkType"
+              label="10. ระบบเครือข่าย"
+              value={networkType}
+              onChange={edited('networkType', setNetworkType)}
+              error={errors.networkType}
+              options={NETWORK_TYPES.map((v) => ({
+                value: v,
+                label: NETWORK_TYPE_LABELS[v],
+              }))}
             />
           </div>
         </Wide>
@@ -795,7 +765,7 @@ export function SurveyForm({
 
       <div
         ref={saveBar}
-        className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:bottom-4 dark:border-zinc-800 dark:bg-zinc-900/95 [&>*]:flex-1"
+        className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 dark:border-zinc-800 dark:bg-zinc-900/95 [&>*]:flex-1"
       >
         <LinkButton href={cancelHref} variant="secondary">
           ยกเลิก

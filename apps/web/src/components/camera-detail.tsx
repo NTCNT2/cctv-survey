@@ -160,7 +160,7 @@ export function CameraDetail({
               label: `${i.no}. ${i.label}`,
               value: i.value ?? (i.group === 'extra' ? '—' : 'ยังไม่กรอก'),
             })),
-            { label: 'ที่อยู่ / จุดสังเกต', value: c.address },
+            { label: 'ชื่อที่ติดตั้ง', value: c.address },
           ]}
         />
       )}

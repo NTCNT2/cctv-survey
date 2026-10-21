@@ -2,6 +2,7 @@ import type { CameraPoint, StructureType } from '@cctv/shared';
 import {
   CAMERA_PURPOSE_LABELS,
   CAMERA_STATUS_LABELS,
+  NETWORK_TYPE_LABELS,
   STRUCTURE_TYPE_LABELS,
 } from './labels';
 
@@ -37,9 +38,7 @@ export type SurveyValues = Partial<
     | 'cabinetDistanceM'
     | 'cableLengthM'
     | 'powerAvailable'
-    | 'poe'
-    | 'networkAvailable'
-    | 'fiberAvailable'
+    | 'networkType'
     | 'cabinetLocation'
     | 'siteConditions'
     | 'notes'
@@ -79,8 +78,6 @@ export function surveyItems(c: SurveyValues): SurveyItem[] {
   const noPole =
     c.structureType !== undefined && !POLE_STRUCTURES.includes(c.structureType);
   const power = has(c.powerAvailable, 'มีไฟ', 'ไม่มีไฟ');
-  const network = has(c.networkAvailable, 'มี', 'ไม่มี');
-  const fiber = has(c.fiberAvailable, 'มี', 'ไม่มี');
   const items: Omit<SurveyItem, 'no' | 'done' | 'group'>[] = [
     {
       label: 'ความสูงติดตั้งกล้อง',
@@ -125,16 +122,13 @@ export function surveyItems(c: SurveyValues): SurveyItem[] {
     {
       label: 'ระบบไฟเลี้ยง',
       field: 'powerAvailable',
-      value: power && (c.poe ? `${power} · ใช้ PoE` : power),
+      value: power,
     },
     {
-      label: 'ระบบ Network / Fiber',
-      field: network === undefined ? 'networkAvailable' : 'fiberAvailable',
-      // Done when both are answered.
-      value:
-        network !== undefined && fiber !== undefined
-          ? `Network ${network} · Fiber ${fiber}`
-          : undefined,
+      label: 'ระบบเครือข่าย',
+      field: 'networkType',
+      // Done once fibre or SIM is chosen (0008).
+      value: c.networkType && NETWORK_TYPE_LABELS[c.networkType],
     },
     {
       label: 'ตำแหน่งตู้ Control / จุดรวมสาย',

@@ -3,7 +3,7 @@
 import {
   CAMERA_STATUSES,
   createCameraPointSchema,
-  MOUNT_TYPES,
+  NETWORK_TYPES,
   STRUCTURE_TYPES,
   updateCameraPointSchema,
   type CameraModel,
@@ -29,7 +29,7 @@ import {
 } from '@/lib/form';
 import {
   CAMERA_STATUS_LABELS,
-  MOUNT_TYPE_LABELS,
+  NETWORK_TYPE_LABELS,
   STRUCTURE_TYPE_LABELS,
 } from '@/lib/labels';
 import type { PhotoUpload } from '@/lib/photo';
@@ -148,14 +148,17 @@ export function Section({
           )}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4">{children}</div>
+      {/* minmax(0, 1fr): a wide input (iOS dates) can never push a column out. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 gap-y-4">
+        {children}
+      </div>
     </section>
   );
 }
 
 /** Spans both columns of a section. */
 export const Wide = ({ children }: { children: ReactNode }) => (
-  <div className="col-span-2">{children}</div>
+  <div className="col-span-2 min-w-0">{children}</div>
 );
 
 /**
@@ -277,7 +280,6 @@ export function CameraForm(props: Props) {
   const [bearingDeg, setBearingDeg] = useState(str(c?.bearingDeg));
   const [fovDeg, setFovDeg] = useState(str(c?.fovDeg));
   const [viewDistanceM, setViewDistanceM] = useState(str(c?.viewDistanceM));
-  const [mountType, setMountType] = useState<string>(c?.mountType ?? '');
   const [mountHeightM, setMountHeightM] = useState(str(c?.mountHeightM));
   const [structureType, setStructureType] = useState<string>(
     c?.structureType ?? '',
@@ -287,16 +289,10 @@ export function CameraForm(props: Props) {
     str(c?.cabinetDistanceM),
   );
   const [cableLengthM, setCableLengthM] = useState(str(c?.cableLengthM));
-  const [poe, setPoe] = useState(yesNo(c?.poe));
   const [powerAvailable, setPowerAvailable] = useState(
     yesNo(c?.powerAvailable),
   );
-  const [fiberAvailable, setFiberAvailable] = useState(
-    yesNo(c?.fiberAvailable),
-  );
-  const [networkAvailable, setNetworkAvailable] = useState(
-    yesNo(c?.networkAvailable),
-  );
+  const [networkType, setNetworkType] = useState<string>(c?.networkType ?? '');
   const [notes, setNotes] = useState(c?.notes ?? '');
 
   /** Camera as shown: from the chosen model, or typed by hand. */
@@ -331,16 +327,13 @@ export function CameraForm(props: Props) {
     bearingDeg,
     fovDeg,
     viewDistanceM,
-    mountType,
     mountHeightM,
     structureType,
     poleHeightM,
     cabinetDistanceM,
     cableLengthM,
-    poe,
     powerAvailable,
-    fiberAvailable,
-    networkAvailable,
+    networkType,
     notes,
   };
   /** What the form opened with: on edit, only fields that differ are sent. */
@@ -379,16 +372,13 @@ export function CameraForm(props: Props) {
       bearingDeg: num(bearingDeg, empty),
       fovDeg: num(fovDeg, empty),
       viewDistanceM: num(viewDistanceM, empty),
-      mountType: choice(mountType),
       mountHeightM: num(mountHeightM, empty),
       structureType: choice(structureType),
       poleHeightM: num(poleHeightM, empty),
       cabinetDistanceM: num(cabinetDistanceM, empty),
       cableLengthM: num(cableLengthM, empty),
-      poe: bool(poe),
       powerAvailable: bool(powerAvailable),
-      fiberAvailable: bool(fiberAvailable),
-      networkAvailable: bool(networkAvailable),
+      networkType: choice(networkType),
       notes: text(notes, empty),
     };
     // A model from the list: the server copies brand / model / type / MP.
@@ -508,15 +498,17 @@ export function CameraForm(props: Props) {
     ...values.map((v) => ({ value: v, label: labels[v] })),
   ];
 
-  // Save bar: always on screen. On the page it sits above the phone's bottom
-  // navigation (4rem + safe area); in the map sheet at the sheet's bottom.
+  // Save bar: always on screen. On a phone page it is fixed just above the
+  // bottom navigation (4rem + safe area) and the form keeps room for it at
+  // its end (pb-24), so the last field scrolls clear of it; from md it is
+  // sticky. In the map sheet it sits at the sheet's bottom.
   const actions = (
     <div
       ref={saveBar}
       className={
         sheet
           ? 'sticky bottom-0 z-10 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1'
-          : 'sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:bottom-4 dark:border-zinc-800 dark:bg-zinc-900/95 [&>*]:flex-1'
+          : 'fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 dark:border-zinc-800 dark:bg-zinc-900/95 [&>*]:flex-1'
       }
     >
       {props.onCancel ? (
@@ -542,7 +534,10 @@ export function CameraForm(props: Props) {
       onFocus={(e) => keepClear(e, saveBar.current)}
       noValidate
       // Focused fields scroll clear of the sticky save bar (and keyboard).
-      className="space-y-4 [&_input]:scroll-mb-40 [&_select]:scroll-mb-40 [&_textarea]:scroll-mb-40"
+      className={
+        'space-y-4 [&_input]:scroll-mb-40 [&_select]:scroll-mb-40 [&_textarea]:scroll-mb-40' +
+        (sheet ? '' : ' pb-24 md:pb-0')
+      }
     >
       {formError && <Alert>{formError}</Alert>}
 
@@ -589,6 +584,9 @@ export function CameraForm(props: Props) {
             id="surveyedAt"
             label="วันที่/เวลา"
             type="datetime-local"
+            // iOS gives date inputs an intrinsic width wider than a phone
+            // card: let it shrink to the column, no native box.
+            className="w-full min-w-0 max-w-full appearance-none"
             value={surveyedAt}
             onChange={(e) => setSurveyedAt(e.target.value)}
             error={errors.surveyedAt}
@@ -597,9 +595,9 @@ export function CameraForm(props: Props) {
         <Wide>
           <TextField
             id="address"
-            label="จุดสังเกต"
+            label="ชื่อที่ติดตั้ง"
             maxLength={500}
-            placeholder="หน้าอาคาร A"
+            placeholder="เช่น หน้าอาคาร A ประตูทางเข้า"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             error={errors.address}
@@ -645,15 +643,6 @@ export function CameraForm(props: Props) {
           viewDistanceM,
           setViewDistanceM,
         )}
-        <Wide>
-          {select(
-            'mountType',
-            'การยึดติดตั้ง',
-            mountType,
-            setMountType,
-            optional(MOUNT_TYPES, MOUNT_TYPE_LABELS),
-          )}
-        </Wide>
       </Section>
 
       <Section id={SECTION_IDS.install} step={3} title="จุดติดตั้ง">
@@ -695,24 +684,12 @@ export function CameraForm(props: Props) {
           YES_NO,
         )}
         {select(
-          'networkAvailable',
+          'networkType',
           'เครือข่าย',
-          networkAvailable,
-          setNetworkAvailable,
-          YES_NO,
+          networkType,
+          setNetworkType,
+          optional(NETWORK_TYPES, NETWORK_TYPE_LABELS),
         )}
-        {select(
-          'fiberAvailable',
-          'ไฟเบอร์',
-          fiberAvailable,
-          setFiberAvailable,
-          YES_NO,
-        )}
-        {select('poe', 'PoE', poe, setPoe, [
-          { value: '', label: '— ไม่ระบุ —' },
-          { value: 'true', label: 'ใช้' },
-          { value: 'false', label: 'ไม่ใช้' },
-        ])}
       </Section>
 
       <Section

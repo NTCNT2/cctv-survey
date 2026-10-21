@@ -45,8 +45,7 @@ test.beforeAll(async () => {
     cabinetDistanceM: 20,
     cableLengthM: 30,
     powerAvailable: true,
-    networkAvailable: true,
-    fiberAvailable: false,
+    networkType: 'fiber',
     notes: 'หน้า, ประตู "A"',
   });
   ov2 = await post({ label: OV2, status: 'issue', siteId: seeded.site!.id });

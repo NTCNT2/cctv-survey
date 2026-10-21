@@ -269,7 +269,7 @@ test.describe('camera form (surveyor)', () => {
       'model',
       'resolutionMp',
       'bearingDeg',
-      'poe',
+      'networkType',
       'notes',
     ]) {
       expect(body[k], k).toBeUndefined();
@@ -380,7 +380,7 @@ test.describe('camera form (surveyor)', () => {
     ).toHaveCount(1);
     await page.getByLabel('ความสูงติดตั้ง (ม.)').fill('4.5');
     await page.getByLabel('Lens (มม.)').fill('2.8');
-    await page.getByLabel('เครือข่าย').selectOption('true');
+    await page.getByLabel('เครือข่าย').selectOption('sim');
     await page.getByLabel('หมายเหตุ (ไม่บังคับ)').fill('ติดใต้ชายคา');
     const patch = page.waitForResponse(
       (r) => r.request().method() === 'PATCH' && !r.url().includes('/photos/'),
@@ -389,13 +389,13 @@ test.describe('camera form (surveyor)', () => {
     expect((await patch).request().postDataJSON()).toEqual({
       mountHeightM: 4.5,
       lensMm: 2.8,
-      networkAvailable: true,
+      networkType: 'sim',
       notes: 'ติดใต้ชายคา',
     });
-    // Of the main items only the height; Network alone (no Fiber) not yet,
+    // Of the main items the height and the network (0008: one choice);
     // notes are optional.
     await expect(
-      detail.getByRole('link', { name: 'รายละเอียด Survey (1/9)' }),
+      detail.getByRole('link', { name: 'รายละเอียด Survey (2/9)' }),
     ).toBeVisible();
     await expect(detail).toContainText('Bullet · 8 MP');
   });

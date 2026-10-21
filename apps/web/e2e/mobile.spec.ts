@@ -647,6 +647,28 @@ test.describe('camera form on a phone (iPhone flow)', () => {
     await expectNoHorizontalScroll(page);
   });
 
+  for (const width of [375, 430]) {
+    test(`${width}px: camera form — sections 1–6, date inside the card, system in 2 columns`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 812 });
+      await page.goto(`/projects/${seeded.project.id}/cameras/new`);
+      // Section numbers run 1..6 in order.
+      await expect(
+        page.locator('form section [aria-hidden="true"].rounded-full'),
+      ).toHaveText(['1', '2', '3', '4', '5', '6']);
+      const when = (await page.getByLabel('วันที่/เวลา').boundingBox())!;
+      const card = (await page.locator('#section-location').boundingBox())!;
+      expect(when.x + when.width).toBeLessThanOrEqual(card.x + card.width);
+      // ไฟฟ้า and เครือข่าย side by side.
+      const power = (await page.getByLabel('ไฟฟ้า').boundingBox())!;
+      const net = (await page.getByLabel('เครือข่าย').boundingBox())!;
+      expect(Math.abs(power.y - net.y)).toBeLessThan(2);
+      expect(net.x).toBeGreaterThan(power.x + power.width - 1);
+      await expectNoHorizontalScroll(page);
+    });
+  }
+
   test('page form: save bar sits above the bottom navigation, never over a field', async ({
     page,
   }, info) => {
@@ -662,6 +684,14 @@ test.describe('camera form on a phone (iPhone flow)', () => {
       );
     };
     await check('top');
+    // The date/time input stays inside its card (iOS gives it an intrinsic
+    // width wider than a phone column).
+    const when = (await page.getByLabel('วันที่/เวลา').boundingBox())!;
+    const card = (await page.locator('#section-location').boundingBox())!;
+    expect(
+      when.x + when.width,
+      'date/time inside its card',
+    ).toBeLessThanOrEqual(card.x + card.width);
     // GPS button fills lat / lng / accuracy.
     await page.getByRole('button', { name: 'ใช้ตำแหน่งปัจจุบัน' }).tap();
     await expect(page.getByLabel('GPS Accuracy (±ม.)')).toHaveValue('2');
@@ -673,6 +703,15 @@ test.describe('camera form on a phone (iPhone flow)', () => {
     expect(n.y + n.height, 'last field above the save bar').toBeLessThanOrEqual(
       (await save.boundingBox())!.y,
     );
+    // Scrolled to the very end (no focus help): the last field is clear of
+    // the bar, which stays above the bottom navigation.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await check('end');
+    const end = (await notes.boundingBox())!;
+    expect(
+      end.y + end.height,
+      'end: last field above the bar',
+    ).toBeLessThanOrEqual((await save.boundingBox())!.y);
     await expectNoHorizontalScroll(page);
     await info.attach('camera-form-page', {
       body: await page.screenshot({ fullPage: true }),
@@ -1122,12 +1161,8 @@ test.describe('survey detail on a phone', () => {
       .tap();
     await page.getByLabel('6. ความสูงเสา (ม.)').fill('8');
     await page
-      .getByRole('group', { name: 'Network' })
-      .getByText('มี', { exact: true })
-      .tap();
-    await page
-      .getByRole('group', { name: 'Fiber' })
-      .getByText('มี', { exact: true })
+      .getByRole('group', { name: '10. ระบบเครือข่าย' })
+      .getByText('ไฟเบอร์', { exact: true })
       .tap();
     await expectNoHorizontalScroll(page);
 

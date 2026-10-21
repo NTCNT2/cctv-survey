@@ -31,8 +31,7 @@ const complete: Partial<CameraPoint> = {
   structureType: 'wall',
   cabinetDistanceM: 20,
   powerAvailable: true,
-  networkAvailable: true,
-  fiberAvailable: false,
+  networkType: 'fiber',
 };
 
 const cam = (over: Partial<CameraPoint>): CameraPoint => ({

@@ -130,13 +130,28 @@ test.describe('admin: full create / edit / delete flow', () => {
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(page.getByText('ต้องน้อยกว่า 360')).toBeVisible();
     await page.getByLabel('ทิศทาง (°)').fill('90');
-    await page.getByLabel('PoE').selectOption('true');
+    // 0008: no PoE, no fibre yes/no, no mounting type; the network is one
+    // choice; จุดสังเกต is now ชื่อที่ติดตั้ง.
+    for (const gone of ['PoE', 'ไฟเบอร์', 'การยึดติดตั้ง', 'จุดสังเกต']) {
+      await expect(page.getByLabel(gone, { exact: true })).toHaveCount(0);
+    }
+    await expect(page.getByLabel('ชื่อที่ติดตั้ง')).toHaveAttribute(
+      'placeholder',
+      'เช่น หน้าอาคาร A ประตูทางเข้า',
+    );
+    await expect(page.getByLabel('เครือข่าย').locator('option')).toHaveText([
+      '— ไม่ระบุ —',
+      'ไฟเบอร์',
+      'SIM',
+    ]);
+    await page.getByLabel('เครือข่าย').selectOption('fiber');
     await page.getByLabel('ระยะมองเห็น (ม.)').fill('30');
     await page.getByLabel('โครงสร้างที่ติดตั้ง').selectOption('new_pole');
     await page.getByLabel('ไฟฟ้า').selectOption('true');
     await page.getByRole('button', { name: 'บันทึก' }).click();
     await expect(
-      detail.getByRole('link', { name: /รายละเอียด Survey \(4\/9\)/ }),
+      // bearing, view distance, power and (0008) the network.
+      detail.getByRole('link', { name: /รายละเอียด Survey \(5\/9\)/ }),
     ).toBeVisible();
     await page.getByRole('link', { name: 'กลับไปที่โครงการ' }).click();
 
