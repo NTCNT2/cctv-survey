@@ -139,6 +139,45 @@ test.describe('signed in', () => {
     });
   });
 
+  for (const width of [375, 430]) {
+    test(`${width}px: dashboard header band, tap targets, no sideways scroll`, async ({
+      page,
+    }, info) => {
+      await page.setViewportSize({ width, height: 860 });
+      await page.goto('/dashboard');
+      const band = page.getByRole('main').locator('header').first();
+      // Logo, bell and user menu live on the band; no separate top bar.
+      await expect(
+        band.getByRole('button', { name: 'การแจ้งเตือน' }),
+      ).toBeVisible();
+      await expect(band.getByTestId('current-user-band')).toBeVisible();
+      await expect(page.getByTestId('current-user')).toBeHidden();
+      await expect(page.getByTestId('day-bar')).toHaveCount(30);
+      await expectNoHorizontalScroll(page);
+      for (const b of await page
+        .getByRole('main')
+        .locator('a[href], button')
+        .filter({ visible: true })
+        .all()) {
+        if (await b.evaluate((el) => !!el.closest('details, li'))) continue;
+        const box = await b.boundingBox();
+        expect(
+          box?.height ?? 0,
+          (await b.getAttribute('aria-label')) ?? (await b.innerText()),
+        ).toBeGreaterThanOrEqual(44);
+      }
+      // The user menu opens from the band.
+      await band.getByTestId('current-user-band').tap();
+      await expect(
+        page.getByRole('button', { name: 'ออกจากระบบ' }),
+      ).toBeVisible();
+      await info.attach(`dashboard-${width}`, {
+        body: await page.screenshot(),
+        contentType: 'image/png',
+      });
+    });
+  }
+
   test('users page: from the user menu, fits the screen, form usable', async ({
     page,
   }, info) => {

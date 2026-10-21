@@ -126,13 +126,25 @@ function sectionTitle(pathname: string): string {
 const initials = (name: string) => name.trim().slice(0, 1).toUpperCase();
 
 /** The initial is drawn with CSS, so it is not part of the text content. */
-function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+function Avatar({
+  name,
+  size = 'md',
+  onBrand,
+}: {
+  name: string;
+  size?: 'sm' | 'md';
+  /** On the indigo header band: white disc, indigo initial. */
+  onBrand?: boolean;
+}) {
   return (
     <span
       aria-hidden
       data-initial={initials(name)}
       className={cx(
-        'grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-semibold text-white before:content-[attr(data-initial)]',
+        'grid shrink-0 place-items-center rounded-full text-sm font-semibold before:content-[attr(data-initial)]',
+        onBrand
+          ? 'bg-white text-indigo-700'
+          : 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white',
         size === 'sm' ? 'size-8' : 'size-9',
       )}
     />
@@ -143,6 +155,12 @@ function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
  * Signed-in layout: sidebar (desktop), icon rail (tablet), top header and a
  * bottom navigation bar on phones. Sections without a page yet are disabled.
  */
+/**
+ * Pages whose header band carries the logo, bell and user menu on phones
+ * (HeaderBandBar); the top bar is shown from md only.
+ */
+const hasHeaderBand = (pathname: string) => pathname === '/dashboard';
+
 /** Full-screen pages (the survey map): no page padding, own phone chrome. */
 export const isImmersive = (pathname: string) =>
   /^\/projects\/[^/]+\/map$/.test(pathname);
@@ -151,7 +169,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const immersive = isImmersive(pathname);
   return (
-    <div className="flex min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex min-h-full flex-1 bg-background">
       <a
         href="#main"
         className="sr-only z-50 rounded-lg bg-indigo-600 px-4 py-2 text-white print:hidden focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -286,8 +304,8 @@ function TopBar({
     <header
       className={cx(
         'sticky top-0 z-30 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md print:hidden dark:border-zinc-800 dark:bg-zinc-900/85',
-        // Phones: the survey map draws its own top bar.
-        immersive && 'hidden md:block',
+        // Phones: the survey map and header-band pages draw their own.
+        (immersive || hasHeaderBand(pathname)) && 'hidden md:block',
       )}
     >
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
@@ -316,6 +334,28 @@ function TopBar({
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Phones, on a page with a header band (dashboard): the logo, bell and user
+ * menu sit on the band instead of a separate top bar.
+ */
+export function HeaderBandBar() {
+  return (
+    <div className="mb-5 flex items-center gap-2 md:hidden">
+      <Link
+        href="/projects"
+        className="flex min-h-11 items-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        aria-label="CCTV Survey — หน้าโครงการ"
+      >
+        <LogoMark onBrand />
+      </Link>
+      <div className="ml-auto flex items-center gap-2">
+        <Notifications onBrand />
+        <UserMenu onBrand />
+      </div>
+    </div>
   );
 }
 
@@ -398,24 +438,32 @@ const iconButton =
 const popover =
   'absolute right-0 top-full z-40 mt-2 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl shadow-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900';
 
-function Notifications() {
+/** Round translucent button on the indigo header band. */
+const brandIconButton =
+  'grid size-11 place-items-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+
+function Notifications({ onBrand }: { onBrand?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const panelId = useId();
   useDismiss(open, () => setOpen(false), ref);
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
-        className={iconButton}
+        className={onBrand ? brandIconButton : iconButton}
         aria-label="การแจ้งเตือน"
         aria-expanded={open}
-        aria-controls="notifications"
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
       >
         <IconBell />
       </button>
       {open && (
-        <div id="notifications" className={cx(popover, 'w-72 p-4')}>
+        <div
+          id={panelId}
+          className={cx(popover, 'w-72 p-4 text-zinc-900 dark:text-zinc-100')}
+        >
           <p className="text-sm font-medium">การแจ้งเตือน</p>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             ยังไม่มีการแจ้งเตือน
@@ -426,8 +474,9 @@ function Notifications() {
   );
 }
 
-function UserMenu() {
+function UserMenu({ onBrand }: { onBrand?: boolean }) {
   const user = useSession();
+  const menuId = useId();
   const manageModels = useCan('camera_model:manage');
   const manageUsers = useCan('user:manage');
   const [busy, setBusy] = useState(false);
@@ -464,20 +513,36 @@ function UserMenu() {
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
         aria-expanded={menuOpen}
-        aria-controls="user-menu"
+        aria-controls={menuId}
         aria-label={`เมนูผู้ใช้: ${name}`}
-        className="flex min-h-11 items-center gap-2 rounded-xl px-1.5 text-sm transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:px-2 dark:hover:bg-zinc-800"
+        className={
+          onBrand
+            ? 'grid size-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+            : 'flex min-h-11 items-center gap-2 rounded-xl px-1.5 text-sm transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:px-2 dark:hover:bg-zinc-800'
+        }
       >
-        <span data-testid="current-user" className="flex items-center gap-2">
-          <Avatar name={name} size="sm" />
-          <span className="hidden max-w-[9rem] truncate font-medium sm:block">
-            {name}
-          </span>
+        <span
+          // The band's copy is a second menu button on the page (the top bar
+          // keeps the plain id that tests and docs refer to).
+          data-testid={onBrand ? 'current-user-band' : 'current-user'}
+          className="flex items-center gap-2"
+        >
+          <Avatar name={name} size={onBrand ? 'md' : 'sm'} onBrand={onBrand} />
+          {!onBrand && (
+            <span className="hidden max-w-[9rem] truncate font-medium sm:block">
+              {name}
+            </span>
+          )}
         </span>
-        <IconChevronDown className="hidden size-4 text-zinc-400 sm:block" />
+        {!onBrand && (
+          <IconChevronDown className="hidden size-4 text-zinc-400 sm:block" />
+        )}
       </button>
       {menuOpen && (
-        <div id="user-menu" className={cx(popover, 'w-64')}>
+        <div
+          id={menuId}
+          className={cx(popover, 'w-64 text-zinc-900 dark:text-zinc-100')}
+        >
           {logoutError && (
             <div className="mb-2">
               <Alert>{logoutError}</Alert>
@@ -548,14 +613,14 @@ function BottomNav({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="เมนูหลัก (มือถือ)"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden print:hidden dark:border-zinc-800 dark:bg-zinc-900/95"
+      className="fixed inset-x-0 bottom-0 z-30 rounded-t-[22px] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(15,23,42,0.06)] md:hidden print:hidden dark:bg-zinc-900 dark:shadow-[0_-1px_0_rgba(255,255,255,0.08)]"
     >
       <ul className="grid grid-cols-5">
         {items.map((item) => {
           const Icon = item.icon;
           const current = isCurrent(item, pathname);
           const shell =
-            'flex min-h-16 flex-col items-center justify-center gap-1 text-[0.7rem] font-medium';
+            'flex min-h-16 flex-col items-center justify-center gap-1 text-[0.7rem]';
           return (
             <li key={item.label}>
               {item.href ? (
@@ -566,17 +631,28 @@ function BottomNav({ pathname }: { pathname: string }) {
                     shell,
                     'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600',
                     current
-                      ? 'text-indigo-700 dark:text-indigo-300'
-                      : 'text-zinc-500 dark:text-zinc-400',
+                      ? 'font-semibold text-indigo-700 dark:text-indigo-300'
+                      : 'font-medium text-slate-500 dark:text-slate-400',
                   )}
                 >
-                  <Icon />
-                  {item.label}
+                  {/* The whole cell is the tap target; the pill marks the tab. */}
+                  <span
+                    className={cx(
+                      'flex min-w-14 max-w-full flex-col items-center gap-1 rounded-xl px-1.5 py-1.5 transition-colors',
+                      current && 'bg-indigo-50 dark:bg-indigo-500/15',
+                    )}
+                  >
+                    <Icon />
+                    <span className="max-w-full truncate">{item.label}</span>
+                  </span>
                 </Link>
               ) : (
                 <span
                   aria-disabled="true"
-                  className={cx(shell, 'text-zinc-300 dark:text-zinc-600')}
+                  className={cx(
+                    shell,
+                    'font-medium text-zinc-300 dark:text-zinc-600',
+                  )}
                 >
                   <Icon />
                   {item.label}

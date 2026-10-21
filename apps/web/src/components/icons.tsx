@@ -105,6 +105,15 @@ export const IconUsers = (p: P) => (
   </Icon>
 );
 
+/** A picture (field photos). */
+export const IconImage = (p: P) => (
+  <Icon {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="9" cy="9" r="2" />
+    <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+  </Icon>
+);
+
 export const IconPlus = (p: P) => (
   <Icon {...p}>
     <path d="M12 5v14M5 12h14" />
@@ -169,10 +178,15 @@ export const IconCheck = (p: P) => (
 );
 
 /** Brand mark: a dome camera inside a rounded square. */
-export const LogoMark = () => (
+/** `onBrand`: on the indigo header band (translucent white tile). */
+export const LogoMark = ({ onBrand }: { onBrand?: boolean } = {}) => (
   <span
     aria-hidden
-    className="grid size-9 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/40"
+    className={
+      onBrand
+        ? 'grid size-9 shrink-0 place-items-center rounded-xl bg-white/20 text-white ring-1 ring-white/25'
+        : 'grid size-9 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/40'
+    }
   >
     <svg
       viewBox="0 0 24 24"

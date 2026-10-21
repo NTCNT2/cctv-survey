@@ -2,6 +2,7 @@
 
 import type { CameraListItem, DashboardSummary } from '@cctv/shared';
 import Link from 'next/link';
+import { HeaderBandBar } from '@/components/app-shell';
 import { CameraMix } from '@/components/camera-mix';
 import { DayChart } from '@/components/day-chart';
 import {
@@ -9,6 +10,7 @@ import {
   IconCheck,
   IconClock,
   IconFolder,
+  IconImage,
   IconMap,
   IconReport,
 } from '@/components/icons';
@@ -18,7 +20,6 @@ import {
   EmptyState,
   ErrorState,
   LinkButton,
-  PageHeader,
   Skeleton,
   StatCard,
 } from '@/components/ui';
@@ -57,24 +58,34 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="แดชบอร์ด"
-        subtitle={
-          s
-            ? `ภาพรวมทุกโครงการ · ข้อมูล ${formatRelative(s.generatedAt)}`
-            : 'ภาพรวมทุกโครงการ'
-        }
-        actions={
-          <>
-            <LinkButton href="/map" variant="secondary">
+      {/*
+        Header band: edge to edge on phones (cancels the page padding), a
+        rounded panel from md. The first row of stat cards overlaps its foot.
+        Violet-600 (not 500) keeps white text >= 4.5:1 across the gradient.
+      */}
+      <header className="-mx-4 -mt-6 rounded-b-[28px] bg-gradient-to-br from-indigo-600 to-violet-600 px-5 pb-[52px] pt-[max(1rem,env(safe-area-inset-top))] text-white sm:-mx-6 md:mx-0 md:mt-0 md:rounded-3xl md:px-8 md:pt-8">
+        <HeaderBandBar />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              แดชบอร์ด
+            </h1>
+            <p className="mt-1 text-sm text-indigo-100">
+              {s
+                ? `ภาพรวมทุกโครงการ · ข้อมูล ${formatRelative(s.generatedAt)}`
+                : 'ภาพรวมทุกโครงการ'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <LinkButton href="/map" variant="glass">
               <IconMap className="size-4" /> แผนที่สำรวจ
             </LinkButton>
-            <LinkButton href="/reports" variant="secondary">
+            <LinkButton href="/reports" variant="glass">
               <IconReport className="size-4" /> รายงาน
             </LinkButton>
-          </>
-        }
-      />
+          </div>
+        </div>
+      </header>
       {summary.isError ? (
         <ErrorState
           message={errorMessage(summary.error)}
@@ -175,14 +186,15 @@ function Stats({ s }: { s?: DashboardSummary }) {
       label: 'รูปหน้างาน',
       value: s?.cameras.photos,
       hint: 'รูป',
-      icon: <IconCamera />,
-      tone: 'neutral' as const,
+      icon: <IconImage />,
+      tone: 'amber' as const,
+      wide: true,
     },
   ];
   return (
-    <section aria-label="สรุปภาพรวม">
-      <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-        {cards.map((c) => (
+    <section aria-label="สรุปภาพรวม" className="relative -mt-8 px-1 sm:px-3">
+      <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {cards.map((c, i) => (
           <StatCard
             key={c.label}
             label={c.label}
@@ -190,6 +202,11 @@ function Stats({ s }: { s?: DashboardSummary }) {
             hint={c.hint}
             icon={c.icon}
             tone={c.tone}
+            wide={'wide' in c}
+            // The row on the band gets a soft indigo shadow: 2 cards on
+            // phones, 4 from lg.
+            raised={i < 2 ? true : i < 4 ? 'lg' : undefined}
+            className={'wide' in c ? 'col-span-2 lg:col-span-4' : undefined}
           />
         ))}
       </dl>
@@ -265,15 +282,16 @@ function FollowUps({
         </ul>
       )}
       {open.length > FOLLOW_UP_SHOWN && (
-        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-          และอีก {open.length - FOLLOW_UP_SHOWN} จุด — ดูทั้งหมดได้ใน{' '}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 text-sm text-zinc-600 dark:text-zinc-400">
+          <span>และอีก {open.length - FOLLOW_UP_SHOWN} จุด</span>
+          {/* A full 44px tap target, not a link inside the sentence. */}
           <Link
             href="/reports"
-            className="text-indigo-700 hover:underline dark:text-indigo-400"
+            className="inline-flex min-h-11 items-center font-medium text-indigo-700 hover:underline dark:text-indigo-400"
           >
-            รายงานของแต่ละโครงการ
+            ดูทั้งหมดในรายงานของแต่ละโครงการ →
           </Link>
-        </p>
+        </div>
       )}
     </Card>
   );

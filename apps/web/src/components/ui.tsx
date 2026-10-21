@@ -10,7 +10,7 @@ import type {
 const cx = (...c: (string | false | undefined)[]) =>
   c.filter(Boolean).join(' ');
 
-type Variant = 'primary' | 'secondary' | 'danger';
+type Variant = 'primary' | 'secondary' | 'danger' | 'glass';
 
 const variants: Record<Variant, string> = {
   primary:
@@ -19,6 +19,10 @@ const variants: Record<Variant, string> = {
     'border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
   danger:
     'bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50 dark:bg-red-600 dark:hover:bg-red-500',
+  /** On a coloured band (dashboard header): translucent white. */
+  glass:
+    // 12% (not 15%): white text stays >= 4.5:1 at the band's violet end.
+    'border border-white/30 bg-white/12 text-white hover:border-white/60 focus-visible:outline-white disabled:opacity-50',
 };
 
 /** 44px minimum height: comfortable tap target on phones. */
@@ -474,8 +478,64 @@ const statAccents: Record<BadgeTone, string> = {
 };
 
 /**
+ * Tinted card per tone: a pale wash of the hue, a matching border, the icon on
+ * the hue's 200 step, icon and number in its 700 step (>= 4.5:1 on the wash).
+ * Neutral / muted stay white. Dark mode mixes the hue into the card colour:
+ * opaque, so nothing behind a card (the dashboard header band) shows through.
+ */
+const statSurfaces: Record<
+  BadgeTone,
+  { card: string; value: string; chip?: string }
+> = {
+  neutral: {
+    card: 'border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900',
+    value: '',
+  },
+  muted: {
+    card: 'border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900',
+    value: '',
+  },
+  blue: {
+    card: 'border-sky-100 bg-sky-50 dark:border-sky-400/20 dark:bg-[color-mix(in_oklab,var(--color-sky-500)_12%,var(--card))]',
+    value: 'text-sky-700 dark:text-sky-300',
+    chip: 'bg-sky-200 text-sky-700 dark:bg-sky-400/20 dark:text-sky-300',
+  },
+  violet: {
+    card: 'border-violet-100 bg-violet-50 dark:border-violet-400/20 dark:bg-[color-mix(in_oklab,var(--color-violet-500)_12%,var(--card))]',
+    value: 'text-violet-700 dark:text-violet-300',
+    chip: 'bg-violet-200 text-violet-700 dark:bg-violet-400/20 dark:text-violet-300',
+  },
+  cyan: {
+    card: 'border-teal-100 bg-teal-50 dark:border-teal-400/20 dark:bg-[color-mix(in_oklab,var(--color-teal-500)_12%,var(--card))]',
+    value: 'text-teal-700 dark:text-teal-300',
+    chip: 'bg-teal-200 text-teal-700 dark:bg-teal-400/20 dark:text-teal-300',
+  },
+  amber: {
+    card: 'border-amber-100 bg-amber-50 dark:border-amber-400/20 dark:bg-[color-mix(in_oklab,var(--color-amber-500)_12%,var(--card))]',
+    value: 'text-amber-700 dark:text-amber-300',
+    chip: 'bg-amber-200 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300',
+  },
+  orange: {
+    card: 'border-orange-100 bg-orange-50 dark:border-orange-400/20 dark:bg-[color-mix(in_oklab,var(--color-orange-500)_12%,var(--card))]',
+    value: 'text-orange-700 dark:text-orange-300',
+    chip: 'bg-orange-200 text-orange-700 dark:bg-orange-400/20 dark:text-orange-300',
+  },
+  green: {
+    card: 'border-emerald-100 bg-emerald-50 dark:border-emerald-400/20 dark:bg-[color-mix(in_oklab,var(--color-emerald-500)_12%,var(--card))]',
+    value: 'text-emerald-700 dark:text-emerald-300',
+    chip: 'bg-emerald-200 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300',
+  },
+  red: {
+    card: 'border-red-100 bg-red-50 dark:border-red-400/20 dark:bg-[color-mix(in_oklab,var(--color-red-500)_12%,var(--card))]',
+    value: 'text-red-700 dark:text-red-300',
+    chip: 'bg-red-200 text-red-700 dark:bg-red-400/20 dark:text-red-300',
+  },
+};
+
+/**
  * A number with a label, for summary rows. Render inside a <dl>. `value`
- * undefined shows a placeholder (loading) or "—" (`unavailable`).
+ * undefined shows a placeholder (loading) or "—" (`unavailable`). `wide`:
+ * one horizontal row — icon, label and hint, then the number on the right.
  */
 export function StatCard({
   label,
@@ -484,6 +544,9 @@ export function StatCard({
   tone = 'neutral',
   unavailable,
   hint,
+  wide,
+  raised,
+  className,
 }: {
   label: string;
   value: ReactNode | undefined;
@@ -491,42 +554,85 @@ export function StatCard({
   tone?: BadgeTone;
   unavailable?: boolean;
   hint?: ReactNode;
+  wide?: boolean;
+  /** Soft indigo shadow (a row over a coloured band); 'lg': from lg only. */
+  raised?: boolean | 'lg';
+  className?: string;
 }) {
+  const surface = statSurfaces[tone];
+  const number = (
+    <dd
+      className={cx(
+        'text-4xl font-bold tabular-nums tracking-tight',
+        !wide && 'mt-2',
+        surface.value,
+      )}
+    >
+      {value !== undefined ? (
+        value
+      ) : unavailable ? (
+        <span title="โหลดข้อมูลไม่สำเร็จ">—</span>
+      ) : (
+        <>
+          <span
+            aria-hidden
+            className="inline-block h-8 w-12 animate-pulse rounded-lg bg-zinc-200/70 dark:bg-zinc-800"
+          />
+          <span className="sr-only">รอข้อมูล</span>
+        </>
+      )}
+    </dd>
+  );
+  const chip = icon && (
+    <span
+      aria-hidden
+      className={cx(
+        'grid size-10 shrink-0 place-items-center rounded-xl',
+        surface.chip ?? statAccents[tone],
+      )}
+    >
+      {icon}
+    </span>
+  );
+  const hintEl = hint && (
+    // slate-600: slate-500 is under 4.5:1 on the violet and sky washes.
+    <dd className="mt-1 text-xs text-slate-600 dark:text-slate-400">{hint}</dd>
+  );
+  const labelEl = (
+    <dt className="text-sm text-slate-600 dark:text-slate-400">{label}</dt>
+  );
   return (
-    <div className="flex items-start justify-between gap-3 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="min-w-0">
-        <dt className="text-sm text-zinc-600 dark:text-zinc-400">{label}</dt>
-        <dd className="mt-2 text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
-          {value !== undefined ? (
-            value
-          ) : unavailable ? (
-            <span title="โหลดข้อมูลไม่สำเร็จ">—</span>
-          ) : (
-            <>
-              <span
-                aria-hidden
-                className="inline-block h-8 w-12 animate-pulse rounded-lg bg-zinc-200/70 dark:bg-zinc-800"
-              />
-              <span className="sr-only">รอข้อมูล</span>
-            </>
-          )}
-        </dd>
-        {hint && (
-          <dd className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            {hint}
-          </dd>
-        )}
-      </div>
-      {icon && (
-        <span
-          aria-hidden
-          className={cx(
-            'grid size-10 shrink-0 place-items-center rounded-xl',
-            statAccents[tone],
-          )}
-        >
-          {icon}
-        </span>
+    <div
+      className={cx(
+        'flex gap-3 rounded-2xl border p-4 sm:p-5',
+        raised === true
+          ? 'shadow-[0_4px_14px_rgba(79,70,229,0.10)]'
+          : raised === 'lg'
+            ? 'shadow-sm lg:shadow-[0_4px_14px_rgba(79,70,229,0.10)]'
+            : 'shadow-sm',
+        wide ? 'items-center' : 'items-start justify-between',
+        surface.card,
+        className,
+      )}
+    >
+      {wide ? (
+        <>
+          {chip}
+          <div className="min-w-0 flex-1">
+            {labelEl}
+            {hintEl}
+          </div>
+          {number}
+        </>
+      ) : (
+        <>
+          <div className="min-w-0">
+            {labelEl}
+            {number}
+            {hintEl}
+          </div>
+          {chip}
+        </>
       )}
     </div>
   );

@@ -1,21 +1,51 @@
 @import 'tailwindcss';
 
+/*
+ * Surfaces: a light indigo-tinted page (goes with the indigo brand) so white
+ * cards stand out without glare; dark mode keeps a deep blue-grey.
+ */
 :root {
-  --background: #fafafa;
+  --background: #f3f4fb;
   --foreground: #171717;
+  --card: #ffffff;
+  --border: #e4e6f2;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-line: var(--border);
   --font-sans: var(--font-sans-thai);
   --font-mono: var(--font-geist-mono);
 }
 
+/*
+ * The app's greys are written as `zinc-*`; they render as Tailwind's slate
+ * (a cool, slightly blue grey) so secondary text, borders and dark surfaces
+ * sit softly on the tinted background. Change here, not in every class.
+ */
+@theme {
+  --color-zinc-50: #f8fafc;
+  --color-zinc-100: #f1f5f9;
+  --color-zinc-200: #e2e8f0;
+  --color-zinc-300: #cbd5e1;
+  --color-zinc-400: #94a3b8;
+  /* Between slate-500 and 600: >= 4.5:1 on the tinted page and the washes. */
+  --color-zinc-500: #5f6f86;
+  --color-zinc-600: #475569;
+  --color-zinc-700: #334155;
+  --color-zinc-800: #1e293b;
+  --color-zinc-900: #0f172a;
+  --color-zinc-950: #020617;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #020617;
     --foreground: #ededed;
+    --card: #0f172a;
+    --border: #1e293b;
   }
 }
 
