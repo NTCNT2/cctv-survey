@@ -88,7 +88,8 @@ test.describe('signed in', () => {
 
   test('user menu opens and works on touch', async ({ page }) => {
     await page.goto('/projects');
-    await page.getByTestId('current-user').tap();
+    // Phones: the user menu sits on the header band of /projects.
+    await page.getByTestId('current-user-band').tap();
     await expect(
       page.getByRole('link', { name: 'เปลี่ยนรหัสผ่าน' }),
     ).toBeVisible();
@@ -127,6 +128,8 @@ test.describe('signed in', () => {
     await page
       .getByRole('list', { name: 'โครงการสำหรับรายงาน' })
       .getByRole('link', { name: new RegExp(seeded.project.name) })
+      // A retried worker seeds the same name again: either one will do.
+      .first()
       .tap();
     await expect(
       page.getByRole('table', { name: 'ตารางจุดกล้อง' }),
@@ -178,11 +181,80 @@ test.describe('signed in', () => {
     });
   }
 
+  for (const width of [375, 430]) {
+    test(`${width}px: projects header band, controls, last card clear of the nav`, async ({
+      page,
+    }, info) => {
+      await page.setViewportSize({ width, height: 860 });
+      await page.goto('/projects');
+      const band = page.getByRole('main').locator('header').first();
+      await expect(
+        band.getByRole('heading', { name: 'โครงการ' }),
+      ).toBeVisible();
+      await expect(band.getByTestId('current-user-band')).toBeVisible();
+      await expect(page.getByTestId('current-user')).toBeHidden();
+      await expect(
+        band.getByRole('link', { name: '+ สร้างโครงการ' }),
+      ).toBeVisible();
+      await expectNoHorizontalScroll(page);
+
+      const h = async (l: import('@playwright/test').Locator) =>
+        (await l.boundingBox())!.height;
+      expect(
+        await h(page.getByRole('searchbox', { name: 'ค้นหาในรายการโครงการ' })),
+      ).toBeGreaterThanOrEqual(48);
+      for (const name of ['กรองตามสถานะ', 'กรองตามลูกค้า']) {
+        expect(
+          await h(page.getByRole('combobox', { name })),
+        ).toBeGreaterThanOrEqual(44);
+      }
+      for (const name of ['แสดงแบบการ์ด', 'แสดงแบบรายการ']) {
+        const b = page.getByRole('button', { name });
+        const box = (await b.boundingBox())!;
+        expect(box.height).toBeGreaterThanOrEqual(44);
+        expect(box.width).toBeGreaterThanOrEqual(44);
+      }
+
+      // The last card scrolls fully above the bottom navigation.
+      const cards = projectList(page).getByRole('listitem');
+      await cards.last().scrollIntoViewIfNeeded();
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      const last = (await cards.last().boundingBox())!;
+      const nav = (await page
+        .getByRole('navigation', { name: 'เมนูหลัก (มือถือ)' })
+        .boundingBox())!;
+      expect(
+        last.y + last.height,
+        'last card under the nav',
+      ).toBeLessThanOrEqual(nav.y);
+
+      // No match: icon, message and "clear filters".
+      await page
+        .getByRole('searchbox', { name: 'ค้นหาในรายการโครงการ' })
+        .fill('zz-no-such-project-zz');
+      await expect(
+        page.getByText('ไม่พบโครงการที่ตรงกับเงื่อนไข'),
+      ).toBeVisible();
+      const clear = page
+        .getByRole('main')
+        .getByRole('button', { name: 'ล้างตัวกรอง' })
+        .last();
+      expect(await h(clear)).toBeGreaterThanOrEqual(44);
+      await info.attach(`projects-${width}`, {
+        body: await page.screenshot(),
+        contentType: 'image/png',
+      });
+      await clear.tap();
+      await expect(cards.first()).toBeVisible();
+    });
+  }
+
   test('users page: from the user menu, fits the screen, form usable', async ({
     page,
   }, info) => {
     await page.goto('/projects');
-    await page.getByTestId('current-user').tap();
+    // Phones: the user menu sits on the header band of /projects.
+    await page.getByTestId('current-user-band').tap();
     await page.getByRole('link', { name: 'จัดการผู้ใช้' }).tap();
     await expect(page).toHaveURL(/\/users$/);
     await expect(

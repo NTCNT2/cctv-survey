@@ -22,11 +22,11 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 
 /** Badge colour per project status (see `Badge`). */
 export const PROJECT_STATUS_TONES: Record<ProjectStatus, BadgeTone> = {
-  draft: 'neutral',
+  draft: 'amber',
   surveying: 'blue',
   designed: 'violet',
   quoted: 'cyan',
-  installing: 'amber',
+  installing: 'orange',
   completed: 'green',
   cancelled: 'muted',
 };

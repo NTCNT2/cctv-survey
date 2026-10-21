@@ -159,7 +159,8 @@ function Avatar({
  * Pages whose header band carries the logo, bell and user menu on phones
  * (HeaderBandBar); the top bar is shown from md only.
  */
-const hasHeaderBand = (pathname: string) => pathname === '/dashboard';
+const hasHeaderBand = (pathname: string) =>
+  pathname === '/dashboard' || pathname === '/projects';
 
 /** Full-screen pages (the survey map): no page padding, own phone chrome. */
 export const isImmersive = (pathname: string) =>

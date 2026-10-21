@@ -2,9 +2,9 @@
 
 import type { CameraListItem, DashboardSummary } from '@cctv/shared';
 import Link from 'next/link';
-import { HeaderBandBar } from '@/components/app-shell';
 import { CameraMix } from '@/components/camera-mix';
 import { DayChart } from '@/components/day-chart';
+import { PageHero } from '@/components/page-hero';
 import {
   IconCamera,
   IconCheck,
@@ -58,34 +58,24 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/*
-        Header band: edge to edge on phones (cancels the page padding), a
-        rounded panel from md. The first row of stat cards overlaps its foot.
-        Violet-600 (not 500) keeps white text >= 4.5:1 across the gradient.
-      */}
-      <header className="-mx-4 -mt-6 rounded-b-[28px] bg-gradient-to-br from-indigo-600 to-violet-600 px-5 pb-[52px] pt-[max(1rem,env(safe-area-inset-top))] text-white sm:-mx-6 md:mx-0 md:mt-0 md:rounded-3xl md:px-8 md:pt-8">
-        <HeaderBandBar />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              แดชบอร์ด
-            </h1>
-            <p className="mt-1 text-sm text-indigo-100">
-              {s
-                ? `ภาพรวมทุกโครงการ · ข้อมูล ${formatRelative(s.generatedAt)}`
-                : 'ภาพรวมทุกโครงการ'}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <PageHero
+        title="แดชบอร์ด"
+        subtitle={
+          s
+            ? `ภาพรวมทุกโครงการ · ข้อมูล ${formatRelative(s.generatedAt)}`
+            : 'ภาพรวมทุกโครงการ'
+        }
+        actions={
+          <>
             <LinkButton href="/map" variant="glass">
               <IconMap className="size-4" /> แผนที่สำรวจ
             </LinkButton>
             <LinkButton href="/reports" variant="glass">
               <IconReport className="size-4" /> รายงาน
             </LinkButton>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
       {summary.isError ? (
         <ErrorState
           message={errorMessage(summary.error)}

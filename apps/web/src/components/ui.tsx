@@ -10,24 +10,27 @@ import type {
 const cx = (...c: (string | false | undefined)[]) =>
   c.filter(Boolean).join(' ');
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'glass';
+type Variant = 'primary' | 'secondary' | 'danger' | 'glass' | 'light';
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 disabled:bg-indigo-600/50 dark:bg-indigo-500 dark:hover:bg-indigo-400 dark:disabled:bg-indigo-500/50',
+    'font-medium bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 disabled:bg-indigo-600/50 dark:bg-indigo-500 dark:hover:bg-indigo-400 dark:disabled:bg-indigo-500/50',
   secondary:
-    'border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
+    'font-medium border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
   danger:
-    'bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50 dark:bg-red-600 dark:hover:bg-red-500',
+    'font-medium bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50 dark:bg-red-600 dark:hover:bg-red-500',
   /** On a coloured band (dashboard header): translucent white. */
   glass:
     // 12% (not 15%): white text stays >= 4.5:1 at the band's violet end.
-    'border border-white/30 bg-white/12 text-white hover:border-white/60 focus-visible:outline-white disabled:opacity-50',
+    'font-medium border border-white/30 bg-white/12 text-white hover:border-white/60 focus-visible:outline-white disabled:opacity-50',
+  /** The main action on a coloured band: white, indigo text. */
+  light:
+    'font-semibold bg-white text-indigo-700 shadow-sm hover:bg-indigo-50 focus-visible:outline-white disabled:opacity-50',
 };
 
 /** 44px minimum height: comfortable tap target on phones. */
 const base =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400 disabled:cursor-not-allowed';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400 disabled:cursor-not-allowed';
 
 export function Button({
   variant = 'primary',
@@ -342,13 +345,24 @@ export function EmptyState({
   title,
   detail,
   action,
+  icon,
 }: {
   title: string;
   detail?: string;
   action?: ReactNode;
+  /** Shown in an indigo circle above the title. */
+  icon?: ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-dashed border-zinc-300 px-4 py-10 text-center dark:border-zinc-700">
+      {icon && (
+        <span
+          aria-hidden
+          className="mx-auto mb-3 grid size-14 place-items-center rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+        >
+          {icon}
+        </span>
+      )}
       <p className="font-medium">{title}</p>
       {detail && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -405,7 +419,7 @@ const badgeTones: Record<BadgeTone, string> = {
     'bg-zinc-100 text-zinc-700 ring-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-400/20',
   muted:
     'bg-zinc-50 text-zinc-500 ring-zinc-400/20 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-500/25',
-  blue: 'bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-950 dark:text-blue-300 dark:ring-blue-400/25',
+  blue: 'bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-950 dark:text-sky-300 dark:ring-sky-400/25',
   violet:
     'bg-violet-50 text-violet-700 ring-violet-600/20 dark:bg-violet-950 dark:text-violet-300 dark:ring-violet-400/25',
   cyan: 'bg-cyan-50 text-cyan-800 ring-cyan-600/25 dark:bg-cyan-950 dark:text-cyan-300 dark:ring-cyan-400/25',

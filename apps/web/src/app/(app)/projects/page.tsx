@@ -28,6 +28,7 @@ import {
   IconSearch,
 } from '@/components/icons';
 import { CameraMix } from '@/components/camera-mix';
+import { PageHero } from '@/components/page-hero';
 import {
   Badge,
   Button,
@@ -125,9 +126,14 @@ function Projects() {
   const projects = useProjects();
   const overview = useProjectOverview();
 
-  const createButton = canCreate ? (
-    <LinkButton href="/projects/new">+ สร้างโครงการ</LinkButton>
-  ) : null;
+  // On the header band: white with indigo text; on the page: the usual
+  // primary button.
+  const createButton = (onBand: boolean) =>
+    canCreate ? (
+      <LinkButton href="/projects/new" variant={onBand ? 'light' : 'primary'}>
+        + สร้างโครงการ
+      </LinkButton>
+    ) : null;
 
   const customers = useMemo(() => {
     const names = new Set<string>();
@@ -156,17 +162,11 @@ function Projects() {
 
   return (
     <>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            โครงการ
-          </h1>
-          <p className="mt-1.5 text-sm text-zinc-600 sm:text-base dark:text-zinc-400">
-            จัดการโครงการสำรวจและออกแบบระบบ CCTV
-          </p>
-        </div>
-        {createButton}
-      </div>
+      <PageHero
+        title="โครงการ"
+        subtitle="จัดการโครงการสำรวจและออกแบบระบบ CCTV"
+        actions={createButton(true)}
+      />
 
       <Summary overview={overview} />
 
@@ -199,6 +199,7 @@ function Projects() {
       ) : !items || items.length === 0 ? (
         filtering ? (
           <EmptyState
+            icon={<IconSearch className="size-6" />}
             title="ไม่พบโครงการที่ตรงกับเงื่อนไข"
             detail="ลองเปลี่ยนคำค้นหาหรือตัวกรอง"
             action={
@@ -212,13 +213,14 @@ function Projects() {
           />
         ) : (
           <EmptyState
+            icon={<IconFolder className="size-6" />}
             title="ยังไม่มีโครงการ"
             detail={
               canCreate
                 ? 'เริ่มต้นด้วยการสร้างโครงการแรก'
                 : 'เมื่อมีการสร้างโครงการ รายการจะแสดงที่นี่'
             }
-            action={createButton}
+            action={createButton(false)}
           />
         )
       ) : (
@@ -238,7 +240,7 @@ function Projects() {
             className={
               view === 'grid'
                 ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3'
-                : 'divide-y divide-zinc-200/80 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900'
+                : 'space-y-3'
             }
           >
             {items.map((p) => (
@@ -313,20 +315,26 @@ function Summary({
       label: 'แบบร่าง',
       value: count('draft'),
       icon: <IconClock />,
-      tone: 'neutral',
+      tone: 'amber',
     },
   ];
   return (
-    <section aria-label="สรุปโครงการ" className="mb-8">
+    // The first row overlaps the header band (as on the dashboard).
+    <section
+      aria-label="สรุปโครงการ"
+      className="relative -mt-8 mb-8 px-1 sm:px-3"
+    >
       <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {cards.map((c) => (
+        {cards.map((c, i) => (
           <StatCard
             key={c.label}
             label={c.label}
             value={show(c.value)}
+            hint="โครงการ"
             icon={c.icon}
             tone={c.tone}
             unavailable={overview.isError}
+            raised={i < 2 ? true : 'lg'}
           />
         ))}
       </dl>
@@ -338,8 +346,9 @@ function Summary({
 // Toolbar: search, status / customer filters, grid / list toggle
 // ---------------------------------------------------------------------------
 
+/** Search and filters: white, the theme's border, an indigo focus ring. */
 const control =
-  'min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base shadow-sm focus:border-indigo-500 focus:outline-2 focus:outline-indigo-500/30 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900';
+  'w-full rounded-xl border border-line bg-white px-3 text-base shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30';
 
 function Toolbar({
   q,
@@ -369,7 +378,7 @@ function Toolbar({
         <label htmlFor={`${id}-q`} className="sr-only">
           ค้นหาในรายการโครงการ
         </label>
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-400">
+        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-500">
           <IconSearch className="size-4" />
         </span>
         <input
@@ -378,7 +387,7 @@ function Toolbar({
           value={q}
           onChange={(e) => onChange('q', e.target.value)}
           placeholder="ค้นหาชื่อโครงการ ลูกค้า หรือที่อยู่"
-          className={cx(control, 'pl-9')}
+          className={cx(control, 'h-12 pl-9')}
         />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center">
@@ -390,7 +399,7 @@ function Toolbar({
             id={`${id}-status`}
             value={status}
             onChange={(e) => onChange('status', e.target.value)}
-            className={control}
+            className={cx(control, 'h-11')}
           >
             <option value="">ทุกสถานะ</option>
             {PROJECT_STATUSES.map((s) => (
@@ -408,7 +417,7 @@ function Toolbar({
             id={`${id}-customer`}
             value={customer}
             onChange={(e) => onChange('customer', e.target.value)}
-            className={control}
+            className={cx(control, 'h-11')}
           >
             <option value="">ลูกค้าทั้งหมด</option>
             {customer && !customers.includes(customer) && (
@@ -430,6 +439,7 @@ function Toolbar({
           <div className="ml-auto">
             <SegmentedControl
               label="รูปแบบการแสดงผล"
+              size="lg"
               value={view}
               onChange={onView}
               options={[
@@ -515,10 +525,61 @@ function StageBar({ status }: { status: ProjectStatus }) {
   );
 }
 
-function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+/**
+ * Status colour of a project card: the 4px bar on top and the icon of its
+ * numbers, from the status badge's tone (the stat cards' hues).
+ */
+const statusBar: Record<BadgeTone, string> = {
+  blue: 'bg-sky-500',
+  green: 'bg-emerald-500',
+  amber: 'bg-amber-500',
+  violet: 'bg-violet-500',
+  cyan: 'bg-teal-500',
+  orange: 'bg-orange-500',
+  red: 'bg-red-500',
+  neutral: 'bg-zinc-300 dark:bg-zinc-600',
+  muted: 'bg-zinc-300 dark:bg-zinc-600',
+};
+const statusIcon: Record<BadgeTone, string> = {
+  blue: 'text-sky-600 dark:text-sky-400',
+  green: 'text-emerald-600 dark:text-emerald-400',
+  amber: 'text-amber-600 dark:text-amber-400',
+  violet: 'text-violet-600 dark:text-violet-400',
+  cyan: 'text-teal-600 dark:text-teal-400',
+  orange: 'text-orange-600 dark:text-orange-400',
+  red: 'text-red-600 dark:text-red-400',
+  neutral: 'text-zinc-500',
+  muted: 'text-zinc-500',
+};
+
+/** The card surface shared by the grid and list views. */
+const cardShell =
+  'group relative overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:border-indigo-300 hover:shadow-md focus-within:border-indigo-400 active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500/60';
+
+function StatusStripe({ status }: { status: ProjectStatus }) {
   return (
-    <p className="flex min-w-0 items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-      <span className="text-zinc-400 dark:text-zinc-500">{icon}</span>
+    <span
+      aria-hidden
+      className={cx(
+        'absolute inset-x-0 top-0 h-1',
+        statusBar[PROJECT_STATUS_TONES[status]],
+      )}
+    />
+  );
+}
+
+function Meta({
+  icon,
+  iconClass = 'text-zinc-400 dark:text-zinc-500',
+  children,
+}: {
+  icon: ReactNode;
+  iconClass?: string;
+  children: ReactNode;
+}) {
+  return (
+    <p className="flex min-w-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+      <span className={iconClass}>{icon}</span>
       <span className="min-w-0 truncate">{children}</span>
     </p>
   );
@@ -527,9 +588,15 @@ function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
 function ProjectCard({ project: p }: { project: Project }) {
   const where = locationText(p);
   return (
-    <article className="group relative flex h-full flex-col rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md focus-within:border-indigo-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500/60">
+    <article
+      className={cx(
+        cardShell,
+        'flex h-full flex-col p-5 pt-6 hover:-translate-y-0.5',
+      )}
+    >
+      <StatusStripe status={p.status} />
       <div className="flex items-start justify-between gap-3">
-        <h2 className="min-w-0 text-base font-semibold leading-snug">
+        <h2 className="min-w-0 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
           {/* Stretched link: the whole card opens the project. */}
           <Link
             href={`/projects/${p.id}`}
@@ -548,7 +615,10 @@ function ProjectCard({ project: p }: { project: Project }) {
         )}
         {where && <Meta icon={<IconPin className="size-4" />}>{where}</Meta>}
         {p.cameras && (
-          <Meta icon={<IconCamera className="size-4" />}>
+          <Meta
+            icon={<IconCamera className="size-4" />}
+            iconClass={statusIcon[PROJECT_STATUS_TONES[p.status]]}
+          >
             {cameraText(p.cameras)}
           </Meta>
         )}
@@ -584,10 +654,16 @@ function ProjectCard({ project: p }: { project: Project }) {
 function ProjectRow({ project: p }: { project: Project }) {
   const where = locationText(p);
   return (
-    <article className="group relative flex flex-col gap-3 p-4 transition-colors hover:bg-zinc-50 focus-within:bg-zinc-50 sm:flex-row sm:items-center sm:gap-6 sm:px-5 dark:hover:bg-zinc-800/50 dark:focus-within:bg-zinc-800/50">
+    <article
+      className={cx(
+        cardShell,
+        'flex flex-col gap-3 p-4 pt-5 sm:flex-row sm:items-center sm:gap-6 sm:px-5',
+      )}
+    >
+      <StatusStripe status={p.status} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="min-w-0 font-semibold">
+          <h2 className="min-w-0 font-semibold text-zinc-900 dark:text-zinc-100">
             <Link
               href={`/projects/${p.id}`}
               className="break-words after:absolute after:inset-0 focus-visible:outline-none group-focus-within:text-indigo-700 dark:group-focus-within:text-indigo-300"
@@ -605,7 +681,10 @@ function ProjectRow({ project: p }: { project: Project }) {
           )}
           {where && <Meta icon={<IconPin className="size-4" />}>{where}</Meta>}
           {p.cameras && (
-            <Meta icon={<IconCamera className="size-4" />}>
+            <Meta
+              icon={<IconCamera className="size-4" />}
+              iconClass={statusIcon[PROJECT_STATUS_TONES[p.status]]}
+            >
               {cameraText(p.cameras)}
             </Meta>
           )}
