@@ -3,9 +3,8 @@ import type { ReactNode } from 'react';
 import { HeaderBandBar } from './app-shell';
 
 /**
- * The coloured header band of the main pages (dashboard, projects, reports):
- * indigo-600 → violet-600, white title, indigo-100 subtitle (>= 4.5:1 across
- * the gradient). Edge to edge with a rounded foot on phones, where it also
+ * The header band of the main pages (dashboard, projects, reports): flat NT
+ * charcoal with a 3px yellow foot line, white title, light grey subtitle. Edge to edge with a rounded foot on phones, where it also
  * carries the logo, bell and user menu (the top bar is hidden there, see
  * `hasHeaderBand` in app-shell); a rounded panel from md. Put the page's
  * first row of cards right after it with `-mt-8` so they overlap its foot.
@@ -23,12 +22,12 @@ export function PageHero({
   back?: { href: string; label: string };
 }) {
   return (
-    <header className="-mx-4 -mt-6 rounded-b-[28px] bg-gradient-to-br from-indigo-600 to-violet-600 px-5 pb-[52px] pt-[max(1rem,env(safe-area-inset-top))] text-white sm:-mx-6 md:mx-0 md:mt-0 md:rounded-3xl md:px-8 md:pt-8">
+    <header className="-mx-4 -mt-6 rounded-b-[28px] border-b-[3px] border-nt-yellow bg-nt-charcoal px-5 pb-[52px] pt-[max(1rem,env(safe-area-inset-top))] text-white sm:-mx-6 md:mx-0 md:mt-0 md:rounded-3xl md:px-8 md:pt-8">
       <HeaderBandBar />
       {back && (
         <Link
           href={back.href}
-          className="-ml-1 mb-1 inline-flex min-h-11 items-center rounded-lg px-1 text-sm font-medium text-indigo-100 hover:text-white focus-visible:outline-2 focus-visible:outline-white"
+          className="-ml-1 mb-1 inline-flex min-h-11 items-center rounded-lg px-1 text-sm font-medium text-nt-yellow hover:underline focus-visible:outline-2 focus-visible:outline-nt-yellow"
         >
           ← {back.label}
         </Link>
@@ -39,7 +38,7 @@ export function PageHero({
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-1 text-sm text-indigo-100">{subtitle}</p>
+            <p className="mt-1 text-sm text-on-dark-muted">{subtitle}</p>
           )}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

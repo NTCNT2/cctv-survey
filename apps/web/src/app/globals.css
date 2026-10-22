@@ -1,14 +1,32 @@
 @import 'tailwindcss';
 
 /*
- * Surfaces: a light indigo-tinted page (goes with the indigo brand) so white
- * cards stand out without glare; dark mode keeps a deep blue-grey.
+ * NT brand theme: dark grey page, white cards, yellow for the main action and
+ * highlights. One theme only (no dark-mode variant): the page is already dark
+ * and cards stay white.
+ *
+ * Contrast rules: text on yellow is always --text (never white); yellow text
+ * only on the dark greys, never on white; links on white are dark + underlined.
  */
 :root {
-  --background: #f3f4fb;
-  --foreground: #171717;
+  --nt-yellow: #ffd000;
+  --nt-yellow-hover: #f5c400;
+  --nt-yellow-soft: #fff3b0;
+  --nt-charcoal: #2c2c2e;
+  --nt-gray: #3a3a3c;
+  --nt-gray-line: #4b4b4e;
+  /* Outline of secondary buttons on the dark greys. */
+  --nt-gray-outline: #6b6b70;
   --card: #ffffff;
-  --border: #e4e6f2;
+  --text: #1f1f21;
+  --text-muted: #52525b;
+  --on-dark: #ffffff;
+  --on-dark-muted: #d4d4d8;
+
+  --background: var(--nt-gray);
+  --foreground: var(--text);
+  --border: #e4e4e7;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -16,37 +34,30 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-line: var(--border);
+  --color-nt-yellow: var(--nt-yellow);
+  --color-nt-yellow-hover: var(--nt-yellow-hover);
+  --color-nt-yellow-soft: var(--nt-yellow-soft);
+  --color-nt-charcoal: var(--nt-charcoal);
+  --color-nt-gray: var(--nt-gray);
+  --color-nt-gray-line: var(--nt-gray-line);
+  --color-nt-gray-outline: var(--nt-gray-outline);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-on-dark: var(--on-dark);
+  --color-on-dark-muted: var(--on-dark-muted);
+  --shadow-card: 0 6px 18px rgba(0, 0, 0, 0.25);
   --font-sans: var(--font-sans-thai);
   --font-mono: var(--font-geist-mono);
 }
 
 /*
- * The app's greys are written as `zinc-*`; they render as Tailwind's slate
- * (a cool, slightly blue grey) so secondary text, borders and dark surfaces
- * sit softly on the tinted background. Change here, not in every class.
+ * The app's greys are written as `zinc-*`: Tailwind's neutral zinc, except
+ * 500 and 600, which follow --text-muted so secondary text keeps >= 4.5:1 on
+ * white and on the light washes inside cards.
  */
 @theme {
-  --color-zinc-50: #f8fafc;
-  --color-zinc-100: #f1f5f9;
-  --color-zinc-200: #e2e8f0;
-  --color-zinc-300: #cbd5e1;
-  --color-zinc-400: #94a3b8;
-  /* Between slate-500 and 600: >= 4.5:1 on the tinted page and the washes. */
-  --color-zinc-500: #5f6f86;
-  --color-zinc-600: #475569;
-  --color-zinc-700: #334155;
-  --color-zinc-800: #1e293b;
-  --color-zinc-900: #0f172a;
-  --color-zinc-950: #020617;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #020617;
-    --foreground: #ededed;
-    --card: #0f172a;
-    --border: #1e293b;
-  }
+  --color-zinc-500: #5f5f68;
+  --color-zinc-600: #52525b;
 }
 
 body {
@@ -89,7 +100,7 @@ body {
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
 }
 .leaflet-marker-icon:focus-visible .cctv-pin-dot {
-  outline: 3px solid #4f46e5;
+  outline: 3px solid var(--nt-charcoal);
   outline-offset: 2px;
 }
 /* Zoom buttons large enough for touch (tablets). */
@@ -151,9 +162,10 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  background: #4f46e5;
+  /* "You are here": the usual map blue, not a status colour. */
+  background: #2563eb;
   border: 3px solid #fff;
-  box-shadow: 0 0 0 6px rgb(79 70 229 / 0.2);
+  box-shadow: 0 0 0 6px rgb(37 99 235 / 0.2);
   transform: translateY(50%);
 }
 /* Temporary "picked position" pin (Google content, or Leaflet divIcon). */

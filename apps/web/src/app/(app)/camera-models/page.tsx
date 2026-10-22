@@ -114,7 +114,7 @@ function ModelList({
       )}
       <ul
         aria-label="รายการรุ่นกล้อง"
-        className="-my-3 divide-y divide-zinc-100 dark:divide-zinc-800"
+        className="-my-3 divide-y divide-zinc-100"
       >
         {models.map((m) => (
           <li
@@ -125,7 +125,7 @@ function ModelList({
               <p className="truncate font-medium">
                 {m.brand} · {m.model}
               </p>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-zinc-600">
                 {pickSpec(m.cameraType, m.resolutionMp)}
                 {` · ใช้อยู่ ${m.usedBy} จุด`}
               </p>

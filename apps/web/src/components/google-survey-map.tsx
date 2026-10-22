@@ -233,9 +233,9 @@ export const GoogleSurveyMap = forwardRef<
           map: m,
           center: at,
           radius: fix.accuracy,
-          strokeColor: '#4f46e5',
+          strokeColor: '#2563eb',
           strokeWeight: 1,
-          fillColor: '#4f46e5',
+          fillColor: '#2563eb',
           fillOpacity: 0.12,
           clickable: false,
         }),
@@ -281,7 +281,7 @@ export const GoogleSurveyMap = forwardRef<
       role="region"
       aria-label="แผนที่สำรวจ"
       data-map-engine="google"
-      className="absolute inset-0 z-0 bg-zinc-100 dark:bg-zinc-800"
+      className="absolute inset-0 z-0 bg-zinc-100"
     />
   );
 });

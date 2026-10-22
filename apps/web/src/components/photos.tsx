@@ -32,7 +32,7 @@ const TYPE_OPTIONS = [
 ].map((t) => ({ value: t, label: PHOTO_TYPE_LABELS[t] }));
 
 const pickerLook =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-600';
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold shadow-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-nt-charcoal';
 
 /**
  * [📷 ถ่ายรูปหน้างาน] opens the camera; [+ เพิ่มรูป] the photo library (several
@@ -60,7 +60,7 @@ export function PhotoPickButtons({
         className={cx(
           pickerLook,
           state,
-          'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500',
+          'bg-nt-yellow font-bold text-ink hover:bg-nt-yellow-hover',
         )}
       >
         <svg
@@ -90,7 +90,7 @@ export function PhotoPickButtons({
         className={cx(
           pickerLook,
           state,
-          'border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
+          'border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50',
         )}
       >
         <span>+ เพิ่มรูป</span>
@@ -133,7 +133,7 @@ function PhotoTile({
         type="button"
         onClick={onOpen}
         aria-label={`ดูรูปที่ ${index + 1}: ${PHOTO_TYPE_LABELS[type]}`}
-        className="block w-full overflow-hidden rounded-xl bg-zinc-100 text-left ring-1 ring-zinc-900/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-zinc-800 dark:ring-white/10"
+        className="block w-full overflow-hidden rounded-xl bg-zinc-100 text-left ring-1 ring-zinc-900/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-charcoal"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- blob or API URL with session cookie */}
         <img
@@ -146,7 +146,7 @@ function PhotoTile({
           {PHOTO_TYPE_LABELS[type]}
         </span>
         {caption && (
-          <span className="-mt-1 block truncate px-2 pb-1 text-[0.7rem] text-zinc-500 dark:text-zinc-400">
+          <span className="-mt-1 block truncate px-2 pb-1 text-[0.7rem] text-zinc-500">
             {caption}
           </span>
         )}
@@ -412,7 +412,7 @@ export function PendingPhotos({
           ))}
         </ul>
       )}
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs text-zinc-500">
         ไม่บังคับ · แตะรูปเพื่อดูภาพใหญ่ เลือกประเภทรูป หรือใส่คำอธิบาย
       </p>
       <PhotoEditor
@@ -501,10 +501,10 @@ export function AddPhotoButton({
   return (
     <label
       className={cx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 shadow-sm',
         disabled
           ? 'pointer-events-none opacity-50'
-          : 'cursor-pointer hover:bg-zinc-50 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-600 dark:hover:bg-zinc-800',
+          : 'cursor-pointer hover:bg-zinc-50 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-nt-charcoal',
       )}
     >
       เพิ่มรูป
@@ -566,7 +566,7 @@ export function SavedPhotos({
       {photos.isError && <Alert>{errorMessage(photos.error)}</Alert>}
       {message && <Alert>{message}</Alert>}
       {progress && (
-        <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p role="status" className="text-sm text-zinc-600">
           กำลังอัปโหลด {progress.done}/{progress.total} …
         </p>
       )}

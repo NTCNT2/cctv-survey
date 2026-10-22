@@ -48,7 +48,7 @@ export function DayChart({
         {/* Y axis: the top and the baseline are enough at this size. */}
         <div
           aria-hidden
-          className="flex h-40 flex-col justify-between text-right text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
+          className="flex h-40 flex-col justify-between text-right text-xs tabular-nums text-zinc-500"
         >
           <span className="-translate-y-1/2">{top}</span>
           <span className="translate-y-1/2">0</span>
@@ -56,12 +56,12 @@ export function DayChart({
         <div className="relative min-w-0 flex-1">
           <div
             aria-hidden
-            className="absolute inset-x-0 top-0 border-t border-zinc-100 dark:border-zinc-800"
+            className="absolute inset-x-0 top-0 border-t border-zinc-100"
           />
           <div
             role="img"
             aria-label={`${label}: รวม ${total} ${unit} ใน ${days.length} วัน (ดูตารางด้านล่างสำหรับค่ารายวัน)`}
-            className="flex h-40 items-end gap-0.5 border-b border-zinc-200 dark:border-zinc-700"
+            className="flex h-40 items-end gap-0.5 border-b border-zinc-200"
             onMouseLeave={() => setActive(undefined)}
           >
             {days.map((d, i) => (
@@ -78,7 +78,8 @@ export function DayChart({
               >
                 <div
                   className={
-                    'w-full max-w-6 rounded-t bg-indigo-500 transition-opacity dark:bg-indigo-400' +
+                    // Charcoal: yellow bars would be under 3:1 on the white card.
+                    'w-full max-w-6 rounded-t bg-nt-charcoal transition-opacity' +
                     (active !== undefined && active !== i ? ' opacity-50' : '')
                   }
                   style={{ height: `${(d.points / top) * 100}%` }}
@@ -87,7 +88,7 @@ export function DayChart({
                   <div
                     role="tooltip"
                     className={
-                      'pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 py-1.5 text-xs text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900 ' +
+                      'pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap rounded-lg bg-nt-charcoal px-2.5 py-1.5 text-xs text-white shadow-lg ' +
                       (i < 4
                         ? 'left-0'
                         : i > days.length - 5
@@ -107,7 +108,7 @@ export function DayChart({
           </div>
           <div
             aria-hidden
-            className="mt-1.5 flex justify-between text-xs text-zinc-500 dark:text-zinc-400"
+            className="mt-1.5 flex justify-between text-xs text-zinc-500"
           >
             {ticks.map((t) => (
               <span key={t}>{days[t] && short(days[t].date)}</span>
@@ -116,7 +117,7 @@ export function DayChart({
         </div>
       </div>
       <details className="mt-3 text-sm">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center text-indigo-700 dark:text-indigo-400">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-ink underline underline-offset-2">
           ดูเป็นตาราง
         </summary>
         <table
@@ -130,7 +131,7 @@ export function DayChart({
               <th className="py-1 text-right font-medium">{unit}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-zinc-100">
             {[...days].reverse().map((d) => (
               <tr key={d.date}>
                 <td className="py-1">{long(d.date)}</td>

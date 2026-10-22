@@ -126,25 +126,13 @@ function sectionTitle(pathname: string): string {
 const initials = (name: string) => name.trim().slice(0, 1).toUpperCase();
 
 /** The initial is drawn with CSS, so it is not part of the text content. */
-function Avatar({
-  name,
-  size = 'md',
-  onBrand,
-}: {
-  name: string;
-  size?: 'sm' | 'md';
-  /** On the indigo header band: white disc, indigo initial. */
-  onBrand?: boolean;
-}) {
+function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
   return (
     <span
       aria-hidden
       data-initial={initials(name)}
       className={cx(
-        'grid shrink-0 place-items-center rounded-full text-sm font-semibold before:content-[attr(data-initial)]',
-        onBrand
-          ? 'bg-white text-indigo-700'
-          : 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white',
+        'grid shrink-0 place-items-center rounded-full bg-nt-yellow text-sm font-semibold text-ink before:content-[attr(data-initial)]',
         size === 'sm' ? 'size-8' : 'size-9',
       )}
     />
@@ -176,7 +164,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-full flex-1 bg-background">
       <a
         href="#main"
-        className="sr-only z-50 rounded-lg bg-indigo-600 px-4 py-2 text-white print:hidden focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-50 rounded-lg bg-nt-yellow px-4 py-2 font-bold text-ink print:hidden focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
         ข้ามไปยังเนื้อหาหลัก
       </a>
@@ -205,7 +193,7 @@ function Sidebar({ pathname }: { pathname: string }) {
   return (
     <aside
       aria-label="เมนูหลัก"
-      className="sticky top-0 hidden h-dvh shrink-0 flex-col border-r print:hidden border-zinc-200/80 bg-white md:flex md:w-[4.5rem] lg:w-64 dark:border-zinc-800 dark:bg-zinc-900"
+      className="sticky top-0 hidden h-dvh shrink-0 flex-col border-r print:hidden border-nt-gray-line bg-nt-charcoal text-on-dark md:flex md:w-[4.5rem] lg:w-64"
     >
       <Link
         href="/projects"
@@ -217,7 +205,7 @@ function Sidebar({ pathname }: { pathname: string }) {
           <span className="block text-sm font-semibold tracking-tight">
             CCTV Survey
           </span>
-          <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+          <span className="block text-xs text-on-dark-muted">
             สำรวจและออกแบบระบบกล้อง
           </span>
         </span>
@@ -231,14 +219,14 @@ function Sidebar({ pathname }: { pathname: string }) {
           ))}
         </ul>
       </nav>
-      <div className="border-t border-zinc-200/80 p-3 dark:border-zinc-800">
+      <div className="border-t border-nt-gray-line p-3">
         <div className="flex items-center gap-3 rounded-xl px-1 py-1.5 lg:px-2">
           <Avatar name={user.displayName ?? user.username} />
           <div className="hidden min-w-0 lg:block">
             <p className="truncate text-sm font-medium">
               {user.displayName ?? user.username}
             </p>
-            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="truncate text-xs text-on-dark-muted">
               {ROLE_LABELS[user.role]}
             </p>
           </div>
@@ -255,7 +243,7 @@ function SideLink({ item, current }: { item: NavItem; current: boolean }) {
       <Icon />
       <span className="hidden flex-1 truncate lg:block">{item.label}</span>
       {!item.href && (
-        <span className="hidden rounded-md bg-zinc-100 px-1.5 py-0.5 text-[0.7rem] font-medium text-zinc-500 lg:inline dark:bg-zinc-800 dark:text-zinc-400">
+        <span className="hidden rounded-md bg-white/10 px-1.5 py-0.5 text-[0.7rem] font-medium text-on-dark-muted lg:inline">
           เร็วๆ นี้
         </span>
       )}
@@ -268,10 +256,7 @@ function SideLink({ item, current }: { item: NavItem; current: boolean }) {
       <span
         aria-disabled="true"
         title={`${item.label} (เร็วๆ นี้)`}
-        className={cx(
-          shell,
-          'cursor-not-allowed text-zinc-400 dark:text-zinc-500',
-        )}
+        className={cx(shell, 'cursor-not-allowed text-zinc-400')}
       >
         <span className="sr-only">{item.label} (เร็วๆ นี้)</span>
         {body}
@@ -285,10 +270,10 @@ function SideLink({ item, current }: { item: NavItem; current: boolean }) {
       title={item.label}
       className={cx(
         shell,
-        'transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600',
+        'transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-yellow',
         current
-          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
-          : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100',
+          ? 'bg-nt-yellow font-semibold text-ink'
+          : 'text-on-dark-muted hover:bg-white/10 hover:text-white',
       )}
     >
       <span className="sr-only lg:hidden">{item.label}</span>
@@ -307,7 +292,7 @@ function TopBar({
   return (
     <header
       className={cx(
-        'sticky top-0 z-30 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md print:hidden dark:border-zinc-800 dark:bg-zinc-900/85',
+        'sticky top-0 z-30 border-b border-nt-gray-line bg-nt-charcoal text-on-dark print:hidden',
         // Phones: the survey map and header-band pages draw their own.
         (immersive || hasHeaderBand(pathname)) && 'hidden md:block',
       )}
@@ -320,14 +305,12 @@ function TopBar({
         >
           <LogoMark />
         </Link>
-        <p className="hidden min-w-0 truncate text-sm font-medium text-zinc-500 sm:block dark:text-zinc-400">
+        <p className="hidden min-w-0 truncate text-sm font-medium text-on-dark-muted sm:block">
           CCTV Survey
-          <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
+          <span aria-hidden className="mx-2 text-nt-gray-outline">
             /
           </span>
-          <span className="text-zinc-900 dark:text-zinc-100">
-            {sectionTitle(pathname)}
-          </span>
+          <span className="text-white">{sectionTitle(pathname)}</span>
         </p>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <Suspense fallback={<SearchBox />}>
@@ -350,10 +333,10 @@ export function HeaderBandBar() {
     <div className="mb-5 flex items-center gap-2 md:hidden">
       <Link
         href="/projects"
-        className="flex min-h-11 items-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="flex min-h-11 items-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-yellow"
         aria-label="CCTV Survey — หน้าโครงการ"
       >
-        <LogoMark onBrand />
+        <LogoMark />
       </Link>
       <div className="ml-auto flex items-center gap-2">
         <Notifications onBrand />
@@ -399,7 +382,7 @@ function SearchBox({
         ค้นหาโครงการ
       </label>
       <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-400">
+        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-on-dark-muted">
           <IconSearch className="size-4" />
         </span>
         <input
@@ -408,7 +391,7 @@ function SearchBox({
           type="search"
           defaultValue={defaultValue}
           placeholder="ค้นหาโครงการ…"
-          className="min-h-11 w-56 rounded-xl border border-zinc-200 bg-zinc-50 pl-9 pr-3 text-sm placeholder:text-zinc-400 focus:border-indigo-500 focus:bg-white focus:outline-2 focus:outline-indigo-500/30 lg:w-72 dark:border-zinc-700 dark:bg-zinc-800 dark:focus:bg-zinc-900"
+          className="min-h-11 w-56 rounded-xl border border-nt-gray-line bg-nt-gray pl-9 pr-3 text-sm text-white placeholder:text-on-dark-muted focus:border-nt-yellow focus:outline-none focus:ring-4 focus:ring-nt-yellow/25 lg:w-72"
         />
       </div>
     </form>
@@ -437,14 +420,14 @@ function useDismiss(
 }
 
 const iconButton =
-  'grid size-11 place-items-center rounded-xl text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100';
+  'grid size-11 place-items-center rounded-xl text-on-dark-muted transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-yellow';
 
 const popover =
-  'absolute right-0 top-full z-40 mt-2 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl shadow-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900';
+  'absolute right-0 top-full z-40 mt-2 rounded-2xl bg-white p-2 text-ink shadow-card';
 
-/** Round translucent button on the indigo header band. */
+/** Round translucent button on the dark header band. */
 const brandIconButton =
-  'grid size-11 place-items-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+  'grid size-11 place-items-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-yellow';
 
 function Notifications({ onBrand }: { onBrand?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -464,14 +447,9 @@ function Notifications({ onBrand }: { onBrand?: boolean }) {
         <IconBell />
       </button>
       {open && (
-        <div
-          id={panelId}
-          className={cx(popover, 'w-72 p-4 text-zinc-900 dark:text-zinc-100')}
-        >
+        <div id={panelId} className={cx(popover, 'w-72 p-4 text-zinc-900')}>
           <p className="text-sm font-medium">การแจ้งเตือน</p>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            ยังไม่มีการแจ้งเตือน
-          </p>
+          <p className="mt-1 text-sm text-zinc-500">ยังไม่มีการแจ้งเตือน</p>
         </div>
       )}
     </div>
@@ -521,8 +499,8 @@ function UserMenu({ onBrand }: { onBrand?: boolean }) {
         aria-label={`เมนูผู้ใช้: ${name}`}
         className={
           onBrand
-            ? 'grid size-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
-            : 'flex min-h-11 items-center gap-2 rounded-xl px-1.5 text-sm transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:px-2 dark:hover:bg-zinc-800'
+            ? 'grid size-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-yellow'
+            : 'flex min-h-11 items-center gap-2 rounded-xl px-1.5 text-sm text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-yellow sm:px-2'
         }
       >
         <span
@@ -531,7 +509,7 @@ function UserMenu({ onBrand }: { onBrand?: boolean }) {
           data-testid={onBrand ? 'current-user-band' : 'current-user'}
           className="flex items-center gap-2"
         >
-          <Avatar name={name} size={onBrand ? 'md' : 'sm'} onBrand={onBrand} />
+          <Avatar name={name} size={onBrand ? 'md' : 'sm'} />
           {!onBrand && (
             <span className="hidden max-w-[9rem] truncate font-medium sm:block">
               {name}
@@ -539,14 +517,11 @@ function UserMenu({ onBrand }: { onBrand?: boolean }) {
           )}
         </span>
         {!onBrand && (
-          <IconChevronDown className="hidden size-4 text-zinc-400 sm:block" />
+          <IconChevronDown className="hidden size-4 text-on-dark-muted sm:block" />
         )}
       </button>
       {menuOpen && (
-        <div
-          id={menuId}
-          className={cx(popover, 'w-64 text-zinc-900 dark:text-zinc-100')}
-        >
+        <div id={menuId} className={cx(popover, 'w-64 text-zinc-900')}>
           {logoutError && (
             <div className="mb-2">
               <Alert>{logoutError}</Alert>
@@ -560,13 +535,13 @@ function UserMenu({ onBrand }: { onBrand?: boolean }) {
             </div>
           </div>
           <div className="px-2 pb-2">
-            <Badge tone="violet">{ROLE_LABELS[user.role]}</Badge>
+            <Badge tone="brand">{ROLE_LABELS[user.role]}</Badge>
           </div>
-          <div className="border-t border-zinc-100 pt-1 dark:border-zinc-800">
+          <div className="border-t border-zinc-100 pt-1">
             <Link
               href="/account/password"
               onClick={() => setMenuOpen(false)}
-              className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100"
             >
               <IconKey className="size-4 text-zinc-500" />
               เปลี่ยนรหัสผ่าน
@@ -575,7 +550,7 @@ function UserMenu({ onBrand }: { onBrand?: boolean }) {
               <Link
                 href="/camera-models"
                 onClick={() => setMenuOpen(false)}
-                className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100"
               >
                 <IconCamera className="size-4 text-zinc-500" />
                 ข้อมูลกล้อง (รุ่นกล้อง)
@@ -585,7 +560,7 @@ function UserMenu({ onBrand }: { onBrand?: boolean }) {
               <Link
                 href="/users"
                 onClick={() => setMenuOpen(false)}
-                className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-sm hover:bg-zinc-100"
               >
                 <IconUsers className="size-4 text-zinc-500" />
                 จัดการผู้ใช้
@@ -617,7 +592,7 @@ function BottomNav({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="เมนูหลัก (มือถือ)"
-      className="fixed inset-x-0 bottom-0 z-30 rounded-t-[22px] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(15,23,42,0.06)] md:hidden print:hidden dark:bg-zinc-900 dark:shadow-[0_-1px_0_rgba(255,255,255,0.08)]"
+      className="fixed inset-x-0 bottom-0 z-30 rounded-t-[22px] bg-nt-charcoal pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.3)] md:hidden print:hidden"
     >
       <ul className="grid grid-cols-5">
         {items.map((item) => {
@@ -633,17 +608,17 @@ function BottomNav({ pathname }: { pathname: string }) {
                   aria-current={current ? 'page' : undefined}
                   className={cx(
                     shell,
-                    'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600',
+                    'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-nt-yellow',
                     current
-                      ? 'font-semibold text-indigo-700 dark:text-indigo-300'
-                      : 'font-medium text-slate-500 dark:text-slate-400',
+                      ? 'font-semibold text-ink'
+                      : 'font-medium text-on-dark-muted',
                   )}
                 >
                   {/* The whole cell is the tap target; the pill marks the tab. */}
                   <span
                     className={cx(
                       'flex min-w-14 max-w-full flex-col items-center gap-1 rounded-xl px-1.5 py-1.5 transition-colors',
-                      current && 'bg-indigo-50 dark:bg-indigo-500/15',
+                      current && 'bg-nt-yellow',
                     )}
                   >
                     <Icon />
@@ -653,10 +628,7 @@ function BottomNav({ pathname }: { pathname: string }) {
               ) : (
                 <span
                   aria-disabled="true"
-                  className={cx(
-                    shell,
-                    'font-medium text-zinc-300 dark:text-zinc-600',
-                  )}
+                  className={cx(shell, 'font-medium text-zinc-500')}
                 >
                   <Icon />
                   {item.label}

@@ -17,7 +17,7 @@ const fmt = (n: number) => n.toFixed(6);
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-1">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
         {title}
       </h3>
       {children}
@@ -64,7 +64,7 @@ export function CameraDetail({
         <p className="font-mono text-sm tabular-nums">
           {fmt(c.location.lat)}, {fmt(c.location.lng)}
         </p>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-zinc-600">
           {c.gpsAccuracyM !== undefined
             ? `GPS Accuracy ±${c.gpsAccuracyM} m`
             : 'เลือกบนแผนที่ / ไม่มีค่า GPS Accuracy'}
@@ -81,12 +81,12 @@ export function CameraDetail({
         ) : (
           <p className="text-sm text-zinc-500">ยังไม่ระบุยี่ห้อ / รุ่น</p>
         )}
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-zinc-600">
           {specLine(c.type, c.resolutionMp)}
           {c.cameraCount > 1 && ` · ${c.cameraCount} ตัว`}
         </p>
         {c.cameraModelActive === false && (
-          <p className="text-xs text-amber-700 dark:text-amber-300">
+          <p className="text-xs text-amber-700">
             รุ่นนี้ปิดใช้งานในรายการแล้ว — ข้อมูลของจุดนี้ยังเหมือนเดิม
           </p>
         )}
@@ -99,7 +99,7 @@ export function CameraDetail({
         uploader={uploader}
       />
 
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs text-zinc-500">
         {c.surveyedAt && `สำรวจ ${formatDateTime(c.surveyedAt)}`}
         {c.surveyorName && ` · ${c.surveyorName}`}
       </p>
@@ -129,10 +129,7 @@ export function CameraDetail({
       </div>
 
       {survey.missing.length > 0 && (
-        <p
-          data-testid="survey-missing"
-          className="text-xs text-amber-800 dark:text-amber-300"
-        >
+        <p data-testid="survey-missing" className="text-xs text-amber-800">
           ข้อมูลหลักยังขาด {survey.missing.length} รายการ:{' '}
           {survey.missing
             .slice(0, 3)

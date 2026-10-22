@@ -240,7 +240,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
             <Link
               href={`/projects/${id}`}
               aria-label="กลับไปหน้าโครงการ"
-              className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-zinc-700 shadow-md ring-1 ring-zinc-900/5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-white/10"
+              className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-zinc-700 shadow-md ring-1 ring-zinc-900/5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-nt-charcoal"
             >
               <IconArrowRight className="size-5 rotate-180" />
             </Link>
@@ -289,7 +289,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
           aria-busy={locating || undefined}
           className={cx(
             sheetOpen && 'invisible',
-            'absolute bottom-[calc(10rem+env(safe-area-inset-bottom))] right-4 z-10 grid size-14 place-items-center rounded-2xl bg-white text-indigo-600 shadow-lg ring-1 ring-zinc-900/5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:opacity-60 md:bottom-28 md:right-8 dark:bg-zinc-900 dark:text-indigo-300 dark:ring-white/10',
+            'absolute bottom-[calc(10rem+env(safe-area-inset-bottom))] right-4 z-10 grid size-14 place-items-center rounded-2xl bg-nt-yellow text-ink shadow-lg ring-1 ring-zinc-900/5 hover:bg-nt-yellow-hover focus-visible:outline-2 focus-visible:outline-nt-charcoal disabled:opacity-60 md:bottom-28 md:right-8',
           )}
         >
           <svg
@@ -331,7 +331,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
           </p>
           <div
             data-testid="pick-panel"
-            className="absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto max-w-md rounded-3xl bg-white p-4 shadow-2xl ring-1 ring-zinc-900/5 dark:bg-zinc-900 dark:ring-white/10"
+            className="absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 mx-auto max-w-md rounded-3xl bg-white p-4 shadow-2xl ring-1 ring-zinc-900/5"
           >
             {picked ? (
               <>
@@ -363,7 +363,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
                 </div>
               </>
             ) : (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-zinc-600">
                 ยังไม่ได้เลือกตำแหน่ง — แตะบนแผนที่ (เลื่อนและซูมได้ตามปกติ)
               </p>
             )}
@@ -384,24 +384,26 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
           aria-label="เมนูแผนที่"
           className={cx(
             sheetOpen && 'invisible',
-            'absolute inset-x-0 bottom-0 z-10 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-900/95',
+            'absolute inset-x-0 bottom-0 z-10 rounded-t-[22px] bg-nt-charcoal pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.3)] md:hidden',
           )}
         >
           <ul className="grid grid-cols-3">
             <li>
               <span
                 aria-current="page"
-                className="flex min-h-16 flex-col items-center justify-center gap-1 text-[0.75rem] font-medium text-indigo-700 dark:text-indigo-300"
+                className="flex min-h-16 flex-col items-center justify-center text-[0.75rem] font-semibold text-ink"
               >
-                <IconMap />
-                แผนที่
+                <span className="flex min-w-14 flex-col items-center gap-1 rounded-xl bg-nt-yellow px-1.5 py-1.5">
+                  <IconMap />
+                  แผนที่
+                </span>
               </span>
             </li>
             <li>
               <button
                 type="button"
                 onClick={() => setListOpen(true)}
-                className="flex min-h-16 w-full flex-col items-center justify-center gap-1 text-[0.75rem] font-medium text-zinc-600 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 dark:text-zinc-300"
+                className="flex min-h-16 w-full flex-col items-center justify-center gap-1 text-[0.75rem] font-medium text-on-dark-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-nt-yellow"
               >
                 <IconList />
                 จุด ({points.length})
@@ -411,7 +413,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
               <button
                 type="button"
                 onClick={() => setMoreOpen(true)}
-                className="flex min-h-16 w-full flex-col items-center justify-center gap-1 text-[0.75rem] font-medium text-zinc-600 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-600 dark:text-zinc-300"
+                className="flex min-h-16 w-full flex-col items-center justify-center gap-1 text-[0.75rem] font-medium text-on-dark-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-nt-yellow"
               >
                 <IconFolder />
                 อื่นๆ
@@ -454,7 +456,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
           {gpsError && (
             <div
               role="alert"
-              className="space-y-3 rounded-2xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
+              className="space-y-3 rounded-2xl bg-red-50 p-4 text-sm text-red-800"
             >
               <p>{gpsError}</p>
               {mapUsable && (
@@ -549,7 +551,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
                 href={directionsUrl(camera.location)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-nt-yellow px-3 text-sm font-bold text-ink hover:bg-nt-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-charcoal"
               >
                 นำทาง
               </a>
@@ -587,9 +589,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
         side
       >
         {points.length === 0 ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            ยังไม่มีจุดกล้องในโครงการนี้
-          </p>
+          <p className="text-sm text-zinc-600">ยังไม่มีจุดกล้องในโครงการนี้</p>
         ) : (
           <PointList
             label="จุดกล้องบนแผนที่"
@@ -622,7 +622,7 @@ export function SurveyMapView({ maps }: { maps: MapsConfig }) {
           <LinkButton href="/projects" variant="secondary" className="w-full">
             โครงการทั้งหมด
           </LinkButton>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs text-zinc-500">
             แผนที่:{' '}
             {engine === 'google'
               ? 'Google Maps'
@@ -654,12 +654,12 @@ function GpsBadge({ status, fix }: { status: GpsStatus; fix?: GpsFix }) {
   return (
     <div
       data-testid="gps-status"
-      className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-xl bg-white/95 px-3 text-sm shadow-md ring-1 ring-zinc-900/5 dark:bg-zinc-900/95 dark:ring-white/10"
+      className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-xl bg-white/95 px-3 text-sm shadow-md ring-1 ring-zinc-900/5"
     >
       <span aria-hidden className={cx('size-2.5 rounded-full', tone)} />
       <span className="font-medium">{GPS_LABELS[status]}</span>
       {fix && (status === 'ready' || status === 'weak') && (
-        <span className="tabular-nums text-zinc-600 dark:text-zinc-400">
+        <span className="tabular-nums text-zinc-600">
           ±{fix.accuracy.toFixed(1)} ม.
         </span>
       )}
@@ -703,12 +703,12 @@ function PointSearch({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={title ? `ค้นหาจุด CCTV ใน ${title}` : 'ค้นหาจุด CCTV'}
-        className="min-h-11 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-base shadow-md ring-1 ring-zinc-900/5 placeholder:text-zinc-400 focus:outline-2 focus:outline-indigo-500 sm:text-sm dark:bg-zinc-900 dark:ring-white/10"
+        className="min-h-11 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-base shadow-md ring-1 ring-zinc-900/5 placeholder:text-zinc-400 focus:outline-2 focus:outline-nt-charcoal sm:text-sm"
       />
       {needle && (
         <ul
           aria-label="ผลการค้นหา"
-          className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-zinc-900/5 dark:bg-zinc-900 dark:ring-white/10"
+          className="absolute inset-x-0 top-full mt-2 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-zinc-900/5"
         >
           {hits.length === 0 ? (
             <li className="px-4 py-3 text-sm text-zinc-500">ไม่พบจุดกล้อง</li>
@@ -721,7 +721,7 @@ function PointSearch({
                     setQ('');
                     onPick(c);
                   }}
-                  className="flex min-h-12 w-full items-center justify-between gap-3 px-4 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  className="flex min-h-12 w-full items-center justify-between gap-3 px-4 text-left text-sm hover:bg-zinc-50"
                 >
                   <span className="truncate font-medium">{c.label}</span>
                   <span className="truncate text-xs text-zinc-500">

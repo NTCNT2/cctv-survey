@@ -179,7 +179,7 @@ export const SurveyMap = forwardRef<SurveyMapHandle, SurveyMapProps>(
           ring: lib
             .circle(at, {
               radius: fix.accuracy,
-              color: '#4f46e5',
+              color: '#2563eb',
               weight: 1,
               fillOpacity: 0.12,
               interactive: false,
@@ -190,7 +190,7 @@ export const SurveyMap = forwardRef<SurveyMapHandle, SurveyMapProps>(
               radius: 8,
               color: '#ffffff',
               weight: 3,
-              fillColor: '#4f46e5',
+              fillColor: '#2563eb',
               fillOpacity: 1,
               interactive: false,
             })
@@ -241,7 +241,7 @@ export const SurveyMap = forwardRef<SurveyMapHandle, SurveyMapProps>(
         role="region"
         aria-label="แผนที่สำรวจ"
         data-map-engine="leaflet"
-        className="absolute inset-0 z-0 bg-zinc-100 dark:bg-zinc-800"
+        className="absolute inset-0 z-0 bg-zinc-100"
       />
     );
   },

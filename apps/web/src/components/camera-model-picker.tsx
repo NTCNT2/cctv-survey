@@ -142,11 +142,11 @@ export function CameraModelPicker({
         <p
           data-testid="camera-spec"
           aria-live="polite"
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-900 dark:bg-indigo-500/15 dark:text-indigo-100"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-nt-yellow-soft px-4 py-3 text-sm font-medium text-ink"
         >
           <span>{pickSpec(chosen.cameraType, chosen.resolutionMp)}</span>
           {!chosen.active && (
-            <span className="text-xs font-normal text-amber-700 dark:text-amber-300">
+            <span className="text-xs font-normal text-amber-700">
               รุ่นนี้ปิดใช้งานแล้ว (ข้อมูลเดิมยังอยู่)
             </span>
           )}

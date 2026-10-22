@@ -47,13 +47,9 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="mb-10">
+    <section className="mb-6 rounded-2xl bg-white p-4 text-ink shadow-card sm:p-6">
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      {detail && (
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {detail}
-        </p>
-      )}
+      {detail && <p className="mt-1 text-sm text-zinc-600">{detail}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -113,17 +109,12 @@ export default function DesignSystemPage() {
 
       <Section title="ตัวเลขสรุป">
         <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <StatCard
-            label="กล้องทั้งหมด"
-            value="128"
-            icon={<IconCamera />}
-            tone="violet"
-          />
+          <StatCard label="กล้องทั้งหมด" value="128" icon={<IconCamera />} />
           <StatCard
             label="สำรวจแล้ว"
             value="96"
             icon={<IconCheck />}
-            tone="blue"
+            tone="green"
             hint="75% ของทั้งหมด"
           />
           <StatCard label="กำลังโหลด" value={undefined} icon={<IconFolder />} />
@@ -169,7 +160,8 @@ export default function DesignSystemPage() {
             ]}
           />
         </div>
-        <div className="mt-6">
+        {/* Tabs are styled for the dark page (where the app uses them). */}
+        <div className="mt-6 rounded-xl bg-nt-gray px-3 pb-3">
           <Tabs
             label="ตัวอย่างแท็บ"
             value={tab}
@@ -185,7 +177,7 @@ export default function DesignSystemPage() {
             role="tabpanel"
             id="ds-tabs"
             aria-labelledby={`ds-tabs-tab-${tab}`}
-            className="pt-4 text-sm text-zinc-600 dark:text-zinc-400"
+            className="pt-4 text-sm text-on-dark-muted"
           >
             แท็บที่เลือก: {tab}
           </div>
@@ -215,7 +207,7 @@ export default function DesignSystemPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <p className="font-medium">CCTV-001</p>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-zinc-600">
               หน้าอาคาร A · Bullet 4MP
             </p>
           </Card>

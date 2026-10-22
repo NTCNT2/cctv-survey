@@ -59,11 +59,9 @@ const HEIGHTS = [3, 4, 5, 6];
 const DISTANCES = [10, 20, 30, 50];
 
 const chip =
-  'inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-indigo-600';
-const chipOff =
-  'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200';
-const chipOn =
-  'border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/15 dark:text-indigo-300';
+  'inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-nt-charcoal';
+const chipOff = 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50';
+const chipOn = 'border-nt-charcoal bg-nt-yellow font-semibold text-ink';
 
 /**
  * Quick picks for a number field: tapping one fills the field (which can
@@ -142,7 +140,7 @@ function ChoiceField({
             type="button"
             onClick={() => onChange('')}
             // The tap area is larger than the text (44px).
-            className="-my-3 min-h-11 px-1 text-xs text-indigo-700 hover:underline dark:text-indigo-400"
+            className="-my-3 min-h-11 px-1 text-xs text-ink underline underline-offset-2 hover:decoration-2"
             aria-label={`ล้างค่า ${label}`}
           >
             ล้างค่า
@@ -160,7 +158,7 @@ function ChoiceField({
               onChange={() => onChange(o.value)}
               className="peer sr-only"
             />
-            <span className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 peer-focus-visible:outline-2 peer-focus-visible:outline-indigo-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:peer-checked:border-indigo-400 dark:peer-checked:bg-indigo-500/15 dark:peer-checked:text-indigo-300">
+            <span className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-700 peer-checked:border-nt-charcoal peer-checked:bg-nt-yellow peer-checked:font-semibold peer-checked:text-ink peer-focus-visible:outline-2 peer-focus-visible:outline-nt-charcoal">
               {o.label}
             </span>
           </label>
@@ -227,8 +225,8 @@ export function SurveyProgress({
       data-testid="survey-progress"
       className={
         complete
-          ? 'rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100'
-          : 'rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100'
+          ? 'rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900'
+          : 'rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900'
       }
     >
       <div className="flex items-center justify-between gap-3">
@@ -243,7 +241,7 @@ export function SurveyProgress({
           aria-valuemin={0}
           aria-valuemax={total}
           aria-valuenow={done}
-          className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-white/70 dark:bg-zinc-800"
+          className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-white/70"
         >
           <div
             className={
@@ -272,12 +270,12 @@ export function SurveyProgress({
                   <button
                     type="button"
                     onClick={() => onJump(i.field)}
-                    className="min-h-11 rounded-full bg-white/80 px-3 text-xs font-medium ring-1 ring-amber-300 ring-inset hover:bg-white dark:bg-zinc-900 dark:ring-amber-800"
+                    className="min-h-11 rounded-full bg-white/80 px-3 text-xs font-medium ring-1 ring-amber-300 ring-inset hover:bg-white"
                   >
                     {i.no}. {i.label}
                   </button>
                 ) : (
-                  <span className="inline-flex min-h-6 items-center rounded-full bg-white/80 px-2.5 text-xs font-medium ring-1 ring-amber-300 ring-inset dark:bg-zinc-900 dark:ring-amber-800">
+                  <span className="inline-flex min-h-6 items-center rounded-full bg-white/80 px-2.5 text-xs font-medium ring-1 ring-amber-300 ring-inset">
                     {i.no}. {i.label}
                   </span>
                 )}
@@ -497,9 +495,7 @@ export function SurveyForm({
       <SurveyProgress {...progress} onJump={goTo} />
       {formError && <Alert>{formError}</Alert>}
 
-      <h2 className="px-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-        ข้อมูลหลัก
-      </h2>
+      <h2 className="px-1 text-sm font-semibold text-zinc-700">ข้อมูลหลัก</h2>
 
       <Section
         id={SURVEY_SECTION_IDS.view}
@@ -592,11 +588,7 @@ export function SurveyForm({
         </Wide>
         {noPole ? (
           <Wide>
-            <p
-              id="poleHeightM"
-              tabIndex={-1}
-              className="text-sm text-zinc-500 dark:text-zinc-400"
-            >
+            <p id="poleHeightM" tabIndex={-1} className="text-sm text-zinc-500">
               6. ความสูงเสา — ไม่ต้องกรอก (ไม่ได้ติดบนเสา)
             </p>
           </Wide>
@@ -633,7 +625,7 @@ export function SurveyForm({
             {/* A suggestion only: never filled in without a tap. */}
             <div
               data-testid="cable-suggestion"
-              className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400"
+              className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600"
             >
               {count(cableLengthM) === cableSuggestion ? (
                 <span>ใช้ค่าประมาณจากระยะถึงตู้ — แก้ได้ตามหน้างานจริง</span>
@@ -685,12 +677,12 @@ export function SurveyForm({
       <details
         id={SURVEY_SECTION_IDS.extra}
         open={extraOpen}
-        className="group scroll-mt-4 rounded-2xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        className="group scroll-mt-4 rounded-2xl border border-zinc-200/80 bg-white shadow-sm"
       >
         <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 p-4 sm:px-5 [&::-webkit-details-marker]:hidden">
           <span
             aria-hidden
-            className="grid size-6 shrink-0 place-items-center rounded-full bg-zinc-400 text-xs font-semibold text-white dark:bg-zinc-600"
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-zinc-400 text-xs font-semibold text-white"
           >
             4
           </span>
@@ -698,7 +690,7 @@ export function SurveyForm({
             <span className="block text-base font-semibold">
               ข้อมูลเพิ่มเติม (ไม่บังคับ)
             </span>
-            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="block text-xs text-zinc-500">
               ข้อ 11–14 · กรอกแล้ว {progress.extraDone}/{progress.extraTotal}
             </span>
           </span>
@@ -765,7 +757,7 @@ export function SurveyForm({
 
       <div
         ref={saveBar}
-        className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 dark:border-zinc-800 dark:bg-zinc-900/95 [&>*]:flex-1"
+        className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 [&>*]:flex-1"
       >
         <LinkButton href={cancelHref} variant="secondary">
           ยกเลิก

@@ -197,10 +197,7 @@ function UserList({
           <Alert>{error}</Alert>
         </div>
       )}
-      <ul
-        aria-label="รายการผู้ใช้"
-        className="-my-3 divide-y divide-zinc-100 dark:divide-zinc-800"
-      >
+      <ul aria-label="รายการผู้ใช้" className="-my-3 divide-y divide-zinc-100">
         {users.map((u) => {
           const self = u.id === me.id;
           const name = u.displayName ?? u.username;
@@ -215,7 +212,7 @@ function UserList({
                   <span className="truncate font-medium">{name}</span>
                   {self && <Badge tone="muted">คุณ</Badge>}
                 </p>
-                <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="truncate text-sm text-zinc-600">
                   @{u.username}
                   {' · '}
                   {u.lastLoginAt
@@ -242,7 +239,7 @@ function UserList({
                 {self ? (
                   <Link
                     href="/account/password"
-                    className="inline-flex min-h-11 items-center px-2 text-sm text-indigo-700 hover:underline dark:text-indigo-400"
+                    className="inline-flex min-h-11 items-center px-2 text-sm text-ink underline underline-offset-2 hover:decoration-2"
                   >
                     เปลี่ยนรหัสผ่านของคุณ
                   </Link>
@@ -312,7 +309,7 @@ function RoleField({
         {ROLE_ORDER.map((r) => (
           <label
             key={r}
-            className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-3 has-checked:border-indigo-500 has-checked:bg-indigo-50 has-disabled:cursor-not-allowed has-disabled:opacity-60 dark:border-zinc-700 dark:has-checked:border-indigo-400 dark:has-checked:bg-indigo-500/10"
+            className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-3 has-checked:border-nt-charcoal has-checked:bg-nt-yellow-soft has-disabled:cursor-not-allowed has-disabled:opacity-60"
           >
             <input
               type="radio"
@@ -334,7 +331,7 @@ function RoleField({
               </span>
               <span
                 id={`role-${r}-desc`}
-                className="block text-xs text-zinc-600 dark:text-zinc-400"
+                className="block text-xs text-zinc-600"
               >
                 {ROLE_DESCRIPTIONS[r]}
               </span>
@@ -689,12 +686,12 @@ function Credentials({
           ? `รีเซ็ตรหัสผ่าน @${username} แล้ว`
           : `สร้างผู้ใช้ @${username} แล้ว`}
       </p>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-zinc-600">
         ส่งข้อมูลนี้ให้ผู้ใช้ทางช่องทางที่ปลอดภัย
         รหัสผ่านจะแสดงแค่ครั้งนี้ครั้งเดียว
         และแนะนำให้ผู้ใช้เปลี่ยนรหัสผ่านเองหลังเข้าสู่ระบบ
       </p>
-      <dl className="grid gap-2 rounded-xl bg-zinc-50 p-4 font-mono text-sm dark:bg-zinc-800">
+      <dl className="grid gap-2 rounded-xl bg-zinc-50 p-4 font-mono text-sm">
         <div className="flex flex-wrap gap-x-2">
           <dt className="text-zinc-500">ชื่อผู้ใช้:</dt>
           <dd data-testid="credentials-username" className="break-all">

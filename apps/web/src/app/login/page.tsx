@@ -38,25 +38,25 @@ const cx = (...c: (string | false | undefined)[]) =>
  */
 export default function LoginPage() {
   return (
-    <main className="relative flex min-h-[100dvh] flex-1 flex-col overflow-hidden bg-linear-160 from-indigo-600 via-violet-700 to-violet-600 md:grid md:grid-cols-2 md:items-center md:gap-8 md:px-10 lg:px-16">
+    <main className="relative flex min-h-[100dvh] flex-1 flex-col overflow-hidden bg-linear-170 from-[#4a4a4d] via-nt-gray to-nt-charcoal md:grid md:grid-cols-2 md:items-center md:gap-8 md:px-10 lg:px-16">
       <BrandArt variant="wide" />
       <Brand />
       <div className="relative z-10 mt-auto md:mt-0 md:flex md:justify-center">
         <section
           aria-labelledby="login-title"
-          className="rounded-t-[32px] bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-zinc-900 shadow-[0_-12px_32px_rgba(30,27,75,0.25)] md:w-full md:max-w-[420px] md:rounded-[32px] md:p-8 md:shadow-2xl dark:bg-zinc-900 dark:text-zinc-100"
+          className="rounded-t-[32px] border-t-4 border-nt-yellow bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-ink shadow-[0_-12px_32px_rgba(0,0,0,0.35)] md:w-full md:max-w-[420px] md:rounded-[32px] md:p-8 md:shadow-2xl"
         >
           <h2 id="login-title" className="text-2xl font-bold tracking-tight">
             เข้าสู่ระบบ
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-ink-muted">
             ใช้บัญชีที่ได้รับจากผู้ดูแลระบบ
           </p>
           {/* useSearchParams needs a Suspense boundary (Next.js 16). */}
           <Suspense>
             <LoginForm />
           </Suspense>
-          <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-6 text-center text-xs text-ink-muted">
             NT ชัยนาท · v{process.env.NEXT_PUBLIC_APP_VERSION}
           </p>
         </section>
@@ -73,7 +73,7 @@ function Brand() {
       <div className="relative">
         <span
           aria-hidden
-          className="grid size-[60px] place-items-center rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-indigo-950/20"
+          className="grid size-[60px] place-items-center rounded-2xl bg-nt-yellow text-ink shadow-lg shadow-black/30"
         >
           <svg
             viewBox="0 0 24 24"
@@ -89,8 +89,8 @@ function Brand() {
             <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
           </svg>
         </span>
-        {/* indigo-100, not 200: small text keeps >= 4.5:1 on the gradient. */}
-        <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-indigo-100">
+        {/* Yellow on the dark greys only (never on white). */}
+        <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-nt-yellow">
           CCTV Site Survey &amp; Design
         </p>
         <h1 className="mt-3 text-[2rem] font-bold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
@@ -105,12 +105,10 @@ function Brand() {
   );
 }
 
-/** Camera points of the decoration: [x, y, colour] in the 400×300 art. */
-type ArtPoint = readonly [number, number, string];
+/** Camera points of the decoration: [x, y] in the 400×300 art. */
+type ArtPoint = readonly [number, number];
 
-const SKY = '#7dd3fc';
-const AMBER = '#fde68a';
-const GREEN = '#86efac';
+const YELLOW = 'var(--nt-yellow)';
 
 /**
  * Where the points go so they never sit on the headline: phones anchor the
@@ -123,9 +121,9 @@ const ART = {
     align: 'xMaxYMin slice',
     road: 'M250 -10C300 60 340 120 330 190s40 90 80 120',
     points: [
-      [372, 48, SKY],
-      [386, 168, AMBER],
-      [352, 262, GREEN],
+      [372, 48],
+      [386, 168],
+      [352, 262],
     ] as ArtPoint[],
     fov: 'M372 48 330 96a62 62 0 0 0 58 10z',
   },
@@ -134,9 +132,9 @@ const ART = {
     align: 'xMidYMid slice',
     road: 'M150 320C170 230 230 190 200 120S180 30 230 -20',
     points: [
-      [192, 70, SKY],
-      [176, 160, AMBER],
-      [210, 238, GREEN],
+      [192, 70],
+      [176, 160],
+      [210, 238],
     ] as ArtPoint[],
     fov: 'M192 70 160 110a52 52 0 0 0 48 4z',
   },
@@ -162,25 +160,32 @@ function BrandArt({ variant }: { variant: keyof typeof ART }) {
     >
       <defs>
         <pattern id={grid} width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M32 0H0v32" fill="none" stroke="#fff" strokeOpacity="0.08" />
+          <path d="M32 0H0v32" fill="none" stroke="#fff" strokeOpacity="0.06" />
         </pattern>
       </defs>
       <rect x="-200" width="800" height="300" fill={`url(#${grid})`} />
       <path
         d={a.road}
         fill="none"
-        stroke="#fff"
-        strokeOpacity="0.2"
+        stroke={YELLOW}
+        strokeOpacity="0.35"
         strokeWidth="3"
         strokeDasharray="10 10"
         strokeLinecap="round"
       />
       {/* Field of view of the first camera. */}
-      <path d={a.fov} fill="#fff" fillOpacity="0.1" />
-      {a.points.map(([x, y, c]) => (
+      <path d={a.fov} fill={YELLOW} fillOpacity="0.12" />
+      {a.points.map(([x, y]) => (
         <g key={`${x}-${y}`}>
-          <circle cx={x} cy={y} r="24" fill={c} fillOpacity="0.14" />
-          <circle cx={x} cy={y} r="6" fill={c} stroke="#fff" strokeWidth="2" />
+          <circle cx={x} cy={y} r="24" fill={YELLOW} fillOpacity="0.14" />
+          <circle
+            cx={x}
+            cy={y}
+            r="6"
+            fill={YELLOW}
+            stroke="var(--nt-charcoal)"
+            strokeWidth="2"
+          />
         </g>
       ))}
     </svg>
@@ -283,7 +288,7 @@ function LoginForm() {
             onClick={() => setShowPassword((v) => !v)}
             aria-pressed={showPassword}
             aria-label={showPassword ? 'ซ่อนรหัส' : 'แสดงรหัส'}
-            className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-slate-400 dark:hover:bg-zinc-800"
+            className="grid size-11 place-items-center rounded-xl text-ink-muted hover:bg-zinc-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-nt-charcoal"
           >
             {showPassword ? (
               <IconEyeOff className="size-5" />
@@ -297,7 +302,7 @@ function LoginForm() {
         type="submit"
         disabled={busy}
         aria-busy={busy || undefined}
-        className="mt-2 flex h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-base font-semibold text-white shadow-lg shadow-violet-600/30 transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+        className="mt-2 flex h-[54px] w-full items-center justify-center gap-2 rounded-2xl bg-nt-yellow text-base font-bold text-ink shadow-lg shadow-black/25 transition hover:bg-nt-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-charcoal active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
       >
         {busy && <Spinner />}
         เข้าสู่ระบบ
@@ -329,17 +334,17 @@ function keepInView(e: FocusEvent<HTMLFormElement>) {
 
 const bannerTones = {
   ok: {
-    box: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
+    box: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     icon: <IconCheck className="size-5" />,
     role: 'status',
   },
   warn: {
-    box: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200',
+    box: 'border-amber-200 bg-amber-50 text-amber-800',
     icon: <IconClock className="size-5" />,
     role: 'status',
   },
   error: {
-    box: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200',
+    box: 'border-red-200 bg-red-50 text-red-700',
     icon: <IconAlert className="size-5" />,
     role: 'alert',
   },
@@ -393,7 +398,7 @@ function Field({
       <div className="relative mt-1.5">
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-indigo-500 dark:text-indigo-400"
+          className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-ink-muted"
         >
           {icon}
         </span>
@@ -404,9 +409,9 @@ function Field({
           aria-describedby={error ? errorId : undefined}
           className={cx(
             // 16px text: iOS does not zoom into the field.
-            'block h-[52px] w-full rounded-2xl border bg-[#F3F4FB] pl-12 text-base text-zinc-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:bg-zinc-900 dark:focus:ring-indigo-500/25',
+            'block h-[52px] w-full rounded-2xl border bg-zinc-100 pl-12 text-base text-ink outline-none transition focus:border-nt-charcoal focus:bg-white focus:ring-4 focus:ring-nt-yellow-soft',
             end ? 'pr-14' : 'pr-4',
-            error ? 'border-red-500' : 'border-[#E4E6F2] dark:border-zinc-700',
+            error ? 'border-red-500' : 'border-zinc-200',
           )}
           {...props}
         />

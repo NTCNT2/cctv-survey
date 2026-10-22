@@ -93,7 +93,7 @@ export function OverviewMapView({ maps }: { maps: MapsConfig }) {
         title="แผนที่สำรวจ"
         subtitle="จุดกล้องของทุกโครงการ — เพิ่มหรือแก้ไขจุดได้ในแผนที่ของแต่ละโครงการ"
       />
-      <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+      <div className="mb-3 grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 text-ink shadow-card sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
         <SelectField
           id="map-project"
           label="โครงการ"
@@ -125,10 +125,7 @@ export function OverviewMapView({ maps }: { maps: MapsConfig }) {
           รายการจุด ({shown.length})
         </Button>
       </div>
-      <p
-        role="status"
-        className="mb-3 text-sm text-zinc-600 dark:text-zinc-400"
-      >
+      <p role="status" className="mb-3 text-sm text-on-dark-muted">
         {all.isPending
           ? 'กำลังโหลดจุดกล้อง…'
           : `แสดง ${shown.length} จุด จาก ${projectCount} โครงการ`}
@@ -149,7 +146,7 @@ export function OverviewMapView({ maps }: { maps: MapsConfig }) {
       ) : (
         <div
           data-testid="overview-map"
-          className="relative h-[65dvh] min-h-80 overflow-hidden rounded-2xl border border-zinc-200/80 shadow-sm dark:border-zinc-800"
+          className="relative h-[65dvh] min-h-80 overflow-hidden rounded-2xl border border-zinc-200/80 shadow-sm"
         >
           {engine === 'google' && setup.engine === 'google' && (
             <GoogleSurveyMap
@@ -270,7 +267,7 @@ function PointActions({ camera: c }: { camera: CameraListItem }) {
         href={directionsUrl(c.location)}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-charcoal"
       >
         นำทาง
       </a>

@@ -11,11 +11,11 @@ const cx = (...c: (string | false | undefined)[]) =>
 
 /** Solid colour per badge tone, for bars and legend dots. */
 const toneFill: Record<BadgeTone, string> = {
-  neutral: 'bg-zinc-400 dark:bg-zinc-500',
-  muted: 'bg-zinc-300 dark:bg-zinc-600',
+  neutral: 'bg-zinc-400',
+  muted: 'bg-zinc-300',
   blue: 'bg-blue-500',
-  violet: 'bg-violet-500',
-  cyan: 'bg-cyan-500',
+  brand: 'bg-nt-yellow',
+  cyan: 'bg-teal-500',
   amber: 'bg-amber-500',
   orange: 'bg-orange-500',
   green: 'bg-emerald-500',
@@ -76,7 +76,7 @@ export function CameraMix({
               key={p.status}
               className="flex items-center justify-between gap-3 text-sm"
             >
-              <span className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
+              <span className="flex items-center gap-2 text-zinc-600">
                 <span
                   className={cx('size-2 rounded-full', statusFill(p.status))}
                 />

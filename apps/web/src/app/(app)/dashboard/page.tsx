@@ -89,7 +89,7 @@ export default function DashboardPage() {
               <h2 className="text-base font-semibold">
                 จุดที่สำรวจต่อวัน (30 วัน)
               </h2>
-              <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mb-4 text-sm text-zinc-600">
                 นับตามวันที่สำรวจของแต่ละจุด เวลาประเทศไทย
               </p>
               {s ? (
@@ -107,9 +107,7 @@ export default function DashboardPage() {
               {!s ? (
                 <Skeleton lines={2} />
               ) : s.cameras.points === 0 ? (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  ยังไม่มีจุดกล้อง
-                </p>
+                <p className="text-sm text-zinc-600">ยังไม่มีจุดกล้อง</p>
               ) : (
                 <CameraMix
                   summary={{
@@ -149,21 +147,18 @@ function Stats({ s }: { s?: DashboardSummary }) {
       value: active,
       hint: s && `จากทั้งหมด ${s.projects.total} โครงการ`,
       icon: <IconFolder />,
-      tone: 'violet' as const,
     },
     {
       label: 'จุดกล้อง',
       value: s?.cameras.points,
       hint: s && `กล้องรวม ${s.cameras.units} ตัว`,
       icon: <IconCamera />,
-      tone: 'blue' as const,
     },
     {
       label: 'สำรวจใน 7 วัน',
       value: week,
       hint: 'จุด',
       icon: <IconClock />,
-      tone: 'cyan' as const,
     },
     {
       label: 'ติดตั้งแล้ว',
@@ -177,25 +172,23 @@ function Stats({ s }: { s?: DashboardSummary }) {
       value: s?.cameras.photos,
       hint: 'รูป',
       icon: <IconImage />,
-      tone: 'amber' as const,
+      // The full-width highlight card: NT yellow.
       wide: true,
     },
   ];
   return (
     <section aria-label="สรุปภาพรวม" className="relative -mt-8 px-1 sm:px-3">
       <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {cards.map((c, i) => (
+        {cards.map((c) => (
           <StatCard
             key={c.label}
             label={c.label}
             value={c.value?.toLocaleString('th-TH')}
             hint={c.hint}
             icon={c.icon}
-            tone={c.tone}
+            tone={'tone' in c ? c.tone : undefined}
             wide={'wide' in c}
-            // The row on the band gets a soft indigo shadow: 2 cards on
-            // phones, 4 from lg.
-            raised={i < 2 ? true : i < 4 ? 'lg' : undefined}
+            featured={'wide' in c}
             className={'wide' in c ? 'col-span-2 lg:col-span-4' : undefined}
           />
         ))}
@@ -231,7 +224,7 @@ function FollowUps({
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold">ต้องตามต่อ</h2>
         {cameras && (
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
+          <span className="text-sm text-zinc-600">
             {open.length} จุด
             {truncated && ` (จาก ${cameras.length} จุดที่แก้ไขล่าสุด)`}
           </span>
@@ -249,17 +242,17 @@ function FollowUps({
       ) : (
         <ul
           aria-label="จุดที่ต้องตามต่อ"
-          className="-my-2 divide-y divide-zinc-100 dark:divide-zinc-800"
+          className="-my-2 divide-y divide-zinc-100"
         >
           {open.slice(0, FOLLOW_UP_SHOWN).map(({ c, why }) => (
             <li key={c.id}>
               <Link
                 href={canWrite ? `/cameras/${c.id}/survey` : `/cameras/${c.id}`}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-xl px-2 py-2 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-zinc-800"
+                className="flex min-h-14 items-center justify-between gap-3 rounded-xl px-2 py-2 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-nt-charcoal"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{c.label}</span>
-                  <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="block truncate text-xs text-zinc-500">
                     {c.projectName}
                   </span>
                 </span>
@@ -272,12 +265,12 @@ function FollowUps({
         </ul>
       )}
       {open.length > FOLLOW_UP_SHOWN && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 text-sm text-zinc-600">
           <span>และอีก {open.length - FOLLOW_UP_SHOWN} จุด</span>
           {/* A full 44px tap target, not a link inside the sentence. */}
           <Link
             href="/reports"
-            className="inline-flex min-h-11 items-center font-medium text-indigo-700 hover:underline dark:text-indigo-400"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 hover:decoration-2"
           >
             ดูทั้งหมดในรายงานของแต่ละโครงการ →
           </Link>
@@ -291,13 +284,11 @@ function Surveyors({ s }: { s?: DashboardSummary }) {
   return (
     <Card>
       <h2 className="text-base font-semibold">ผู้สำรวจ (30 วัน)</h2>
-      <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-        จำนวนจุดที่บันทึก
-      </p>
+      <p className="mb-3 text-sm text-zinc-600">จำนวนจุดที่บันทึก</p>
       {!s ? (
         <Skeleton lines={2} />
       ) : s.surveyors.length === 0 ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-zinc-600">
           ยังไม่มีการสำรวจใน 30 วันที่ผ่านมา
         </p>
       ) : (
@@ -309,7 +300,7 @@ function Surveyors({ s }: { s?: DashboardSummary }) {
               <th>จุด</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-zinc-100">
             {s.surveyors.map((u) => (
               <tr key={u.userId}>
                 <td className="truncate py-2 pr-3">{u.name}</td>
@@ -332,29 +323,27 @@ function Recent({ cameras }: { cameras?: CameraListItem[] }) {
     <Card>
       <h2 className="mb-3 text-base font-semibold">อัปเดตล่าสุด</h2>
       {latest.length === 0 ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          ยังไม่มีจุดกล้อง
-        </p>
+        <p className="text-sm text-zinc-600">ยังไม่มีจุดกล้อง</p>
       ) : (
         <ul
           aria-label="จุดกล้องที่แก้ไขล่าสุด"
-          className="-my-2 divide-y divide-zinc-100 dark:divide-zinc-800"
+          className="-my-2 divide-y divide-zinc-100"
         >
           {latest.map((c) => (
             <li key={c.id}>
               <Link
                 href={`/cameras/${c.id}`}
-                className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl px-2 py-2 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-zinc-800"
+                className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl px-2 py-2 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-nt-charcoal"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-medium">
                     {c.label}
-                    <span className="font-normal text-zinc-500 dark:text-zinc-400">
+                    <span className="font-normal text-zinc-500">
                       {' · '}
                       {c.projectName}
                     </span>
                   </span>
-                  <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="block truncate text-xs text-zinc-500">
                     {formatRelative(c.updatedAt)}
                     {c.surveyorName && ` · สำรวจโดย ${c.surveyorName}`}
                   </span>

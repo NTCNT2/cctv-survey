@@ -200,7 +200,7 @@ function SiteList({ projectId }: { projectId: string }) {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="break-words font-medium">{s.name}</p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="text-sm text-zinc-600">
                     {[
                       s.address,
                       coords(s.location),
@@ -238,7 +238,7 @@ function SiteList({ projectId }: { projectId: string }) {
 }
 
 const filterControl =
-  'min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base shadow-sm focus:border-indigo-500 focus:outline-2 focus:outline-indigo-500/30 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900';
+  'min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base shadow-sm focus:border-nt-charcoal focus:outline-none focus:ring-4 focus:ring-nt-yellow-soft sm:text-sm';
 
 function FilterSelect({
   label,
@@ -295,20 +295,17 @@ function CameraOverview({ cameras }: { cameras: CameraPoint[] }) {
           label="จุดกล้องทั้งหมด"
           value={cameras.length.toLocaleString('th-TH')}
           icon={<IconCamera />}
-          tone="violet"
           hint={`รวม ${units.toLocaleString('th-TH')} ตัว`}
         />
         <StatCard
           label="สำรวจแล้ว"
           value={count('surveyed').toLocaleString('th-TH')}
           icon={<IconSearch />}
-          tone="blue"
         />
         <StatCard
           label="รอติดตั้ง"
           value={count('pending_install').toLocaleString('th-TH')}
           icon={<IconClock />}
-          tone="violet"
         />
         <StatCard
           label="ติดตั้งแล้ว"
@@ -318,7 +315,9 @@ function CameraOverview({ cameras }: { cameras: CameraPoint[] }) {
           hint={issues ? `มีปัญหา ${issues} จุด` : undefined}
         />
       </dl>
-      <CameraMix summary={summary} legend className="mt-4 sm:max-w-md" />
+      <Card className="mt-4 sm:max-w-md">
+        <CameraMix summary={summary} legend />
+      </Card>
     </section>
   );
 }
@@ -450,7 +449,7 @@ function CameraList({ projectId }: { projectId: string }) {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p
-          className="text-sm text-zinc-600 dark:text-zinc-400"
+          className="text-sm text-on-dark-muted"
           role={filtering ? 'status' : undefined}
         >
           {filtering
@@ -466,11 +465,11 @@ function CameraList({ projectId }: { projectId: string }) {
           detail="ลองเปลี่ยนคำค้นหาหรือตัวกรอง"
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
           {/* Column titles (desktop); each row repeats them for screen readers. */}
           <div
             aria-hidden
-            className="hidden grid-cols-[minmax(8rem,1.1fr)_minmax(10rem,1.4fr)_minmax(9rem,1.2fr)_8rem_8rem_7rem_auto] gap-4 border-b border-zinc-200/80 bg-zinc-50 px-5 py-2.5 text-xs font-medium text-zinc-500 lg:grid dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-400"
+            className="hidden grid-cols-[minmax(8rem,1.1fr)_minmax(10rem,1.4fr)_minmax(9rem,1.2fr)_8rem_8rem_7rem_auto] gap-4 border-b border-zinc-200/80 bg-zinc-50 px-5 py-2.5 text-xs font-medium text-zinc-500 lg:grid"
           >
             <span>รหัสจุด</span>
             <span>ตำแหน่ง</span>
@@ -480,10 +479,7 @@ function CameraList({ projectId }: { projectId: string }) {
             <span>อัปเดต</span>
             <span className="w-32" />
           </div>
-          <ul
-            aria-label="รายการกล้อง"
-            className="divide-y divide-zinc-200/80 dark:divide-zinc-800"
-          >
+          <ul aria-label="รายการกล้อง" className="divide-y divide-zinc-200/80">
             {shown.map((c) => (
               <li
                 key={c.id}
@@ -492,7 +488,7 @@ function CameraList({ projectId }: { projectId: string }) {
                 <div className="flex min-w-0 items-center justify-between gap-2 lg:block">
                   <Link
                     href={`/cameras/${c.id}`}
-                    className="break-all font-semibold text-indigo-700 hover:underline dark:text-indigo-300"
+                    className="break-all font-semibold text-ink underline underline-offset-2 hover:decoration-2"
                   >
                     {c.label}
                   </Link>
@@ -502,7 +498,7 @@ function CameraList({ projectId }: { projectId: string }) {
                     </Badge>
                   </span>
                 </div>
-                <div className="min-w-0 text-sm text-zinc-600 dark:text-zinc-400">
+                <div className="min-w-0 text-sm text-zinc-600">
                   <p className="truncate">
                     {[c.siteId && (siteName.get(c.siteId) ?? 'Site'), c.address]
                       .filter(Boolean)
@@ -519,7 +515,7 @@ function CameraList({ projectId }: { projectId: string }) {
                     {cameraLine(c)}
                     {c.photoCount > 0 && ` · รูป ${c.photoCount}`}
                   </p>
-                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="truncate text-xs text-zinc-500">
                     {[
                       c.bearingDeg !== undefined && `ทิศ ${c.bearingDeg}°`,
                       c.fovDeg !== undefined && `FOV ${c.fovDeg}°`,
@@ -535,11 +531,11 @@ function CameraList({ projectId }: { projectId: string }) {
                     {CAMERA_STATUS_LABELS[c.status]}
                   </Badge>
                 </div>
-                <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="truncate text-sm text-zinc-600">
                   <span className="lg:hidden">ผู้สำรวจ: </span>
                   {c.surveyorName ?? '—'}
                 </p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="text-xs text-zinc-500">
                   <span className="lg:hidden">อัปเดต </span>
                   {formatDate(c.updatedAt)}
                 </p>

@@ -16,16 +16,14 @@ export function MapUnavailable({
   action?: ReactNode;
 }) {
   return (
-    <div className="absolute inset-0 z-[1] grid place-items-center bg-zinc-100 p-6 dark:bg-zinc-800">
+    <div className="absolute inset-0 z-[1] grid place-items-center bg-zinc-100 p-6">
       <div
         role="alert"
         data-testid="map-unavailable"
-        className="max-w-sm space-y-3 rounded-3xl bg-white p-5 text-center shadow-xl ring-1 ring-zinc-900/5 dark:bg-zinc-900 dark:ring-white/10"
+        className="max-w-sm space-y-3 rounded-3xl bg-white p-5 text-center shadow-xl ring-1 ring-zinc-900/5"
       >
         <p className="font-semibold">{title}</p>
-        <p className="text-sm break-words text-zinc-600 dark:text-zinc-400">
-          {children}
-        </p>
+        <p className="text-sm break-words text-zinc-600">{children}</p>
         {action}
       </div>
     </div>
@@ -52,11 +50,11 @@ export function PointList<C extends CameraPoint>({
           <button
             type="button"
             onClick={() => onChoose(c)}
-            className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl px-2 text-left hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-zinc-800"
+            className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl px-2 text-left hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-nt-charcoal"
           >
             <span className="min-w-0">
               <span className="block truncate font-medium">{c.label}</span>
-              <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="block truncate text-xs text-zinc-500">
                 {detail
                   ? detail(c)
                   : (c.address ??

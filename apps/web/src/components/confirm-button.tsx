@@ -57,16 +57,12 @@ export function ConfirmButton({
       <dialog
         ref={dialog}
         aria-labelledby={titleId}
-        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl bg-white p-5 text-zinc-900 shadow-xl backdrop:bg-black/40 dark:bg-zinc-900 dark:text-zinc-100"
+        className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-xl bg-white p-5 text-zinc-900 shadow-xl backdrop:bg-black/40"
       >
         <h2 id={titleId} className="text-lg font-semibold">
           {title}
         </h2>
-        {detail && (
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {detail}
-          </p>
-        )}
+        {detail && <p className="mt-2 text-sm text-zinc-600">{detail}</p>}
         {error && (
           <div className="mt-4">
             <Alert>{error}</Alert>

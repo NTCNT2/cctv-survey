@@ -225,16 +225,11 @@ export const IconCheck = (p: P) => (
   </Icon>
 );
 
-/** Brand mark: a dome camera inside a rounded square. */
-/** `onBrand`: on the indigo header band (translucent white tile). */
-export const LogoMark = ({ onBrand }: { onBrand?: boolean } = {}) => (
+/** Brand mark: a dome camera, dark on an NT-yellow tile. */
+export const LogoMark = () => (
   <span
     aria-hidden
-    className={
-      onBrand
-        ? 'grid size-9 shrink-0 place-items-center rounded-xl bg-white/20 text-white ring-1 ring-white/25'
-        : 'grid size-9 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/40'
-    }
+    className="grid size-9 shrink-0 place-items-center rounded-xl bg-nt-yellow text-ink shadow-sm"
   >
     <svg
       viewBox="0 0 24 24"

@@ -130,12 +130,12 @@ export function Section({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="scroll-mt-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
+      className="scroll-mt-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm sm:p-5"
     >
       <div className="mb-4 flex items-baseline gap-2">
         <span
           aria-hidden
-          className="grid size-6 shrink-0 place-items-center rounded-full bg-indigo-600 text-xs font-semibold text-white"
+          className="grid size-6 shrink-0 place-items-center rounded-full bg-nt-yellow text-xs font-bold text-ink"
         >
           {step}
         </span>
@@ -143,9 +143,7 @@ export function Section({
           <h2 id={`${id}-title`} className="text-base font-semibold">
             {title}
           </h2>
-          {detail && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">{detail}</p>
-          )}
+          {detail && <p className="text-xs text-zinc-500">{detail}</p>}
         </div>
       </div>
       {/* minmax(0, 1fr): a wide input (iOS dates) can never push a column out. */}
@@ -507,8 +505,8 @@ export function CameraForm(props: Props) {
       ref={saveBar}
       className={
         sheet
-          ? 'sticky bottom-0 z-10 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800 dark:bg-zinc-900 [&>*]:flex-1'
-          : 'fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 dark:border-zinc-800 dark:bg-zinc-900/95 [&>*]:flex-1'
+          ? 'sticky bottom-0 z-10 -mx-5 -mb-5 flex gap-3 border-t border-zinc-100 bg-white px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] [&>*]:flex-1'
+          : 'fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-4 [&>*]:flex-1'
       }
     >
       {props.onCancel ? (

@@ -50,7 +50,7 @@ export default function ReportsPage() {
             />
           </Card>
         ) : (
-          <Card className="shadow-[0_4px_14px_rgba(79,70,229,0.10)]">
+          <Card>
             {overview.data?.truncated && (
               <div className="mb-3">
                 <Alert tone="info">แสดงเฉพาะโครงการล่าสุด</Alert>
@@ -59,13 +59,13 @@ export default function ReportsPage() {
             <h2 className="mb-2 text-base font-semibold">เลือกโครงการ</h2>
             <ul
               aria-label="โครงการสำหรับรายงาน"
-              className="-my-1 divide-y divide-zinc-100 dark:divide-zinc-800"
+              className="-my-1 divide-y divide-zinc-100"
             >
               {projects.map((p) => (
                 <li key={p.id}>
                   <Link
                     href={`/reports/${p.id}`}
-                    className="flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 hover:bg-indigo-50/60 focus-visible:outline-2 focus-visible:outline-indigo-600 active:bg-indigo-50 dark:hover:bg-zinc-800"
+                    className="flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-nt-charcoal active:bg-nt-yellow-soft"
                   >
                     {/* Status stripe, as on the project cards. */}
                     <span
@@ -73,10 +73,10 @@ export default function ReportsPage() {
                       className={`w-1 self-stretch rounded-full ${toneBar[PROJECT_STATUS_TONES[p.status]]}`}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-zinc-900 dark:text-zinc-100">
+                      <span className="block truncate font-semibold text-zinc-900">
                         {p.name}
                       </span>
-                      <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                      <span className="block truncate text-xs text-zinc-500">
                         {[p.customerName, `${p.cameras?.total ?? 0} จุดกล้อง`]
                           .filter(Boolean)
                           .join(' · ')}

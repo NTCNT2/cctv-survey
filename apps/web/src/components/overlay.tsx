@@ -71,14 +71,13 @@ export function BottomSheet({
         tall && 'cctv-sheet-tall sm:h-auto',
         side &&
           'lg:my-0 lg:ml-auto lg:mr-0 lg:h-dvh lg:max-h-dvh lg:max-w-md lg:rounded-none lg:rounded-l-3xl',
-        'dark:bg-zinc-900 dark:text-zinc-100',
         // Plain [open] selector: Tailwind's `open:` variant compiles to
         // :is([open], :popover-open, :open), which older Safari may not match.
         '[&[open]]:flex [&[open]]:flex-col',
       )}
     >
       <div className="flex flex-none justify-center pt-3 sm:hidden" aria-hidden>
-        <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+        <span className="h-1.5 w-10 rounded-full bg-zinc-300" />
       </div>
       <header
         data-sheet-header
@@ -89,10 +88,7 @@ export function BottomSheet({
             {title}
           </h2>
           {description && (
-            <p
-              id={descId}
-              className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400"
-            >
+            <p id={descId} className="mt-0.5 text-sm text-zinc-600">
               {description}
             </p>
           )}
@@ -101,7 +97,7 @@ export function BottomSheet({
           type="button"
           onClick={onClose}
           aria-label="ปิด"
-          className="-mr-2 grid size-11 shrink-0 place-items-center rounded-xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+          className="-mr-2 grid size-11 shrink-0 place-items-center rounded-xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-nt-charcoal"
         >
           <svg
             viewBox="0 0 24 24"
@@ -140,7 +136,7 @@ export function BottomSheet({
       {footer ? (
         <div
           data-sheet-footer
-          className="flex flex-none flex-col border-t border-zinc-100 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+          className="flex flex-none flex-col border-t border-zinc-100 bg-white"
         >
           <div className="flex gap-3 px-5 py-3 [&>*]:flex-1">{footer}</div>
           <SafeAreaSpacer />
@@ -185,20 +181,18 @@ export function SheetOption({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-16 w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-indigo-500/60 dark:hover:bg-indigo-500/10"
+      className="flex min-h-16 w-full items-center gap-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left transition-colors hover:border-nt-charcoal hover:bg-nt-yellow-soft/50 focus-visible:outline-2 focus-visible:outline-nt-charcoal disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span
         aria-hidden
-        className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"
+        className="grid size-11 shrink-0 place-items-center rounded-full bg-nt-yellow text-ink"
       >
         {icon}
       </span>
       <span className="min-w-0">
         <span className="block font-medium">{title}</span>
         {detail && (
-          <span className="block text-sm text-zinc-500 dark:text-zinc-400">
-            {detail}
-          </span>
+          <span className="block text-sm text-zinc-500">{detail}</span>
         )}
       </span>
     </button>
@@ -227,7 +221,7 @@ export function Fab({
       onClick={onClick}
       className={cx(
         hidden && 'invisible',
-        'fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-20 inline-flex min-h-14 items-center gap-2 rounded-2xl bg-indigo-600 pl-4 pr-5 text-base font-semibold text-white shadow-lg shadow-indigo-600/30 transition-colors hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 active:scale-[0.98] md:bottom-8 md:right-8 dark:bg-indigo-500 dark:hover:bg-indigo-400',
+        'fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-20 inline-flex min-h-14 items-center gap-2 rounded-2xl bg-nt-yellow pl-4 pr-5 text-base font-bold text-ink shadow-lg shadow-black/40 transition-colors hover:bg-nt-yellow-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nt-yellow active:scale-[0.98] md:bottom-8 md:right-8',
       )}
     >
       {icon}
@@ -272,8 +266,8 @@ export function Toast({
           className={cx(
             'pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-lg',
             error
-              ? 'bg-red-600 text-white ring-2 ring-red-300 dark:bg-red-500'
-              : 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
+              ? 'bg-red-600 text-white ring-2 ring-red-300'
+              : 'bg-zinc-900 text-white',
           )}
         >
           <p className="min-w-0 flex-1">{message}</p>

@@ -165,16 +165,12 @@ export default function ProjectReportPage() {
                 value={num(sum.points)}
                 hint="จุด"
                 icon={<IconPin />}
-                tone="blue"
-                raised
               />
               <StatCard
                 label="จำนวนกล้อง"
                 value={num(sum.cameras)}
                 hint="ตัว"
                 icon={<IconCamera />}
-                tone="violet"
-                raised
               />
               <StatCard
                 label="ข้อมูลหลักครบ"
@@ -182,7 +178,6 @@ export default function ProjectReportPage() {
                 hint="จุด"
                 icon={<IconCheck />}
                 tone="green"
-                raised="lg"
               />
               <StatCard
                 label="สายโดยประมาณ"
@@ -193,15 +188,13 @@ export default function ProjectReportPage() {
                     : 'ม.'
                 }
                 icon={<IconCable />}
-                tone="cyan"
-                raised="lg"
               />
               <StatCard
                 label="รูปหน้างาน"
                 value={num(sum.photos)}
                 hint="รูป"
                 icon={<IconImage />}
-                tone="amber"
+                featured
                 wide
                 className="col-span-2 lg:col-span-4 print:col-span-4"
               />
@@ -261,7 +254,7 @@ export default function ProjectReportPage() {
             </label>
           </div>
           {filtered && (
-            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-3 text-sm text-zinc-600">
               กรองแล้ว: {rows.length} จาก {all.length} จุด — สรุป ตาราง CSV
               และการพิมพ์ใช้เฉพาะจุดที่กรอง
             </p>
@@ -353,9 +346,7 @@ function CountTable({
   return (
     <Card className="print:break-inside-avoid print:border-zinc-300 print:shadow-none">
       <h2 className="text-base font-semibold">{title}</h2>
-      {note && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">{note}</p>
-      )}
+      {note && <p className="text-xs text-zinc-500">{note}</p>}
       <table className="mt-2 w-full text-sm">
         <thead className="text-left text-xs text-zinc-500">
           <tr>
@@ -364,7 +355,7 @@ function CountTable({
             <th className="py-1 text-right font-medium">กล้อง</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 tabular-nums dark:divide-zinc-800">
+        <tbody className="divide-y divide-zinc-100 tabular-nums">
           {rows.map((r) => (
             <tr key={r.key}>
               <td className="py-1.5 pr-3">{r.label}</td>
@@ -407,7 +398,7 @@ function PointTable({
               <th className="py-1.5 font-medium">ยังขาด</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 align-top dark:divide-zinc-800">
+          <tbody className="divide-y divide-zinc-100 align-top">
             {cameras.map((c) => {
               const p = surveyProgress(c);
               return (
@@ -415,7 +406,7 @@ function PointTable({
                   <td className="whitespace-nowrap py-2 pr-3 font-medium">
                     <Link
                       href={`/cameras/${c.id}`}
-                      className="text-indigo-700 hover:underline dark:text-indigo-400 print:text-inherit"
+                      className="text-ink underline underline-offset-2 hover:decoration-2 print:text-inherit"
                     >
                       {c.label}
                     </Link>
@@ -443,7 +434,7 @@ function PointTable({
                   <td className="py-2 pr-3 tabular-nums">
                     {p.done}/{p.total}
                   </td>
-                  <td className="py-2 text-xs text-zinc-600 dark:text-zinc-400">
+                  <td className="py-2 text-xs text-zinc-600">
                     {p.missing.map((m) => m.label).join(', ') || '—'}
                   </td>
                 </tr>
@@ -479,7 +470,7 @@ function PointDetail({
           {CAMERA_STATUS_LABELS[c.status]}
         </Badge>
       </div>
-      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="mt-1 text-xs text-zinc-500">
         {[
           `${c.location.lat.toFixed(6)}, ${c.location.lng.toFixed(6)}`,
           c.address,
@@ -526,7 +517,7 @@ function PointPhotos({ cameraId }: { cameraId: string }) {
             src={ph.thumbUrl}
             alt={ph.caption ?? PHOTO_TYPE_LABELS[ph.photoType]}
             loading="eager"
-            className="aspect-[4/3] w-full rounded-lg bg-zinc-100 object-cover dark:bg-zinc-800"
+            className="aspect-[4/3] w-full rounded-lg bg-zinc-100 object-cover"
           />
           <p className="mt-0.5 truncate text-xs text-zinc-500">
             {ph.caption ?? PHOTO_TYPE_LABELS[ph.photoType]}

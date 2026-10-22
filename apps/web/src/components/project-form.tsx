@@ -167,7 +167,7 @@ export function FormActions({
   cancelHref: string;
 }) {
   return (
-    <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 pt-5 dark:border-zinc-800 sm:flex-row sm:justify-end">
+    <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 pt-5 sm:flex-row sm:justify-end">
       <LinkButton href={cancelHref} variant="secondary">
         ยกเลิก
       </LinkButton>

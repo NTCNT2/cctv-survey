@@ -22,6 +22,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  // Mobile browser bar in the NT charcoal of the app chrome.
+  themeColor: '#2c2c2e',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

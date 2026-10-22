@@ -22,10 +22,11 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 
 /** Badge colour per project status (see `Badge`). */
 export const PROJECT_STATUS_TONES: Record<ProjectStatus, BadgeTone> = {
-  draft: 'amber',
+  // Grey for drafts, green when done; no purple (NT theme).
+  draft: 'neutral',
   surveying: 'blue',
-  designed: 'violet',
-  quoted: 'cyan',
+  designed: 'cyan',
+  quoted: 'amber',
   installing: 'orange',
   completed: 'green',
   cancelled: 'muted',
@@ -67,7 +68,7 @@ export const CAMERA_STATUS_TONES: Record<CameraStatus, BadgeTone> = {
   pending_survey: 'amber',
   surveyed: 'blue',
   pending_design: 'orange',
-  pending_install: 'violet',
+  pending_install: 'cyan',
   installed: 'green',
   issue: 'red',
 };
@@ -77,7 +78,7 @@ export const CAMERA_STATUS_COLORS: Record<CameraStatus, string> = {
   pending_survey: '#eab308', // yellow
   surveyed: '#3b82f6', // blue
   pending_design: '#f97316', // orange
-  pending_install: '#8b5cf6', // purple
+  pending_install: '#14b8a6', // teal
   installed: '#10b981', // green
   issue: '#ef4444', // red
 };
@@ -142,7 +143,7 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
 };
 
 export const ROLE_TONES: Record<UserRole, BadgeTone> = {
-  admin: 'violet',
+  admin: 'brand',
   surveyor: 'blue',
   engineer: 'cyan',
   viewer: 'neutral',

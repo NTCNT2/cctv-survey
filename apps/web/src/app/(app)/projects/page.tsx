@@ -127,8 +127,7 @@ function Projects() {
   const projects = useProjects();
   const overview = useProjectOverview();
 
-  // On the header band: white with indigo text; on the page: the usual
-  // primary button.
+  // Yellow either way ('light' adds the focus ring for the dark band).
   const createButton = (onBand: boolean) =>
     canCreate ? (
       <LinkButton href="/projects/new" variant={onBand ? 'light' : 'primary'}>
@@ -227,10 +226,7 @@ function Projects() {
       ) : (
         <>
           {filtering && (
-            <p
-              role="status"
-              className="mb-3 text-sm text-zinc-600 dark:text-zinc-400"
-            >
+            <p role="status" className="mb-3 text-sm text-zinc-600">
               พบ {items.length.toLocaleString('th-TH')} โครงการ
               {overview.data?.truncated &&
                 ` (ค้นหาจาก ${OVERVIEW_LIMIT.toLocaleString('th-TH')} โครงการล่าสุด)`}
@@ -292,19 +288,17 @@ function Summary({
     label: string;
     value: number | undefined;
     icon: ReactNode;
-    tone: BadgeTone;
+    tone?: BadgeTone;
   }[] = [
     {
       label: 'โครงการทั้งหมด',
       value: count(),
       icon: <IconFolder />,
-      tone: 'violet',
     },
     {
       label: 'กำลังสำรวจ',
       value: count('surveying'),
       icon: <IconSearch />,
-      tone: 'blue',
     },
     {
       label: 'เสร็จแล้ว',
@@ -316,7 +310,7 @@ function Summary({
       label: 'แบบร่าง',
       value: count('draft'),
       icon: <IconClock />,
-      tone: 'amber',
+      tone: 'muted',
     },
   ];
   return (
@@ -326,7 +320,7 @@ function Summary({
       className="relative -mt-8 mb-8 px-1 sm:px-3"
     >
       <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {cards.map((c, i) => (
+        {cards.map((c) => (
           <StatCard
             key={c.label}
             label={c.label}
@@ -335,7 +329,6 @@ function Summary({
             icon={c.icon}
             tone={c.tone}
             unavailable={overview.isError}
-            raised={i < 2 ? true : 'lg'}
           />
         ))}
       </dl>
@@ -347,9 +340,9 @@ function Summary({
 // Toolbar: search, status / customer filters, grid / list toggle
 // ---------------------------------------------------------------------------
 
-/** Search and filters: white, the theme's border, an indigo focus ring. */
+/** Search and filters: white on the dark page, charcoal border + soft yellow ring on focus. */
 const control =
-  'w-full rounded-xl border border-line bg-white px-3 text-base shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30';
+  'w-full rounded-xl border border-transparent bg-white px-3 text-base text-ink shadow-sm outline-none transition focus:border-nt-charcoal focus:ring-4 focus:ring-nt-yellow-soft sm:text-sm';
 
 function Toolbar({
   q,
@@ -489,17 +482,13 @@ function StatusBadge({ status }: { status: ProjectStatus }) {
 function StageBar({ status }: { status: ProjectStatus }) {
   const stage = projectStage(status);
   if (!stage) {
-    return (
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        โครงการถูกยกเลิก
-      </p>
-    );
+    return <p className="text-xs text-zinc-500">โครงการถูกยกเลิก</p>;
   }
   return (
     <div>
       <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-600 dark:text-zinc-400">ขั้นตอนงาน</span>
-        <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
+        <span className="text-zinc-600">ขั้นตอนงาน</span>
+        <span className="font-medium tabular-nums text-zinc-700">
           {stage.step}/{stage.of}
         </span>
       </div>
@@ -515,9 +504,9 @@ function StageBar({ status }: { status: ProjectStatus }) {
               'h-1.5 flex-1 rounded-full',
               i < stage.step
                 ? status === 'completed'
-                  ? 'bg-emerald-500'
-                  : 'bg-indigo-500'
-                : 'bg-zinc-200 dark:bg-zinc-800',
+                  ? 'bg-green-600'
+                  : 'bg-nt-charcoal'
+                : 'bg-zinc-200',
             )}
           />
         ))}
@@ -531,20 +520,20 @@ function StageBar({ status }: { status: ProjectStatus }) {
  * from the status badge's tone (the stat cards' hues).
  */
 const statusIcon: Record<BadgeTone, string> = {
-  blue: 'text-sky-600 dark:text-sky-400',
-  green: 'text-emerald-600 dark:text-emerald-400',
-  amber: 'text-amber-600 dark:text-amber-400',
-  violet: 'text-violet-600 dark:text-violet-400',
-  cyan: 'text-teal-600 dark:text-teal-400',
-  orange: 'text-orange-600 dark:text-orange-400',
-  red: 'text-red-600 dark:text-red-400',
+  blue: 'text-sky-600',
+  green: 'text-emerald-600',
+  amber: 'text-amber-600',
+  brand: 'text-ink',
+  cyan: 'text-teal-600',
+  orange: 'text-orange-600',
+  red: 'text-red-600',
   neutral: 'text-zinc-500',
   muted: 'text-zinc-500',
 };
 
 /** The card surface shared by the grid and list views. */
 const cardShell =
-  'group relative overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:border-indigo-300 hover:shadow-md focus-within:border-indigo-400 active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500/60';
+  'group relative overflow-hidden rounded-2xl bg-white text-ink shadow-card transition hover:shadow-[0_10px_24px_rgba(0,0,0,0.35)] focus-within:ring-2 focus-within:ring-nt-yellow active:scale-[0.99]';
 
 function StatusStripe({ status }: { status: ProjectStatus }) {
   return (
@@ -560,7 +549,7 @@ function StatusStripe({ status }: { status: ProjectStatus }) {
 
 function Meta({
   icon,
-  iconClass = 'text-zinc-400 dark:text-zinc-500',
+  iconClass = 'text-zinc-400',
   children,
 }: {
   icon: ReactNode;
@@ -568,7 +557,7 @@ function Meta({
   children: ReactNode;
 }) {
   return (
-    <p className="flex min-w-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+    <p className="flex min-w-0 items-center gap-2 text-sm text-zinc-500">
       <span className={iconClass}>{icon}</span>
       <span className="min-w-0 truncate">{children}</span>
     </p>
@@ -586,11 +575,11 @@ function ProjectCard({ project: p }: { project: Project }) {
     >
       <StatusStripe status={p.status} />
       <div className="flex items-start justify-between gap-3">
-        <h2 className="min-w-0 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+        <h2 className="min-w-0 text-base font-semibold leading-snug text-zinc-900">
           {/* Stretched link: the whole card opens the project. */}
           <Link
             href={`/projects/${p.id}`}
-            className="line-clamp-2 break-words after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none group-focus-within:text-indigo-700 dark:group-focus-within:text-indigo-300"
+            className="line-clamp-2 break-words after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none group-focus-within:underline"
           >
             {p.name}
           </Link>
@@ -617,21 +606,19 @@ function ProjectCard({ project: p }: { project: Project }) {
         <StageBar status={p.status} />
         {p.cameras && p.cameras.total > 0 && (
           <div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400">
-              สถานะจุดกล้อง
-            </p>
+            <p className="text-xs text-zinc-600">สถานะจุดกล้อง</p>
             <CameraMix summary={p.cameras} className="mt-2" />
           </div>
         )}
       </div>
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-        <p className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-zinc-100 pt-4">
+        <p className="flex items-center gap-1.5 text-xs text-zinc-500">
           <IconClock className="size-3.5" />
           อัปเดต {formatDate(p.updatedAt)}
         </p>
         <span
           aria-hidden
-          className="inline-flex items-center gap-1 text-sm font-medium text-indigo-700 dark:text-indigo-300"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-ink underline decoration-nt-yellow decoration-2 underline-offset-4"
         >
           เปิดโครงการ
           <IconArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -653,10 +640,10 @@ function ProjectRow({ project: p }: { project: Project }) {
       <StatusStripe status={p.status} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="min-w-0 font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 className="min-w-0 font-semibold text-zinc-900">
             <Link
               href={`/projects/${p.id}`}
-              className="break-words after:absolute after:inset-0 focus-visible:outline-none group-focus-within:text-indigo-700 dark:group-focus-within:text-indigo-300"
+              className="break-words after:absolute after:inset-0 focus-visible:outline-none group-focus-within:underline"
             >
               {p.name}
             </Link>
@@ -683,14 +670,11 @@ function ProjectRow({ project: p }: { project: Project }) {
       <div className="sm:w-40">
         <StageBar status={p.status} />
       </div>
-      <p className="flex items-center gap-1.5 text-xs text-zinc-500 sm:w-32 dark:text-zinc-400">
+      <p className="flex items-center gap-1.5 text-xs text-zinc-500 sm:w-32">
         <IconClock className="size-3.5" />
         {formatDate(p.updatedAt)}
       </p>
-      <span
-        aria-hidden
-        className="hidden text-indigo-600 sm:block dark:text-indigo-300"
-      >
+      <span aria-hidden className="hidden text-ink sm:block">
         <IconArrowRight />
       </span>
     </article>
@@ -709,7 +693,7 @@ const cameraText = (c: ProjectCameraSummary) =>
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
@@ -750,16 +734,16 @@ function OfficeOverview({ projects }: { projects: Project[] }) {
               key={b.status}
               className="grid grid-cols-[7.5rem_1fr_2rem] items-center gap-3 text-sm"
             >
-              <span className="truncate text-zinc-600 dark:text-zinc-400">
+              <span className="truncate text-zinc-600">
                 {PROJECT_STATUS_LABELS[b.status]}
               </span>
-              <span className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+              <span className="h-1.5 overflow-hidden rounded-full bg-zinc-100">
                 <span
                   className={cx(
                     'block h-full rounded-full',
                     b.status === 'completed'
                       ? 'bg-emerald-500'
-                      : 'bg-indigo-500',
+                      : 'bg-nt-charcoal',
                     b.count === 0 && 'hidden',
                   )}
                   style={{ width: `${(b.count / max) * 100}%` }}
@@ -776,16 +760,14 @@ function OfficeOverview({ projects }: { projects: Project[] }) {
       <Panel title="ภาพรวมจุดกล้อง">
         <p className="text-3xl font-semibold tabular-nums tracking-tight">
           {cameras.total.toLocaleString('th-TH')}
-          <span className="ml-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">
+          <span className="ml-2 text-sm font-normal text-zinc-500">
             จุดในทุกโครงการ
           </span>
         </p>
         {cameras.total > 0 ? (
           <CameraMix summary={cameras} legend className="mt-4" />
         ) : (
-          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-            ยังไม่มีการสำรวจจุดกล้อง
-          </p>
+          <p className="mt-3 text-sm text-zinc-500">ยังไม่มีการสำรวจจุดกล้อง</p>
         )}
       </Panel>
 
@@ -795,13 +777,13 @@ function OfficeOverview({ projects }: { projects: Project[] }) {
             <li key={p.id}>
               <Link
                 href={`/projects/${p.id}`}
-                className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-xl px-2 py-1.5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-zinc-800"
+                className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-xl px-2 py-1.5 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-nt-charcoal"
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium">
                     {p.name}
                   </span>
-                  <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="block text-xs text-zinc-500">
                     {formatRelative(p.updatedAt)}
                   </span>
                 </span>
