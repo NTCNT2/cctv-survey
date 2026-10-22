@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import path from 'node:path';
+import { version } from './package.json';
 
 /**
  * Where the NestJS API listens. Server-side only (no NEXT_PUBLIC_ prefix): the
@@ -15,6 +16,8 @@ const apiOrigin = new URL(
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Shown on the sign-in page.
+  env: { NEXT_PUBLIC_APP_VERSION: version },
   // Lets the e2e script build into its own folder without touching `.next`.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   // Container image (infra/docker/web.Dockerfile): a self-contained server.

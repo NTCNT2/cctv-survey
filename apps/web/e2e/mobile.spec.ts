@@ -41,6 +41,60 @@ test('login page fits the screen', async ({ page }, info) => {
   });
 });
 
+for (const [width, height] of [
+  [375, 812],
+  [430, 932],
+] as const) {
+  test(`${width}px: login — one screen, 52px fields, 16px text, show password`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height });
+    await page.goto('/login?loggedOut=1');
+    await expect(page.getByRole('status')).toHaveText('ออกจากระบบแล้ว');
+    await expect(
+      page.getByRole('heading', { name: 'เข้าสู่ระบบ' }),
+    ).toBeVisible();
+    // Fits the screen both ways on a common phone.
+    await expectNoHorizontalScroll(page);
+    const fits = await page.evaluate(
+      () => document.documentElement.scrollHeight <= window.innerHeight,
+    );
+    expect(fits, 'no vertical scroll').toBe(true);
+    for (const name of ['ชื่อผู้ใช้', 'รหัสผ่าน']) {
+      const input = page.getByLabel(name, { exact: true });
+      expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(52);
+      expect(
+        await input.evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+      ).toBeGreaterThanOrEqual(16);
+    }
+    await expect(
+      page.getByLabel('ชื่อผู้ใช้', { exact: true }),
+    ).toHaveAttribute('autocomplete', 'username');
+    const pw = page.getByLabel('รหัสผ่าน', { exact: true });
+    await expect(pw).toHaveAttribute('autocomplete', 'current-password');
+    await pw.fill('secret-value');
+    await expect(pw).toHaveAttribute('type', 'password');
+    const toggle = page.getByRole('button', { name: 'แสดงรหัส' });
+    const t = (await toggle.boundingBox())!;
+    expect(Math.min(t.width, t.height)).toBeGreaterThanOrEqual(44);
+    await toggle.tap();
+    await expect(pw).toHaveAttribute('type', 'text');
+    await page.getByRole('button', { name: 'ซ่อนรหัส' }).tap();
+    await expect(pw).toHaveAttribute('type', 'password');
+    const submit = page.getByRole('button', { name: 'เข้าสู่ระบบ' });
+    expect((await submit.boundingBox())!.height).toBeGreaterThanOrEqual(54);
+    // The field is still in view with the keyboard's share of the screen
+    // taken (a shorter viewport stands in for it).
+    await page.setViewportSize({ width, height: Math.round(height * 0.55) });
+    await pw.focus();
+    await expect(pw).toBeInViewport();
+    await info.attach(`login-${width}`, {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+  });
+}
+
 test.describe('signed in', () => {
   test.use({ storageState: storage.admin });
 
